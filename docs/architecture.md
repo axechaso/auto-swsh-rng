@@ -25,6 +25,8 @@ Current upstream references:
 
 `EasyCon.Core` is not referenced yet. It pulls in capture-related dependencies such as OpenCV, Tesseract, FlashCap, and native/runtime assets through `EasyCon.Capture`. That surface should be added only when the app actually needs those capabilities.
 
+Current smoke adapters call `owoow.Core.RNG.Util` for deterministic RNG helper values and `EasyCon.Script` for in-process script evaluation without a serial device. This proves both upstreams can be used through small project-owned APIs before the final automation workflow exists.
+
 ## UI direction
 
 The desktop app is a single WinForms shell with top-level tabs:
