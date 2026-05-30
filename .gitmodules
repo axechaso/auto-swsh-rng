@@ -1,3 +1,6 @@
 [submodule "third_party/owoow"]
 	path = third_party/owoow
 	url = https://github.com/LegoFigure11/owoow.git
+[submodule "third_party/EasyCon"]
+	path = third_party/EasyCon
+	url = https://github.com/EasyConNS/EasyCon.git
