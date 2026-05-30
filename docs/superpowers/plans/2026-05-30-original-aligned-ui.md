@@ -145,19 +145,19 @@ Commit message: `feat:还原伊机控标签页结构`
 - Modify: `README.md`
 - Modify: `docs/architecture.md`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Assert that `自动化流程` tab exists and contains a placeholder named `automationFlowPlaceholder` explaining that workflow UI will be designed after user approval.
 
-- [ ] **Step 2: Implement placeholder control**
+- [x] **Step 2: Implement placeholder control**
 
 Add a minimal `AutomationFlowTabControl` with stable naming and no premature workflow behavior.
 
-- [ ] **Step 3: Update docs**
+- [x] **Step 3: Update docs**
 
 Document that `owoow` and `伊机控` are now separate top-level tabs and that EasyCon linkage is intentionally deferred.
 
-- [ ] **Step 4: Full verification**
+- [x] **Step 4: Full verification**
 
 Run:
 
@@ -168,6 +168,6 @@ dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `docs:记录界面重构方向`

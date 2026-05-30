@@ -19,7 +19,7 @@ public sealed class MainForm : Form
 
         mainTabs.TabPages.Add(CreateControlTab("owoow", new OwoowTabControl()));
         mainTabs.TabPages.Add(CreateControlTab("伊机控", new EasyConTabControl()));
-        mainTabs.TabPages.Add(CreateTab("自动化流程", "后续自动化流程将在 UI 需求确定后接入。"));
+        mainTabs.TabPages.Add(CreateControlTab("自动化流程", new AutomationFlowTabControl()));
 
         Controls.Add(mainTabs);
     }
@@ -36,19 +36,4 @@ public sealed class MainForm : Form
         return page;
     }
 
-    private TabPage CreateTab(string title, string body)
-    {
-        var page = new TabPage(title)
-        {
-            Padding = new Padding(16),
-        };
-        page.Controls.Add(new Label
-        {
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            Text = body,
-            TextAlign = ContentAlignment.TopLeft,
-        });
-        return page;
-    }
 }

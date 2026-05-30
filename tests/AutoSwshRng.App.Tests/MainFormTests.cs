@@ -98,6 +98,17 @@ public class MainFormTests
         });
     }
 
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void AutomationFlowTabKeepsWorkflowDesignPlaceholder()
+    {
+        using var form = new MainForm();
+
+        var placeholder = FindControl(form, "automationFlowPlaceholder");
+
+        Assert.That(GetProperty<string>(placeholder, "Text"), Does.Contain("自动化流程"));
+    }
+
     private static object FindControl(object root, string name)
     {
         var match = FindControlOrDefault(root, name);

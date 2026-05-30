@@ -33,12 +33,17 @@ Current smoke adapters call `owoow.Core.RNG.Util` for deterministic RNG helper v
 
 The desktop app is a single WinForms shell with top-level tabs:
 
-- `概览`
 - `owoow`
 - `伊机控`
 - `自动化流程`
 
-The tabs currently prove that the app can load project-owned code and upstream adapter data. They do not embed the original `owoow` or EasyCon windows. Embedding whole upstream applications would couple lifecycle, config files, menus, message loops, and global state too early.
+The `owoow` tab keeps the original dense tool surface but moves the original horizontal menu into a left vertical tool menu. The work area preserves the original concepts such as seed/IP connection fields, encounter settings, Pokédex recommendation, advanced settings, IV/shiny/mark filters, CFW tools, retail tools, and the wide result grid.
+
+The `伊机控` tab intentionally avoids AutoSwshRng linkage panels for now. It restores the original EasyCon shape: horizontal EasyCon menu, script editor, log output, right-side serial/capture/record/controller/firmware panels, and bottom status text.
+
+The `自动化流程` tab is currently a named placeholder. Its detailed workflow UI should be designed after the `owoow` and `伊机控` pages are stable enough to provide real inputs.
+
+The app does not embed the original `owoow` or EasyCon windows directly. Direct embedding would couple lifecycle, config files, menus, message loops, and global state too early. Instead, the current implementation reconstructs original-aligned WinForms surfaces in project-owned controls.
 
 ## Bridge decision
 

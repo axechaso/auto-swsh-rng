@@ -22,7 +22,7 @@ git submodule update --init --recursive
 - `AutoSwshRng.Core`: 项目自有的基础信息和后续纯领域逻辑入口
 - `AutoSwshRng.Upstream`: 对 `owoow` 与 EasyCon 的 Windows-only 适配边界
 - `AutoSwshRng.Cli`: 命令行烟测入口
-- `AutoSwshRng.App`: WinForms 桌面壳，包含 `owoow` 与 `伊机控` 的无硬件诊断标签页
+- `AutoSwshRng.App`: WinForms 桌面壳，包含 `owoow`、`伊机控`、`自动化流程` 三个顶层标签页
 
 ```powershell
 dotnet build .\AutoSwshRng.slnx
@@ -31,6 +31,6 @@ dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj
 dotnet run --project .\src\AutoSwshRng.App\AutoSwshRng.App.csproj
 ```
 
-CLI 当前会输出上游烟测状态；桌面壳当前可以在 `owoow` 标签页计算基础 shiny value，并在 `伊机控` 标签页运行无串口的 EasyCon Script 片段。
+CLI 当前会输出上游烟测状态；桌面壳当前优先对齐原版界面：`owoow` 标签页使用左侧竖向工具菜单承载原版功能，`伊机控` 标签页先按 EasyCon 原版脚本/设备控制布局还原，`自动化流程` 暂留稳定占位等待后续 UI 需求。
 
 当前架构说明见 `docs/architecture.md`。
