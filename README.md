@@ -23,4 +23,7 @@ git submodule update --init --recursive
 dotnet build .\AutoSwshRng.slnx
 dotnet test .\AutoSwshRng.slnx
 dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj
+dotnet run --project .\src\AutoSwshRng.App\AutoSwshRng.App.csproj
 ```
+
+当前架构说明见 `docs/architecture.md`。

@@ -20,10 +20,10 @@
 - Create: `tests/AutoSwshRng.Upstream.Tests/UpstreamInfoTests.cs`
 - Modify: `AutoSwshRng.slnx`
 
-- [ ] Write tests that assert stable assembly/type names from both upstreams.
-- [ ] Verify tests fail before adapter implementation.
-- [ ] Implement minimal upstream info adapters.
-- [ ] Verify upstream tests pass.
+- [x] Write tests that assert stable assembly/type names from both upstreams.
+- [x] Verify tests fail before adapter implementation.
+- [x] Implement minimal upstream info adapters.
+- [x] Verify upstream tests pass.
 
 ### Task 2: Add WinForms App Shell
 
@@ -33,10 +33,10 @@
 - Create: `src/AutoSwshRng.App/MainForm.cs`
 - Modify: `AutoSwshRng.slnx`
 
-- [ ] Create a Windows Forms app project.
-- [ ] Build a `TabControl` with overview, `owoow`, EasyCon, and automation tabs.
-- [ ] Show adapter data in upstream tabs without launching the original upstream UI.
-- [ ] Verify the app builds.
+- [x] Create a Windows Forms app project.
+- [x] Build a `TabControl` with overview, `owoow`, EasyCon, and automation tabs.
+- [x] Show adapter data in upstream tabs without launching the original upstream UI.
+- [x] Verify the app builds.
 
 ### Task 3: Document The Current Architecture
 
@@ -44,9 +44,9 @@
 - Create: `docs/architecture.md`
 - Modify: `README.md`
 
-- [ ] Document direct .NET integration as the first-choice strategy.
-- [ ] Document `AutoSwshRng.Upstream` as the dependency boundary.
-- [ ] Document build/test/run commands including the WinForms app.
+- [x] Document direct .NET integration as the first-choice strategy.
+- [x] Document `AutoSwshRng.Upstream` as the dependency boundary.
+- [x] Document build/test/run commands including the WinForms app.
 
 ### Task 4: Final Verification
 
