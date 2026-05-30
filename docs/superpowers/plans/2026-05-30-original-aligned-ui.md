@@ -41,25 +41,25 @@
 - Modify: `tests/AutoSwshRng.App.Tests/MainFormTests.cs`
 - Modify: `src/AutoSwshRng.App/MainForm.cs`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Assert that `MainForm.TabTitles` is exactly `owoow`, `伊机控`, `自动化流程`, and no longer contains `概览`.
 
-- [ ] **Step 2: Run test**
+- [x] **Step 2: Run test**
 
 Run: `dotnet test .\tests\AutoSwshRng.App.Tests\AutoSwshRng.App.Tests.csproj`
 
 Expected: FAIL because the current UI still includes `概览`.
 
-- [ ] **Step 3: Implement minimal top-level tabs**
+- [x] **Step 3: Implement minimal top-level tabs**
 
 Update `MainForm` to host only the three top-level tabs and move smoke text out of the top-level structure.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `dotnet test .\tests\AutoSwshRng.App.Tests\AutoSwshRng.App.Tests.csproj`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `refactor:调整主界面标签结构`
 

@@ -19,9 +19,6 @@ public sealed class MainForm : Form
         Size = new Size(1120, 720);
 
         var upstreamSmokeReport = UpstreamSmokeReport.Create();
-        mainTabs.TabPages.Add(CreateTab(
-            "概览",
-            ProjectInfo.Description + Environment.NewLine + upstreamSmokeReport.ToDisplayText()));
         mainTabs.TabPages.Add(CreateOwoowTab(upstreamSmokeReport.GetRequired("owoow")));
         mainTabs.TabPages.Add(CreateEasyConTab(upstreamSmokeReport.GetRequired("easycon")));
         mainTabs.TabPages.Add(CreateTab("自动化流程", "后续自动化流程将在 UI 需求确定后接入。"));
