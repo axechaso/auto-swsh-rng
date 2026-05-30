@@ -27,6 +27,8 @@ Current upstream references:
 
 Current smoke adapters call `owoow.Core.RNG.Util` for deterministic RNG helper values and `EasyCon.Script` for in-process script evaluation without a serial device. This proves both upstreams can be used through small project-owned APIs before the final automation workflow exists.
 
+`UpstreamSmokeReport` is the current app-facing facade for these checks. CLI and WinForms consume that report instead of formatting raw upstream calls themselves, which keeps later diagnostics and UI status panels on one project-owned contract.
+
 ## UI direction
 
 The desktop app is a single WinForms shell with top-level tabs:

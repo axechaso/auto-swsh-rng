@@ -25,6 +25,7 @@ public class MainFormTests
         {
             Assert.That(form.TabBodies["owoow"], Does.Contain("Square"));
             Assert.That(form.TabBodies["伊机控"], Does.Contain("hello"));
+            Assert.That(form.TabBodies["概览"], Does.Contain("EasyCon: OK"));
         });
     }
 }
