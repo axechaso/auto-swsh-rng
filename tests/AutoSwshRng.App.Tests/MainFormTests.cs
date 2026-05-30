@@ -76,18 +76,25 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConTabRunsScriptWithoutSerialDevice()
+    public void EasyConTabRestoresOriginalMenuAndPanels()
     {
         using var form = new MainForm();
 
-        SetProperty(FindControl(form, "easyConScriptTextBox"), "Text", "PRINT \"world\"");
-        InvokeClick(FindControl(form, "easyConRunButton"));
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var menuLabels = GetDescendantTexts(menu);
 
-        var output = GetProperty<string>(FindControl(form, "easyConOutputTextBox"), "Text");
         Assert.Multiple(() =>
         {
-            Assert.That(output, Does.Contain("errors = False"));
-            Assert.That(output, Does.Contain("world"));
+            Assert.That(menuLabels, Is.SupersetOf(new[] { "文件", "编辑", "脚本", "搜图", "设置", "蓝牙", "ESP32", "画图", "帮助" }));
+            Assert.That(FindControl(form, "easyConScriptEditor"), Is.Not.Null);
+            Assert.That(FindControl(form, "easyConLogBox"), Is.Not.Null);
+            Assert.That(FindControl(form, "easyConSerialPanel"), Is.Not.Null);
+            Assert.That(FindControl(form, "easyConCapturePanel"), Is.Not.Null);
+            Assert.That(FindControl(form, "easyConRecordPanel"), Is.Not.Null);
+            Assert.That(FindControl(form, "easyConControllerPanel"), Is.Not.Null);
+            Assert.That(FindControl(form, "easyConFirmwarePanel"), Is.Not.Null);
+            Assert.That(GetDescendantTexts(form), Does.Contain("串口状态: 未连接"));
+            Assert.That(GetDescendantTexts(form), Does.Contain("采集状态: 未开启"));
         });
     }
 

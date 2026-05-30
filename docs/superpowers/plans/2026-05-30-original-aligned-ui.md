@@ -107,7 +107,7 @@ Commit message: `feat:复刻owoow主界面结构`
 - Modify: `src/AutoSwshRng.App/MainForm.cs`
 - Modify: `tests/AutoSwshRng.App.Tests/MainFormTests.cs`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Assert that the `伊机控` tab contains original EasyCon menu labels:
 `文件`, `编辑`, `脚本`, `搜图`, `设置`, `蓝牙`, `ESP32`, `画图`, `帮助`.
@@ -115,13 +115,13 @@ Assert that the `伊机控` tab contains original EasyCon menu labels:
 Assert that it contains original functional areas:
 `easyConScriptEditor`, `easyConLogBox`, `easyConSerialPanel`, `easyConCapturePanel`, `easyConRecordPanel`, `easyConControllerPanel`, `easyConFirmwarePanel`, and status text for `串口状态` and `采集状态`.
 
-- [ ] **Step 2: Run test**
+- [x] **Step 2: Run test**
 
 Run: `dotnet test .\tests\AutoSwshRng.App.Tests\AutoSwshRng.App.Tests.csproj`
 
 Expected: FAIL because the current EasyCon tab is only a small diagnostic panel.
 
-- [ ] **Step 3: Implement `EasyConTabControl`**
+- [x] **Step 3: Implement `EasyConTabControl`**
 
 Build a `UserControl` that restores the original EasyCon layout shape:
 - horizontal EasyCon menu;
@@ -130,11 +130,11 @@ Build a `UserControl` that restores the original EasyCon layout shape:
 - bottom log and status strip;
 - no AutoSwshRng linkage panel in this task.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `dotnet test .\tests\AutoSwshRng.App.Tests\AutoSwshRng.App.Tests.csproj`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat:还原伊机控标签页结构`
 
