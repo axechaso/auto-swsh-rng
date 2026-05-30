@@ -53,7 +53,7 @@
 **Files:**
 - Verify all changed files.
 
-- [ ] Run `dotnet build .\AutoSwshRng.slnx`.
-- [ ] Run `dotnet test .\AutoSwshRng.slnx`.
-- [ ] Run `dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj`.
-- [ ] Run `git diff --check`.
+- [x] Run `dotnet build .\AutoSwshRng.slnx`.
+- [x] Run `dotnet test .\AutoSwshRng.slnx`.
+- [x] Run `dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj`.
+- [x] Run `git diff --check`.
