@@ -71,7 +71,7 @@ Commit message: `refactor:调整主界面标签结构`
 - Modify: `tests/AutoSwshRng.App.Tests/MainFormTests.cs`
 - Create or modify: `tests/AutoSwshRng.App.Tests/ControlTestHelpers.cs`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Assert that the `owoow` tab contains a left navigation named `owoowToolMenu` with labels:
 `配置档`, `遭遇查询`, `个体帧搜索`, `ID抽奖`, `机器鹕`, `瓦特商店`, `挖挖伯`, `挖洞兄弟（技巧型）`, `吼鲸王再出现`, `Xoroshiro 工具`.
@@ -79,24 +79,24 @@ Assert that the `owoow` tab contains a left navigation named `owoowToolMenu` wit
 Assert that the work area contains original-aligned control labels:
 `Seed[0]:`, `Seed[1]:`, `Switch IP:`, `闪耀护符?`, `证章护符?`, `游戏:`, `遭遇设置 - 定点`, `区域:`, `天气:`, `目标:`, `宝可梦图鉴“现在推荐”`, `高级设置`, `异色:`, `证章:`, `CFW 工具`, `实机工具`.
 
-- [ ] **Step 2: Run test**
+- [x] **Step 2: Run test**
 
 Run: `dotnet test .\tests\AutoSwshRng.App.Tests\AutoSwshRng.App.Tests.csproj`
 
 Expected: FAIL because `OwoowTabControl` and these named controls do not exist yet.
 
-- [ ] **Step 3: Implement `OwoowTabControl`**
+- [x] **Step 3: Implement `OwoowTabControl`**
 
 Build a `UserControl` with:
 - left vertical navigation for the original owoow menu;
 - central dense original-aligned work area;
 - bottom result grid with columns matching original concepts: `推进数`, `跳跃`, `步数`, `动画`, `宝可梦`, `异色`, `气场`, `等级`, `特性`, `性格`, `性别`, `HP`, `攻击`, `防御`, `特攻`, `特防`, `速度`, `证章`, `EC`, `PID`, `身高`.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `dotnet test .\tests\AutoSwshRng.App.Tests\AutoSwshRng.App.Tests.csproj`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat:复刻owoow主界面结构`
 

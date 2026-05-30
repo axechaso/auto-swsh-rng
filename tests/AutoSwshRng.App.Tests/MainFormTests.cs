@@ -18,28 +18,60 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void UpstreamTabsShowAdapterSmokeResults()
+    public void OwoowTabUsesVerticalOriginalToolMenu()
     {
         using var form = new MainForm();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(form.TabBodies["owoow"], Does.Contain("Square"));
-            Assert.That(form.TabBodies["伊机控"], Does.Contain("hello"));
-        });
+        var menu = FindControl(form, "owoowToolMenu");
+        var labels = GetDescendantTexts(menu);
+
+        Assert.That(
+            labels,
+            Is.SupersetOf(new[]
+            {
+                "配置档",
+                "遭遇查询",
+                "个体帧搜索",
+                "ID抽奖",
+                "机器鹕",
+                "瓦特商店",
+                "挖挖伯",
+                "挖洞兄弟（技巧型）",
+                "吼鲸王再出现",
+                "Xoroshiro 工具",
+            }));
     }
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void OwoowTabCalculatesShinyValue()
+    public void OwoowTabContainsOriginalAlignedSearchLabels()
     {
         using var form = new MainForm();
 
-        SetProperty(FindControl(form, "owoowTidInput"), "Value", 1m);
-        SetProperty(FindControl(form, "owoowSidInput"), "Value", 2m);
-        InvokeClick(FindControl(form, "owoowCalculateButton"));
+        var workArea = FindControl(form, "owoowOriginalWorkArea");
+        var labels = GetDescendantTexts(workArea);
 
-        Assert.That(GetProperty<string>(FindControl(form, "owoowResultLabel"), "Text"), Does.Contain("0x0003"));
+        Assert.That(
+            labels,
+            Is.SupersetOf(new[]
+            {
+                "Seed[0]:",
+                "Seed[1]:",
+                "Switch IP:",
+                "闪耀护符?",
+                "证章护符?",
+                "游戏:",
+                "遭遇设置 - 定点",
+                "区域:",
+                "天气:",
+                "目标:",
+                "宝可梦图鉴“现在推荐”",
+                "高级设置",
+                "异色:",
+                "证章:",
+                "CFW 工具",
+                "实机工具",
+            }));
     }
 
     [Test]
@@ -90,6 +122,27 @@ public class MainFormTests
             .GetProperties()
             .First(candidate => candidate.Name == propertyName && candidate.GetIndexParameters().Length == 0);
         return (T)property.GetValue(target)!;
+    }
+
+    private static IReadOnlyCollection<string> GetDescendantTexts(object root)
+    {
+        var texts = new List<string>();
+        AddTexts(root, texts);
+        return texts.Where(text => !string.IsNullOrWhiteSpace(text)).ToArray();
+    }
+
+    private static void AddTexts(object root, List<string> texts)
+    {
+        var text = GetProperty<string>(root, "Text");
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            texts.Add(text);
+        }
+
+        foreach (var child in (IEnumerable)GetProperty<object>(root, "Controls"))
+        {
+            AddTexts(child, texts);
+        }
     }
 
     private static void SetProperty(object target, string propertyName, object value)
