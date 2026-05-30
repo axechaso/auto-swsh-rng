@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/AutoSwshRng.App/AutoSwshRng.App.csproj" />
     <Project Path="src/AutoSwshRng.Cli/AutoSwshRng.Cli.csproj" />
     <Project Path="src/AutoSwshRng.Core/AutoSwshRng.Core.csproj" />
     <Project Path="src/AutoSwshRng.Upstream/AutoSwshRng.Upstream.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AutoSwshRng.App.Tests/AutoSwshRng.App.Tests.csproj" />
     <Project Path="tests/AutoSwshRng.Core.Tests/AutoSwshRng.Core.Tests.csproj" />
     <Project Path="tests/AutoSwshRng.Upstream.Tests/AutoSwshRng.Upstream.Tests.csproj" />
   </Folder>
