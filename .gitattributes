@@ -8,6 +8,10 @@
 *.toml text eol=lf
 *.py text eol=lf
 *.cs text eol=lf
+*.csproj text eol=lf
+*.slnx text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
 *.cpp text eol=lf
 *.hpp text eol=lf
 *.h text eol=lf

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AutoSwshRng.Cli/AutoSwshRng.Cli.csproj" />
+    <Project Path="src/AutoSwshRng.Core/AutoSwshRng.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AutoSwshRng.Core.Tests/AutoSwshRng.Core.Tests.csproj" />
+  </Folder>
+</Solution>
