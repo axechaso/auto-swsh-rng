@@ -301,6 +301,7 @@ public sealed class OwoowTabControl : UserControl
     {
         var grid = new DataGridView
         {
+            Name = "owoowResultsGrid",
             Dock = DockStyle.Fill,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,

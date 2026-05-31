@@ -76,6 +76,42 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void OwoowResultGridMatchesOriginalColumnOrder()
+    {
+        using var form = new MainForm();
+
+        var grid = FindControl(form, "owoowResultsGrid");
+
+        Assert.That(
+            GetDataGridViewColumnHeaders(grid),
+            Is.EqualTo(new[]
+            {
+                "推进数",
+                "跳跃",
+                "步数",
+                "动画",
+                "宝可梦",
+                "异色",
+                "气场",
+                "等级",
+                "特性",
+                "性格",
+                "性别",
+                "HP",
+                "攻击",
+                "防御",
+                "特攻",
+                "特防",
+                "速度",
+                "证章",
+                "EC",
+                "PID",
+                "身高",
+            }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalMenuAndPanels()
     {
         using var form = new MainForm();
@@ -95,6 +131,22 @@ public class MainFormTests
             Assert.That(FindControl(form, "easyConFirmwarePanel"), Is.Not.Null);
             Assert.That(GetDescendantTexts(form), Does.Contain("串口状态: 未连接"));
             Assert.That(GetDescendantTexts(form), Does.Contain("采集状态: 未开启"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConTabDoesNotAddAutoSwshRngLinkagePanelYet()
+    {
+        using var form = new MainForm();
+
+        var labels = GetDescendantTexts(form);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Not.Contain("自动化联动"));
+            Assert.That(labels, Does.Not.Contain("从 owoow 生成脚本"));
+            Assert.That(labels, Does.Not.Contain("加入自动化流程"));
         });
     }
 
@@ -147,6 +199,17 @@ public class MainFormTests
         var texts = new List<string>();
         AddTexts(root, texts);
         return texts.Where(text => !string.IsNullOrWhiteSpace(text)).ToArray();
+    }
+
+    private static IReadOnlyList<string> GetDataGridViewColumnHeaders(object grid)
+    {
+        var headers = new List<string>();
+        foreach (var column in (IEnumerable)GetProperty<object>(grid, "Columns"))
+        {
+            headers.Add(GetProperty<string>(column, "HeaderText"));
+        }
+
+        return headers;
     }
 
     private static void AddTexts(object root, List<string> texts)
