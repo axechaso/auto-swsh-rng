@@ -143,6 +143,30 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void OwoowCfwAndRetailToolsMatchOriginalInitialEnabledStates()
+    {
+        using var form = new MainForm();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowCfwSkipInput"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowCfwCancelButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowDaysPlusButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowDaysMinusButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowAdvanceButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowNtpButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowTurboButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowTurboControlsButton"), "Enabled"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowResetForSeedButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowSettingsButton"), "Enabled"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowRetailSeedFinderButton"), "Enabled"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowRetailGenerateButton"), "Enabled"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowRetailUpdateSeedsButton"), "Enabled"), Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalMenuAndPanels()
     {
         using var form = new MainForm();

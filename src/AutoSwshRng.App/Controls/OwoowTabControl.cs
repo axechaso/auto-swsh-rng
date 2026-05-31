@@ -283,11 +283,12 @@ public sealed class OwoowTabControl : UserControl
         };
         var cfwRows = CreateTwoColumnPanel();
         cfwRows.Padding = new Padding(8, 14, 8, 8);
-        AddTextBoxRow(cfwRows, "跳过:", "100");
-        AddButtonRow(cfwRows, "Days+", "Days-");
-        AddButtonRow(cfwRows, "Adv.", "NTP");
-        AddButtonRow(cfwRows, "Turbo", "连发控制");
-        AddButtonRow(cfwRows, "重置到种子", "设置");
+        AddTextBoxRow(cfwRows, "跳过:", "100", "owoowCfwSkipInput", enabled: false);
+        AddNamedButtonRow(cfwRows, ("取消", "owoowCfwCancelButton", false), ("", "", false));
+        AddNamedButtonRow(cfwRows, ("Days+", "owoowDaysPlusButton", false), ("Days-", "owoowDaysMinusButton", false));
+        AddNamedButtonRow(cfwRows, ("Adv.", "owoowAdvanceButton", false), ("NTP", "owoowNtpButton", false));
+        AddNamedButtonRow(cfwRows, ("Turbo", "owoowTurboButton", false), ("连发控制", "owoowTurboControlsButton", true));
+        AddNamedButtonRow(cfwRows, ("重置到种子", "owoowResetForSeedButton", false), ("设置", "owoowSettingsButton", true));
         cfw.Controls.Add(cfwRows);
 
         var retail = new GroupBox
@@ -297,12 +298,12 @@ public sealed class OwoowTabControl : UserControl
         };
         var retailRows = CreateTwoColumnPanel();
         retailRows.Padding = new Padding(8, 14, 8, 8);
-        AddFullWidthButton(retailRows, "实机种子搜索");
+        AddFullWidthButton(retailRows, "实机种子搜索", "owoowRetailSeedFinderButton");
         AddTextBoxRow(retailRows, "初始:", "0");
-        AddTextBoxRow(retailRows, "+", "99999");
+        AddTextBoxAndButtonRow(retailRows, "+", "99999", "生成", "owoowRetailGenerateButton");
         AddTextBoxRow(retailRows, "动画:", string.Empty);
         AddTextBoxRow(retailRows, "推进:", string.Empty);
-        AddFullWidthButton(retailRows, "更新种子");
+        AddFullWidthButton(retailRows, "更新种子", "owoowRetailUpdateSeedsButton");
         retail.Controls.Add(retailRows);
 
         panel.Controls.Add(cfw, 0, 0);
@@ -347,9 +348,9 @@ public sealed class OwoowTabControl : UserControl
         return panel;
     }
 
-    private static void AddTextBoxRow(TableLayoutPanel panel, string label, string value)
+    private static void AddTextBoxRow(TableLayoutPanel panel, string label, string value, string name = "", bool enabled = true)
     {
-        AddRow(panel, CreateLabel(label), new TextBox { Text = value, Dock = DockStyle.Fill });
+        AddRow(panel, CreateLabel(label), new TextBox { Name = name, Text = value, Dock = DockStyle.Fill, Enabled = enabled });
     }
 
     private static void AddIvFilterRow(TableLayoutPanel panel, string label, string key)
@@ -418,9 +419,43 @@ public sealed class OwoowTabControl : UserControl
         AddFullWidthControl(panel, row);
     }
 
-    private static void AddFullWidthButton(TableLayoutPanel panel, string text)
+    private static void AddNamedButtonRow(
+        TableLayoutPanel panel,
+        (string Text, string Name, bool Enabled) first,
+        (string Text, string Name, bool Enabled) second)
     {
-        AddFullWidthControl(panel, CreateButton(text));
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.Controls.Add(CreateButton(first.Text, name: first.Name, enabled: first.Enabled), 0, 0);
+        if (!string.IsNullOrEmpty(second.Text))
+        {
+            row.Controls.Add(CreateButton(second.Text, name: second.Name, enabled: second.Enabled), 1, 0);
+        }
+        AddFullWidthControl(panel, row);
+    }
+
+    private static void AddTextBoxAndButtonRow(TableLayoutPanel panel, string label, string value, string buttonText, string buttonName)
+    {
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.Controls.Add(new TextBox { Text = value, Dock = DockStyle.Fill }, 0, 0);
+        row.Controls.Add(CreateButton(buttonText, name: buttonName), 1, 0);
+        AddRow(panel, CreateLabel(label), row);
+    }
+
+    private static void AddFullWidthButton(TableLayoutPanel panel, string text, string name = "", bool enabled = true)
+    {
+        AddFullWidthControl(panel, CreateButton(text, name: name, enabled: enabled));
     }
 
     private static void AddSpacer(TableLayoutPanel panel, int height)
@@ -457,14 +492,16 @@ public sealed class OwoowTabControl : UserControl
         };
     }
 
-    private static Button CreateButton(string text, int width = 0)
+    private static Button CreateButton(string text, int width = 0, string name = "", bool enabled = true)
     {
         return new Button
         {
+            Name = name,
             Text = text,
             Width = width > 0 ? width : 90,
             Dock = width > 0 ? DockStyle.None : DockStyle.Fill,
             FlatStyle = FlatStyle.System,
+            Enabled = enabled,
         };
     }
 
