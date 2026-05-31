@@ -123,6 +123,26 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void OwoowIvFiltersUseOriginalNumericControls()
+    {
+        using var form = new MainForm();
+
+        _ = FindControl(form, "owoowIvFilterPanel");
+
+        foreach (var stat in new[] { "Hp", "Atk", "Def", "Spa", "Spd", "Spe" })
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetProperty<decimal>(FindControl(form, $"owoow{stat}IvMin"), "Value"), Is.EqualTo(0));
+                Assert.That(GetProperty<decimal>(FindControl(form, $"owoow{stat}IvMax"), "Value"), Is.EqualTo(31));
+                Assert.That(GetProperty<decimal>(FindControl(form, $"owoow{stat}IvCurrent"), "Value"), Is.EqualTo(0));
+                Assert.That(GetProperty<decimal>(FindControl(form, $"owoow{stat}IvTarget"), "Value"), Is.EqualTo(31));
+            });
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalMenuAndPanels()
     {
         using var form = new MainForm();

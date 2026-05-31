@@ -231,17 +231,36 @@ public sealed class OwoowTabControl : UserControl
 
     private static Control CreateFilterPanel()
     {
-        var panel = CreateTwoColumnPanel();
-        foreach (var label in new[] { "HP:", "攻击:", "防御:", "特攻:", "特防:", "速度:" })
+        var panel = new TableLayoutPanel
         {
-            AddTextBoxRow(panel, label, "0  ~  31     0   31");
+            Name = "owoowIvFilterPanel",
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            AutoScroll = true,
+        };
+
+        foreach (var (label, key) in new[]
+        {
+            ("HP:", "Hp"),
+            ("攻击:", "Atk"),
+            ("防御:", "Def"),
+            ("特攻:", "Spa"),
+            ("特防:", "Spd"),
+            ("速度:", "Spe"),
+        })
+        {
+            AddIvFilterRow(panel, label, key);
         }
-        AddComboRow(panel, "异色:", "忽略");
-        AddComboRow(panel, "证章:", "忽略");
-        AddComboRow(panel, "气场:", "忽略");
-        AddComboRow(panel, "身高:", "忽略");
-        AddCheckAndValueRow(panel, "稀有 EC?", "启用筛选?", "是");
-        AddCheckAndValueRow(panel, "播放提示音?", "聚焦窗口?", "否");
+
+        var options = CreateTwoColumnPanel();
+        AddComboRow(options, "异色:", "忽略");
+        AddComboRow(options, "证章:", "忽略");
+        AddComboRow(options, "气场:", "忽略");
+        AddComboRow(options, "身高:", "忽略");
+        AddCheckAndValueRow(options, "稀有 EC?", "启用筛选?", "是");
+        AddCheckAndValueRow(options, "播放提示音?", "聚焦窗口?", "否");
+        AddFullWidthControl(panel, options);
+
         return panel;
     }
 
@@ -331,6 +350,28 @@ public sealed class OwoowTabControl : UserControl
     private static void AddTextBoxRow(TableLayoutPanel panel, string label, string value)
     {
         AddRow(panel, CreateLabel(label), new TextBox { Text = value, Dock = DockStyle.Fill });
+    }
+
+    private static void AddIvFilterRow(TableLayoutPanel panel, string label, string key)
+    {
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 6,
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 18));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        row.Controls.Add(CreateLabel(label, 58), 0, 0);
+        row.Controls.Add(CreateIvNumeric($"owoow{key}IvMin", 0), 1, 0);
+        row.Controls.Add(CreateLabel("~", 18), 2, 0);
+        row.Controls.Add(CreateIvNumeric($"owoow{key}IvMax", 31), 3, 0);
+        row.Controls.Add(CreateIvNumeric($"owoow{key}IvCurrent", 0), 4, 0);
+        row.Controls.Add(CreateIvNumeric($"owoow{key}IvTarget", 31), 5, 0);
+        AddFullWidthControl(panel, row);
     }
 
     private static void AddComboRow(TableLayoutPanel panel, string label, string value)
@@ -424,6 +465,18 @@ public sealed class OwoowTabControl : UserControl
             Width = width > 0 ? width : 90,
             Dock = width > 0 ? DockStyle.None : DockStyle.Fill,
             FlatStyle = FlatStyle.System,
+        };
+    }
+
+    private static NumericUpDown CreateIvNumeric(string name, decimal value)
+    {
+        return new NumericUpDown
+        {
+            Name = name,
+            Minimum = 0,
+            Maximum = 31,
+            Value = value,
+            Dock = DockStyle.Fill,
         };
     }
 
