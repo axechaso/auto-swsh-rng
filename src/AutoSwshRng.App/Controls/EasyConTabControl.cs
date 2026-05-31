@@ -50,6 +50,7 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();
         FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
+        FindRequiredMenuItem("menuItemExit").Click += (_, _) => FindForm()?.Close();
     }
 
     private void WireEditActions()

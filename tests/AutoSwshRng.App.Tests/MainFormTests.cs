@@ -561,6 +561,19 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConExitMenuClosesParentFormLikeOriginal()
+    {
+        using var form = new MainForm();
+        form.Show();
+        var menu = FindControl(form, "easyConOriginalMenu");
+
+        InvokeClick(FindToolStripItem(menu, "menuItemExit"));
+
+        Assert.That(GetProperty<bool>(form, "IsDisposed"), Is.True);
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConToggleCommentMenuCommentsSelectedLine()
     {
         using var form = new MainForm();
