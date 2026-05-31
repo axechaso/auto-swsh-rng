@@ -235,6 +235,7 @@ public sealed class EasyConTabControl : UserControl
         if (result.HasErrors)
         {
             log.AppendText(string.Join(Environment.NewLine, result.Diagnostics));
+            ShowStatus("格式化失败");
             return;
         }
 

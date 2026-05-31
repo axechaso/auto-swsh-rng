@@ -498,6 +498,28 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFormatButtonShowsOriginalFailureStatus()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var formatButton = FindControl(form, "formatBtn");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetProperty(editor, "Text", "PRINT");
+        SetProperty(logText, "Text", string.Empty);
+        InvokeClick(formatButton);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT"));
+            Assert.That(GetProperty<string>(logText, "Text"), Is.Not.Empty);
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("格式化失败"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConNewMenuClearsScriptAndShowsOriginalStatus()
     {
         using var form = new MainForm();
