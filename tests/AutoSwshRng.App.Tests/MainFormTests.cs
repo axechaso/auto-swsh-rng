@@ -398,6 +398,47 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConNewMenuClearsScriptAndShowsOriginalStatus()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var title = FindControl(form, "scriptTitleLabel");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetProperty(editor, "Text", "PRINT \"old\"");
+        SetProperty(title, "Text", "旧脚本.ecs");
+        InvokeClick(FindToolStripItem(menu, "menuItemNew"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(editor, "Text"), Is.Empty);
+            Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo("未命名脚本"));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("新建完毕"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConCloseMenuClearsScriptAndShowsOriginalStatus()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetProperty(editor, "Text", "PRINT \"old\"");
+        InvokeClick(FindToolStripItem(menu, "menuItemClose"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(editor, "Text"), Is.Empty);
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已关闭"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalContentShell()
     {
         using var form = new MainForm();

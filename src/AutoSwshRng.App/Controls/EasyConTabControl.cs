@@ -35,8 +35,15 @@ public sealed class EasyConTabControl : UserControl
         root.Controls.Add(CreateStatusStrip(), 0, 2);
 
         Controls.Add(root);
+        WireFileActions();
         WirePageButtons();
         WireScriptActions();
+    }
+
+    private void WireFileActions()
+    {
+        FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();
+        FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
     }
 
     private void WirePageButtons()
@@ -115,6 +122,19 @@ public sealed class EasyConTabControl : UserControl
         }
     }
 
+    private void NewCurrentScript()
+    {
+        CloseCurrentScript();
+        ShowStatus("新建完毕");
+    }
+
+    private void CloseCurrentScript()
+    {
+        FindRequiredControl<TextBox>("easyConScriptEditor").Clear();
+        FindRequiredControl<Label>("scriptTitleLabel").Text = "未命名脚本";
+        ShowStatus("文件已关闭");
+    }
+
     private void FormatCurrentScript()
     {
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
@@ -128,6 +148,13 @@ public sealed class EasyConTabControl : UserControl
         }
 
         editor.Text = result.FormattedCode ?? string.Empty;
+    }
+
+    private void ShowStatus(string message)
+    {
+        var status = FindRequiredControl<StatusStrip>("easyConStatusStrip");
+        var item = status.Items.OfType<ToolStripStatusLabel>().First(candidate => candidate.Name == "toolStripStatusLabel1");
+        item.Text = message;
     }
 
     private ToolStripMenuItem FindRequiredMenuItem(string name)
