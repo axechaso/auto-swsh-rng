@@ -336,6 +336,39 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonEvaluatesPrintScriptWithoutSerialDevice()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var runButton = FindControl(form, "runStopBtn");
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetProperty(logText, "Text", string.Empty);
+        InvokeClick(runButton);
+
+        Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("hello"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRunMenuUsesRunButtonPath()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var runMenu = FindToolStripItem(menu, "runMenuItem");
+
+        SetProperty(editor, "Text", "PRINT \"from menu\"");
+        SetProperty(logText, "Text", string.Empty);
+        InvokeClick(runMenu);
+
+        Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("from menu"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalContentShell()
     {
         using var form = new MainForm();

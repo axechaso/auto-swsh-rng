@@ -1,3 +1,5 @@
+using AutoSwshRng.Upstream;
+
 namespace AutoSwshRng.App.Controls;
 
 public sealed class EasyConTabControl : UserControl
@@ -34,6 +36,7 @@ public sealed class EasyConTabControl : UserControl
 
         Controls.Add(root);
         WirePageButtons();
+        WireScriptActions();
     }
 
     private void WirePageButtons()
@@ -81,6 +84,60 @@ public sealed class EasyConTabControl : UserControl
         where T : Control
     {
         return Controls.Find(name, searchAllChildren: true).OfType<T>().First();
+    }
+
+    private void WireScriptActions()
+    {
+        var runButton = FindRequiredControl<Button>("runStopBtn");
+        runButton.Click += (_, _) => RunCurrentScript();
+        FindRequiredMenuItem("runMenuItem").Click += (_, _) => RunCurrentScript();
+    }
+
+    private void RunCurrentScript()
+    {
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var log = FindRequiredControl<TextBox>("logTxtBox");
+        var result = EasyConScriptAdapter.Evaluate(editor.Text);
+
+        if (result.HasErrors)
+        {
+            log.AppendText(string.Join(Environment.NewLine, result.Diagnostics));
+            return;
+        }
+
+        foreach (var line in result.Printed)
+        {
+            log.AppendText(line);
+        }
+    }
+
+    private ToolStripMenuItem FindRequiredMenuItem(string name)
+    {
+        return FindMenuItem(
+            FindRequiredControl<MenuStrip>("easyConOriginalMenu").Items,
+            name) ?? throw new InvalidOperationException($"Menu item '{name}' was not found.");
+    }
+
+    private static ToolStripMenuItem? FindMenuItem(ToolStripItemCollection items, string name)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            if (item is ToolStripMenuItem menuItem)
+            {
+                if (menuItem.Name == name)
+                {
+                    return menuItem;
+                }
+
+                var child = FindMenuItem(menuItem.DropDownItems, name);
+                if (child is not null)
+                {
+                    return child;
+                }
+            }
+        }
+
+        return null;
     }
 
     private static Control CreateOriginalMenu()
