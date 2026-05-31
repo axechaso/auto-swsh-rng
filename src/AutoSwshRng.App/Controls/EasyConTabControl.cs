@@ -268,12 +268,67 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateSettingsPanel()
     {
-        return new Panel
+        var settingsPanel = new Panel
         {
             Name = "settingsPanel",
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(242, 241, 237),
             Visible = false,
+        };
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblEditorSettings", "编辑器设置", 19, 39));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoCompletion", "代码自动补全", 19, 79));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkFolding", "显示代码折叠", 19, 109));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkDebugLog", "显示调试信息", 19, 139));
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblRunSettings", "运行设置", 199, 39));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoRunAfterFlash", "烧录后自动运行", 199, 79));
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblNotifySettings", "通知设置", 199, 119));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnAlertConfig", "推送配置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 159, 85, 30));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoSaveLog", "自动保存日志", 289, 164));
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblToolSettings", "工具", 19, 209));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnESPConfig", "ESP32设置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 249, 100, 30));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnUnpair", "取消蓝牙配对", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 125, 249, 100, 30));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnDrawingBoard", "画图工具", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 289, 85, 30));
+        var bluetoothSetting = CreateOriginalButton("btnBluetoothSetting", "蓝牙设置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 308, 85, 30);
+        bluetoothSetting.Visible = false;
+        settingsPanel.Controls.Add(bluetoothSetting);
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblAbout", "关于", 19, 330));
+        settingsPanel.Controls.Add(new Label
+        {
+            Name = "lblVersion",
+            Text = "版本: --",
+            AutoSize = true,
+            Font = new Font("微软雅黑", 9F),
+            ForeColor = Color.FromArgb(140, 139, 132),
+            Location = new Point(19, 370),
+        });
+        settingsPanel.Controls.Add(CreateOriginalButton("btnCheckUpdate", "检查更新", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 400, 85, 30));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnSource", "项目源码", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 109, 400, 85, 30));
+        return settingsPanel;
+    }
+
+    private static Label CreateSettingsHeader(string name, string text, int left, int top)
+    {
+        return new Label
+        {
+            Name = name,
+            Text = text,
+            AutoSize = true,
+            Font = new Font("微软雅黑", 11F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(38, 37, 30),
+            Location = new Point(left, top),
+        };
+    }
+
+    private static CheckBox CreateSettingsCheckBox(string name, string text, int left, int top)
+    {
+        return new CheckBox
+        {
+            Name = name,
+            Text = text,
+            AutoSize = true,
+            Font = new Font("微软雅黑", 9F),
+            ForeColor = Color.FromArgb(38, 37, 30),
+            Location = new Point(left, top),
         };
     }
 
