@@ -282,6 +282,39 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConTabRestoresOriginalCaptureRecordAndControllerControls()
+    {
+        using var form = new MainForm();
+
+        var videoGroup = FindControl(form, "grpVideoSource");
+        var videoSource = FindControl(form, "comboVideoSource");
+        var captureToggle = FindControl(form, "btnCaptureToggle");
+        var captureConsole = FindControl(form, "btnOpenCaptureConsole");
+        var recordGroup = FindControl(form, "grpRecord");
+        var record = FindControl(form, "btnRecord");
+        var recordPause = FindControl(form, "btnRecordPause");
+        var controllerGroup = FindControl(form, "grpController");
+        var showController = FindControl(form, "btnShowController");
+        var keyMapping = FindControl(form, "btnKeyMapping");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(videoGroup, "Text"), Is.EqualTo("视频源"));
+            Assert.That(videoSource.GetType().Name, Is.EqualTo("ComboBox"));
+            Assert.That(GetProperty<string>(captureToggle, "Text"), Is.EqualTo("连接视频源"));
+            Assert.That(GetProperty<string>(captureConsole, "Text"), Is.EqualTo("搜图控制台"));
+            Assert.That(GetProperty<string>(recordGroup, "Text"), Is.EqualTo("录制"));
+            Assert.That(GetProperty<string>(record, "Text"), Is.EqualTo("录制脚本"));
+            Assert.That(GetProperty<string>(recordPause, "Text"), Is.EqualTo("暂停录制"));
+            Assert.That(GetProperty<bool>(recordPause, "Enabled"), Is.False);
+            Assert.That(GetProperty<string>(controllerGroup, "Text"), Is.EqualTo("手柄"));
+            Assert.That(GetProperty<string>(showController, "Text"), Is.EqualTo("虚拟手柄"));
+            Assert.That(GetProperty<string>(keyMapping, "Text"), Is.EqualTo("按键映射"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabDoesNotAddAutoSwshRngLinkagePanelYet()
     {
         using var form = new MainForm();

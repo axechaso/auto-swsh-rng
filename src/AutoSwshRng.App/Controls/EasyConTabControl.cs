@@ -226,27 +226,55 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateCapturePanel()
     {
-        var panel = CreateGroupPanel("采集卡", 265, 112);
-        panel.Name = "easyConCapturePanel";
-        AddTextRow(panel, "来源:", "未选择");
-        AddButtonGrid(panel, "启动", "控制台");
-        return panel;
+        var group = CreateOriginalGroupBox("grpVideoSource", "视频源", 265, 150);
+        group.Controls.Add(new Panel
+        {
+            Name = "easyConCapturePanel",
+            Width = 1,
+            Height = 1,
+            Visible = false,
+        });
+        group.Controls.Add(new ComboBox
+        {
+            Name = "comboVideoSource",
+            Location = new Point(8, 22),
+            Size = new Size(206, 28),
+        });
+        group.Controls.Add(CreateOriginalButton("btnCaptureToggle", "连接视频源", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 30));
+        group.Controls.Add(CreateOriginalButton("btnOpenCaptureConsole", "搜图控制台", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 90, 206, 30));
+        return group;
     }
 
     private static Control CreateRecordPanel()
     {
-        var panel = CreateGroupPanel("录制", 265, 78);
-        panel.Name = "easyConRecordPanel";
-        AddButtonGrid(panel, "录制", "暂停");
-        return panel;
+        var group = CreateOriginalGroupBox("grpRecord", "录制", 265, 90);
+        group.Controls.Add(new Panel
+        {
+            Name = "easyConRecordPanel",
+            Width = 1,
+            Height = 1,
+            Visible = false,
+        });
+        group.Controls.Add(CreateOriginalButton("btnRecord", "录制脚本", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
+        var pauseButton = CreateOriginalButton("btnRecordPause", "暂停录制", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28);
+        pauseButton.Enabled = false;
+        group.Controls.Add(pauseButton);
+        return group;
     }
 
     private static Control CreateControllerPanel()
     {
-        var panel = CreateGroupPanel("手柄", 265, 78);
-        panel.Name = "easyConControllerPanel";
-        AddButtonGrid(panel, "显示手柄", "按键映射");
-        return panel;
+        var group = CreateOriginalGroupBox("grpController", "手柄", 265, 90);
+        group.Controls.Add(new Panel
+        {
+            Name = "easyConControllerPanel",
+            Width = 1,
+            Height = 1,
+            Visible = false,
+        });
+        group.Controls.Add(CreateOriginalButton("btnShowController", "虚拟手柄", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
+        group.Controls.Add(CreateOriginalButton("btnKeyMapping", "按键映射", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28));
+        return group;
     }
 
     private static Control CreateFirmwarePanel()
