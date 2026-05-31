@@ -299,6 +299,7 @@ public sealed class EasyConTabControl : UserControl
             UseVisualStyleBackColor = false,
         };
         clearLog.FlatAppearance.BorderSize = 0;
+        clearLog.Click += (_, _) => log.Clear();
 
         logPanel.Controls.Add(clearLog);
         logPanel.Controls.Add(log);

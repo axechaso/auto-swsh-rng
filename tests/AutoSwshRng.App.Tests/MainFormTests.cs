@@ -322,6 +322,20 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConClearLogButtonClearsLogText()
+    {
+        using var form = new MainForm();
+        var logText = FindControl(form, "logTxtBox");
+        var clearLog = FindControl(form, "clsLogBtn");
+
+        SetProperty(logText, "Text", "line 1" + Environment.NewLine + "line 2");
+        InvokeClick(clearLog);
+
+        Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalContentShell()
     {
         using var form = new MainForm();
