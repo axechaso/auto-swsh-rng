@@ -230,6 +230,24 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConTabRestoresOriginalMenuDropDownItems()
+    {
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "fileMenu")), Is.EqualTo(new[] { "新建", "打开", "保存", "另存为", "关闭", "退出" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "editMenu")), Is.EqualTo(new[] { "查找替换", "查找下一个", "注释/取消注释" }));
+            Assert.That(GetProperty<bool>(FindToolStripItem(menu, "scriptMenu"), "Visible"), Is.False);
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "scriptMenu")), Is.EqualTo(new[] { "格式化", "运行" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "captureMenu")), Is.EqualTo(new[] { "采集卡类型", "设置环境变量", "搜图说明" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "helpMenu")), Is.EqualTo(new[] { "固件模式", "联机模式", "烧录模式", "脚本语法", "关于" }));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalPageSidebar()
     {
         using var form = new MainForm();
@@ -506,6 +524,53 @@ public class MainFormTests
             {
                 texts.Add(text);
             }
+        }
+
+        return texts;
+    }
+
+    private static object FindToolStripItem(object toolStrip, string name)
+    {
+        var match = FindToolStripItemOrDefault((IEnumerable)GetProperty<object>(toolStrip, "Items"), name);
+        return match ?? throw new InvalidOperationException($"ToolStrip item '{name}' was not found.");
+    }
+
+    private static object? FindToolStripItemOrDefault(IEnumerable items, string name)
+    {
+        foreach (var item in items)
+        {
+            if (GetProperty<string>(item, "Name") == name)
+            {
+                return item;
+            }
+
+            if (item.GetType().Name.Contains("Separator", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var match = FindToolStripItemOrDefault((IEnumerable)GetProperty<object>(item, "DropDownItems"), name);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static IReadOnlyList<string> GetToolStripDropDownItemTexts(object menuItem)
+    {
+        var texts = new List<string>();
+        foreach (var item in (IEnumerable)GetProperty<object>(menuItem, "DropDownItems"))
+        {
+            var typeName = item.GetType().Name;
+            if (typeName.Contains("Separator", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            texts.Add(GetProperty<string>(item, "Text"));
         }
 
         return texts;

@@ -45,23 +45,56 @@ public sealed class EasyConTabControl : UserControl
             ImageScalingSize = new Size(20, 20),
         };
 
-        menu.Items.Add(CreateMenuItem("fileMenu", "文件"));
-        menu.Items.Add(CreateMenuItem("editMenu", "编辑"));
+        menu.Items.Add(CreateMenuItem("fileMenu", "文件",
+            CreateMenuItem("menuItemNew", "新建", Keys.Control | Keys.N),
+            CreateMenuItem("menuItemOpen", "打开", Keys.Control | Keys.O),
+            CreateMenuItem("menuItemSave", "保存", Keys.Control | Keys.S),
+            CreateMenuItem("menuItemSaveAs", "另存为", Keys.Control | Keys.Shift | Keys.S),
+            CreateMenuItem("menuItemClose", "关闭", Keys.Control | Keys.W),
+            new ToolStripSeparator { Name = "toolStripSeparator1" },
+            CreateMenuItem("menuItemExit", "退出", Keys.Control | Keys.Q)));
+        menu.Items.Add(CreateMenuItem("editMenu", "编辑",
+            CreateMenuItem("menuItemFindReplace", "查找替换", Keys.Control | Keys.F),
+            CreateMenuItem("menuItemFindNext", "查找下一个", Keys.F3),
+            CreateMenuItem("menuItemToggleComment", "注释/取消注释", Keys.Control | Keys.Oem2)));
         var scriptMenu = CreateMenuItem("scriptMenu", "脚本");
+        scriptMenu.DropDownItems.Add(CreateMenuItem("formatMenuItem", "格式化", Keys.Control | Keys.R));
+        scriptMenu.DropDownItems.Add(CreateMenuItem("runMenuItem", "运行", Keys.F5));
         scriptMenu.Visible = false;
         menu.Items.Add(scriptMenu);
-        menu.Items.Add(CreateMenuItem("captureMenu", "搜图"));
-        menu.Items.Add(CreateMenuItem("helpMenu", "帮助"));
+        menu.Items.Add(CreateMenuItem("captureMenu", "搜图",
+            CreateMenuItem("captureTypeMenu", "采集卡类型"),
+            CreateMenuItem("setEnvVarMenuItem", "设置环境变量"),
+            CreateMenuItem("captureHelpMenuItem", "搜图说明")));
+        menu.Items.Add(CreateMenuItem("helpMenu", "帮助",
+            CreateMenuItem("menuItemFirmwareMode", "固件模式"),
+            CreateMenuItem("menuItemOnlineMode", "联机模式"),
+            CreateMenuItem("menuItemFlashMode", "烧录模式"),
+            CreateMenuItem("menuItemScriptSyntax", "脚本语法"),
+            new ToolStripSeparator { Name = "toolStripSeparator2" },
+            CreateMenuItem("menuItemAbout", "关于")));
 
         return menu;
     }
 
-    private static ToolStripMenuItem CreateMenuItem(string name, string text)
+    private static ToolStripMenuItem CreateMenuItem(string name, string text, params ToolStripItem[] dropDownItems)
+    {
+        var item = new ToolStripMenuItem
+        {
+            Name = name,
+            Text = text,
+        };
+        item.DropDownItems.AddRange(dropDownItems);
+        return item;
+    }
+
+    private static ToolStripMenuItem CreateMenuItem(string name, string text, Keys shortcutKeys)
     {
         return new ToolStripMenuItem
         {
             Name = name,
             Text = text,
+            ShortcutKeys = shortcutKeys,
         };
     }
 
