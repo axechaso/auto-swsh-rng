@@ -283,6 +283,32 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConSetEnvVarMenuMatchesOriginalStatusFeedback()
+    {
+        var previous = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
+        try
+        {
+            Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", null);
+            using var form = new MainForm();
+            var menu = FindControl(form, "easyConOriginalMenu");
+            var status = FindControl(form, "easyConStatusStrip");
+
+            InvokeClick(FindToolStripItem(menu, "setEnvVarMenuItem"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"), Is.EqualTo("0"));
+                Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("环境变量设置成功：0"));
+            });
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", previous);
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalPageSidebar()
     {
         using var form = new MainForm();

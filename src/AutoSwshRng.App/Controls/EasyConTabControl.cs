@@ -59,6 +59,7 @@ public sealed class EasyConTabControl : UserControl
     private void WireCaptureActions()
     {
         FindRequiredMenuItem("captureTypeMenu").DropDownOpening += (_, _) => PopulateCaptureTypeMenu();
+        FindRequiredMenuItem("setEnvVarMenuItem").Click += (_, _) => SetCaptureEnvironmentVariable();
     }
 
     private void WirePageButtons()
@@ -158,6 +159,13 @@ public sealed class EasyConTabControl : UserControl
         {
             item.Checked = item == selected;
         }
+    }
+
+    private void SetCaptureEnvironmentVariable()
+    {
+        Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0");
+        var value = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
+        ShowStatus($"环境变量设置成功：{value}");
     }
 
     private void RunCurrentScript()
