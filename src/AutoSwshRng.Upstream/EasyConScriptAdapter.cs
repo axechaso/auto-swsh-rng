@@ -17,6 +17,43 @@ public static class EasyConScriptAdapter
         new("Arduino UNO R3", "UNO", 412),
     ];
 
+    private static readonly EasyConCaptureTypeDefinition[] CaptureTypes =
+    [
+        new("ANY", 0),
+        new("VFW", 200),
+        new("V4L", 200),
+        new("V4L2", 200),
+        new("FIREWIRE", 300),
+        new("FIREWARE", 300),
+        new("IEEE1394", 300),
+        new("DC1394", 300),
+        new("CMU1394", 300),
+        new("QT", 500),
+        new("UNICAP", 600),
+        new("DSHOW", 700),
+        new("PVAPI", 800),
+        new("OPENNI", 900),
+        new("OPENNI_ASUS", 910),
+        new("ANDROID", 1000),
+        new("XIAPI", 1100),
+        new("AVFOUNDATION", 1200),
+        new("GIGANETIX", 1300),
+        new("MSMF", 1400),
+        new("WINRT", 1410),
+        new("INTELPERC", 1500),
+        new("REALSENSE", 1500),
+        new("OPENNI2", 1600),
+        new("OPENNI2_ASUS", 1610),
+        new("GPHOTO2", 1700),
+        new("GSTREAMER", 1800),
+        new("FFMPEG", 1900),
+        new("IMAGES", 2000),
+        new("ARAVIS", 2100),
+        new("OPENCV_MJPEG", 2200),
+        new("INTEL_MFX", 2300),
+        new("XINE", 2400),
+    ];
+
     public static EasyConScriptResult Evaluate(string scriptText)
     {
         var output = new CapturingOutputAdapter();
@@ -54,6 +91,11 @@ public static class EasyConScriptAdapter
     public static IReadOnlyList<EasyConBoardDefinition> GetSupportedBoards()
     {
         return SupportedBoards;
+    }
+
+    public static IReadOnlyList<EasyConCaptureTypeDefinition> GetCaptureTypes()
+    {
+        return CaptureTypes;
     }
 
     public static string ToggleCommentLines(string text)
@@ -154,3 +196,7 @@ public sealed record EasyConBoardDefinition(
         return DisplayName;
     }
 }
+
+public sealed record EasyConCaptureTypeDefinition(
+    string Name,
+    int Value);

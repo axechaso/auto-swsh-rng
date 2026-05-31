@@ -53,4 +53,16 @@ public class EasyConScriptAdapterTests
             boards.Select(board => board.DisplayName),
             Is.EqualTo(new[] { "Leonardo", "Teensy 2.0", "Teensy 2.0++", "Beetle", "Arduino UNO R3" }));
     }
+
+    [Test]
+    public void CaptureTypesExposeOriginalOpenCvApiNames()
+    {
+        var captureTypes = EasyConScriptAdapter.GetCaptureTypes();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(captureTypes.First().Name, Is.EqualTo("ANY"));
+            Assert.That(captureTypes.Select(type => type.Name), Is.SupersetOf(new[] { "DSHOW", "MSMF", "FFMPEG" }));
+        });
+    }
 }

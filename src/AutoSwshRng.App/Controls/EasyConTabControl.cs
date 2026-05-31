@@ -4,6 +4,8 @@ namespace AutoSwshRng.App.Controls;
 
 public sealed class EasyConTabControl : UserControl
 {
+    private string selectedCaptureType = "ANY";
+
     private static readonly string[] MenuItems =
     [
         "文件",
@@ -37,6 +39,7 @@ public sealed class EasyConTabControl : UserControl
         Controls.Add(root);
         WireFileActions();
         WireEditActions();
+        WireCaptureActions();
         WirePageButtons();
         WireScriptActions();
         PopulateFirmwareBoards();
@@ -51,6 +54,11 @@ public sealed class EasyConTabControl : UserControl
     private void WireEditActions()
     {
         FindRequiredMenuItem("menuItemToggleComment").Click += (_, _) => ToggleCurrentComment();
+    }
+
+    private void WireCaptureActions()
+    {
+        FindRequiredMenuItem("captureTypeMenu").DropDownOpening += (_, _) => PopulateCaptureTypeMenu();
     }
 
     private void WirePageButtons()
@@ -118,6 +126,37 @@ public sealed class EasyConTabControl : UserControl
         if (boardType.Items.Count > 0)
         {
             boardType.SelectedIndex = 0;
+        }
+    }
+
+    private void PopulateCaptureTypeMenu()
+    {
+        var captureTypeMenu = FindRequiredMenuItem("captureTypeMenu");
+        captureTypeMenu.DropDownItems.Clear();
+
+        foreach (var captureType in EasyConScriptAdapter.GetCaptureTypes())
+        {
+            var item = new ToolStripMenuItem
+            {
+                Name = "captureType_" + captureType.Name,
+                Text = captureType.Name,
+                Tag = captureType.Value,
+                Checked = captureType.Name == selectedCaptureType,
+            };
+            item.Click += CaptureTypeItemClick;
+            captureTypeMenu.DropDownItems.Add(item);
+        }
+    }
+
+    private void CaptureTypeItemClick(object? sender, EventArgs e)
+    {
+        var selected = (ToolStripMenuItem)sender!;
+        selectedCaptureType = selected.Text ?? "ANY";
+
+        var captureTypeMenu = FindRequiredMenuItem("captureTypeMenu");
+        foreach (var item in captureTypeMenu.DropDownItems.OfType<ToolStripMenuItem>())
+        {
+            item.Checked = item == selected;
         }
     }
 

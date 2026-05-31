@@ -248,6 +248,41 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureTypeMenuPopulatesOriginalOpenCvApis()
+    {
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var captureTypeMenu = FindToolStripItem(menu, "captureTypeMenu");
+
+        InvokeDropDownOpening(captureTypeMenu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetToolStripDropDownItemTexts(captureTypeMenu), Is.SupersetOf(new[] { "ANY", "DSHOW", "MSMF", "FFMPEG" }));
+            Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_ANY"), "Checked"), Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureTypeMenuSelectionSwitchesCheckedItem()
+    {
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var captureTypeMenu = FindToolStripItem(menu, "captureTypeMenu");
+
+        InvokeDropDownOpening(captureTypeMenu);
+        InvokeClick(FindToolStripItem(captureTypeMenu, "captureType_MSMF"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_ANY"), "Checked"), Is.False);
+            Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_MSMF"), "Checked"), Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalPageSidebar()
     {
         using var form = new MainForm();
@@ -791,8 +826,15 @@ public class MainFormTests
 
     private static object FindToolStripItem(object toolStrip, string name)
     {
-        var match = FindToolStripItemOrDefault((IEnumerable)GetProperty<object>(toolStrip, "Items"), name);
+        var match = FindToolStripItemOrDefault(GetToolStripSearchItems(toolStrip), name);
         return match ?? throw new InvalidOperationException($"ToolStrip item '{name}' was not found.");
+    }
+
+    private static IEnumerable GetToolStripSearchItems(object toolStrip)
+    {
+        return toolStrip.GetType().GetProperty("Items") is not null
+            ? (IEnumerable)GetProperty<object>(toolStrip, "Items")
+            : (IEnumerable)GetProperty<object>(toolStrip, "DropDownItems");
     }
 
     private static object? FindToolStripItemOrDefault(IEnumerable items, string name)
@@ -859,5 +901,16 @@ public class MainFormTests
     {
         target.GetType().GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .Invoke(target, [EventArgs.Empty]);
+    }
+
+    private static void InvokeDropDownOpening(object target)
+    {
+        target.GetType().GetMethod(
+                "ShowDropDown",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null)!
+            .Invoke(target, []);
     }
 }
