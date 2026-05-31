@@ -179,6 +179,7 @@ public sealed class EasyConTabControl : UserControl
         }
 
         FindRequiredControl<Label>("lblVersion").Text = $"版本: {version}";
+        FindRequiredControl<CheckBox>("chkFolding").Checked = true;
 
         var log = FindRequiredControl<TextBox>("logTxtBox");
         log.Text = "正在初始化伊机控..." + Environment.NewLine +

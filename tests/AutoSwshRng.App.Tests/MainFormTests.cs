@@ -642,13 +642,18 @@ public class MainFormTests
         {
             Assert.That(GetProperty<string>(FindControl(form, "lblEditorSettings"), "Text"), Is.EqualTo("编辑器设置"));
             Assert.That(GetProperty<string>(FindControl(form, "chkAutoCompletion"), "Text"), Is.EqualTo("代码自动补全"));
+            Assert.That(GetProperty<bool>(FindControl(form, "chkAutoCompletion"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "chkFolding"), "Text"), Is.EqualTo("显示代码折叠"));
+            Assert.That(GetProperty<bool>(FindControl(form, "chkFolding"), "Checked"), Is.True);
             Assert.That(GetProperty<string>(FindControl(form, "chkDebugLog"), "Text"), Is.EqualTo("显示调试信息"));
+            Assert.That(GetProperty<bool>(FindControl(form, "chkDebugLog"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblRunSettings"), "Text"), Is.EqualTo("运行设置"));
             Assert.That(GetProperty<string>(FindControl(form, "chkAutoRunAfterFlash"), "Text"), Is.EqualTo("烧录后自动运行"));
+            Assert.That(GetProperty<bool>(FindControl(form, "chkAutoRunAfterFlash"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblNotifySettings"), "Text"), Is.EqualTo("通知设置"));
             Assert.That(GetProperty<string>(FindControl(form, "btnAlertConfig"), "Text"), Is.EqualTo("推送配置"));
             Assert.That(GetProperty<string>(FindControl(form, "chkAutoSaveLog"), "Text"), Is.EqualTo("自动保存日志"));
+            Assert.That(GetProperty<bool>(FindControl(form, "chkAutoSaveLog"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblToolSettings"), "Text"), Is.EqualTo("工具"));
             Assert.That(GetProperty<string>(FindControl(form, "btnESPConfig"), "Text"), Is.EqualTo("ESP32设置"));
             Assert.That(GetProperty<string>(FindControl(form, "btnUnpair"), "Text"), Is.EqualTo("取消蓝牙配对"));
