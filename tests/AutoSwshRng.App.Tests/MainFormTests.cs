@@ -286,6 +286,35 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConTabRestoresOriginalBurnPanelControls()
+    {
+        using var form = new MainForm();
+
+        var burnGroup = FindControl(form, "grpBurn");
+        var remoteStart = FindControl(form, "btnRemoteStart");
+        var remoteStop = FindControl(form, "btnRemoteStop");
+        var flash = FindControl(form, "btnFlash");
+        var clear = FindControl(form, "btnFlashClear");
+        var firmwareGroup = FindControl(form, "grpFirmware");
+        var boardType = FindControl(form, "comboBoardType");
+        var generateFirmware = FindControl(form, "btnGenFirmware");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(burnGroup, "Text"), Is.EqualTo("烧录"));
+            Assert.That(GetProperty<string>(remoteStart, "Text"), Is.EqualTo("远程运行"));
+            Assert.That(GetProperty<string>(remoteStop, "Text"), Is.EqualTo("远程停止"));
+            Assert.That(GetProperty<string>(flash, "Text"), Is.EqualTo("编译烧录"));
+            Assert.That(GetProperty<string>(clear, "Text"), Is.EqualTo("清除烧录"));
+            Assert.That(GetProperty<string>(firmwareGroup, "Text"), Is.EqualTo("固件"));
+            Assert.That(boardType.GetType().Name, Is.EqualTo("ComboBox"));
+            Assert.That(GetProperty<object>(boardType, "DropDownStyle").ToString(), Is.EqualTo("DropDownList"));
+            Assert.That(GetProperty<string>(generateFirmware, "Text"), Is.EqualTo("生成固件"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalRunAndDeviceControls()
     {
         using var form = new MainForm();

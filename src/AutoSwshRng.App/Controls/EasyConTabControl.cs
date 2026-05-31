@@ -226,13 +226,44 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateBurnPanel()
     {
-        return new Panel
+        var burnPanel = new Panel
         {
             Name = "burnPanel",
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(242, 241, 237),
             Visible = false,
         };
+        burnPanel.Controls.Add(CreateBurnGroup());
+        burnPanel.Controls.Add(CreateFirmwareGroup());
+        return burnPanel;
+    }
+
+    private static Control CreateBurnGroup()
+    {
+        var group = CreateOriginalGroupBox("grpBurn", "烧录", 300, 130);
+        group.Location = new Point(20, 20);
+        group.Margin = Padding.Empty;
+        group.Controls.Add(CreateOriginalButton("btnRemoteStart", "远程运行", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 130, 28));
+        group.Controls.Add(CreateOriginalButton("btnRemoteStop", "远程停止", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 150, 22, 130, 28));
+        group.Controls.Add(CreateOriginalButton("btnFlash", "编译烧录", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 272, 30));
+        group.Controls.Add(CreateOriginalButton("btnFlashClear", "清除烧录", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 90, 130, 28));
+        return group;
+    }
+
+    private static Control CreateFirmwareGroup()
+    {
+        var group = CreateOriginalGroupBox("grpFirmware", "固件", 300, 90);
+        group.Location = new Point(20, 160);
+        group.Margin = Padding.Empty;
+        group.Controls.Add(new ComboBox
+        {
+            Name = "comboBoardType",
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Location = new Point(8, 22),
+            Size = new Size(272, 28),
+        });
+        group.Controls.Add(CreateOriginalButton("btnGenFirmware", "生成固件", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 130, 28));
+        return group;
     }
 
     private static Control CreateSettingsPanel()
