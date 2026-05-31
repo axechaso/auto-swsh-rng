@@ -126,12 +126,12 @@ public sealed class OwoowTabControl : UserControl
         AddTextBoxRow(panel, "Seed[1]:", "0");
         AddSpacer(panel, 12);
         AddTextBoxRow(panel, "Switch IP:", "192.168.0.0");
-        AddButtonRow(panel, "连接", "断开");
-        AddValueRow(panel, "状态:", "未连接。");
-        AddTextBoxRow(panel, "推进数:", string.Empty);
-        AddTextBoxRow(panel, "Seed[0]:", string.Empty);
-        AddTextBoxRow(panel, "Seed[1]:", string.Empty);
-        AddFullWidthButton(panel, "更新种子");
+        AddNamedButtonRow(panel, ("连接", "owoowConnectButton", true), ("断开", "owoowDisconnectButton", false));
+        AddValueRow(panel, "状态:", "未连接。", "owoowConnectionStatusLabel");
+        AddSplitTextBoxRow(panel, "推进数:", ("", "owoowAdvInput", false), ("", "owoowAdvSubInput", false));
+        AddTextBoxRow(panel, "Seed[0]:", string.Empty, "owoowCurrentSeed0Input", enabled: false);
+        AddTextBoxRow(panel, "Seed[1]:", string.Empty, "owoowCurrentSeed1Input", enabled: false);
+        AddFullWidthButton(panel, "更新种子", "owoowUpdateSeedsButton", enabled: false);
         AddCheckAndValueRow(panel, "闪耀护符?", "TID:", "01337");
         AddCheckAndValueRow(panel, "证章护符?", "SID:", "01390");
         AddComboRow(panel, "游戏:", "剑");
@@ -388,9 +388,9 @@ public sealed class OwoowTabControl : UserControl
         AddRow(panel, CreateLabel(label), CreateComboBox(value));
     }
 
-    private static void AddValueRow(TableLayoutPanel panel, string label, string value)
+    private static void AddValueRow(TableLayoutPanel panel, string label, string value, string valueName = "")
     {
-        AddRow(panel, CreateLabel(label), CreateLabel(value));
+        AddRow(panel, CreateLabel(label), CreateLabel(value, name: valueName));
     }
 
     private static void AddCheckAndValueRow(TableLayoutPanel panel, string label, string valueLabel, string value)
@@ -425,6 +425,24 @@ public sealed class OwoowTabControl : UserControl
         row.Controls.Add(CreateButton(first), 0, 0);
         row.Controls.Add(CreateButton(second), 1, 0);
         AddFullWidthControl(panel, row);
+    }
+
+    private static void AddSplitTextBoxRow(
+        TableLayoutPanel panel,
+        string label,
+        (string Text, string Name, bool Enabled) first,
+        (string Text, string Name, bool Enabled) second)
+    {
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+        row.Controls.Add(new TextBox { Name = first.Name, Text = first.Text, Dock = DockStyle.Fill, Enabled = first.Enabled }, 0, 0);
+        row.Controls.Add(new TextBox { Name = second.Name, Text = second.Text, Dock = DockStyle.Fill, Enabled = second.Enabled }, 1, 0);
+        AddRow(panel, CreateLabel(label), row);
     }
 
     private static void AddNamedButtonRow(
@@ -488,10 +506,11 @@ public sealed class OwoowTabControl : UserControl
         panel.SetColumnSpan(control, 2);
     }
 
-    private static Label CreateLabel(string text, int width = 0)
+    private static Label CreateLabel(string text, int width = 0, string name = "")
     {
         return new Label
         {
+            Name = name,
             Text = text,
             AutoSize = false,
             Width = width > 0 ? width : 105,

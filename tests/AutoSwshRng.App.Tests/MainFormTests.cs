@@ -185,6 +185,25 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void OwoowConnectionPanelMatchesOriginalDisconnectedState()
+    {
+        using var form = new MainForm();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowConnectButton"), "Enabled"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowDisconnectButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowAdvInput"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowAdvSubInput"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowCurrentSeed0Input"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowCurrentSeed1Input"), "Enabled"), Is.False);
+            Assert.That(GetProperty<bool>(FindControl(form, "owoowUpdateSeedsButton"), "Enabled"), Is.False);
+            Assert.That(GetProperty<string>(FindControl(form, "owoowConnectionStatusLabel"), "Text"), Is.EqualTo("未连接。"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalMenuAndPanels()
     {
         using var form = new MainForm();
