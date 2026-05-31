@@ -43,6 +43,7 @@ public sealed class EasyConTabControl : UserControl
         WirePageButtons();
         WireScriptActions();
         PopulateFirmwareBoards();
+        InitializeOriginalStartupState();
     }
 
     private void WireFileActions()
@@ -166,6 +167,23 @@ public sealed class EasyConTabControl : UserControl
         Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0");
         var value = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
         ShowStatus($"环境变量设置成功：{value}");
+    }
+
+    private void InitializeOriginalStartupState()
+    {
+        var version = typeof(EasyConTabControl).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
+        var plusIndex = version.IndexOf('+', StringComparison.Ordinal);
+        if (plusIndex > 0)
+        {
+            version = version[..plusIndex];
+        }
+
+        FindRequiredControl<Label>("lblVersion").Text = $"版本: {version}";
+
+        var log = FindRequiredControl<TextBox>("logTxtBox");
+        log.Text = "正在初始化伊机控..." + Environment.NewLine +
+            "准备就绪，欢迎使用伊机控！" + Environment.NewLine +
+            "将脚本文件直接拖入窗口打开，然后点击运行开始执行脚本";
     }
 
     private void RunCurrentScript()

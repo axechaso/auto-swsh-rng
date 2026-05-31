@@ -309,6 +309,22 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConStartupLogMatchesOriginalWelcomeMessages()
+    {
+        using var form = new MainForm();
+
+        var logText = FindControl(form, "logTxtBox");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("正在初始化伊机控..."));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("准备就绪，欢迎使用伊机控！"));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("将脚本文件直接拖入窗口打开，然后点击运行开始执行脚本"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalPageSidebar()
     {
         using var form = new MainForm();
@@ -640,7 +656,8 @@ public class MainFormTests
             Assert.That(GetProperty<string>(FindControl(form, "btnBluetoothSetting"), "Text"), Is.EqualTo("蓝牙设置"));
             Assert.That(GetProperty<bool>(FindControl(form, "btnBluetoothSetting"), "Visible"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblAbout"), "Text"), Is.EqualTo("关于"));
-            Assert.That(GetProperty<string>(FindControl(form, "lblVersion"), "Text"), Is.EqualTo("版本: --"));
+            Assert.That(GetProperty<string>(FindControl(form, "lblVersion"), "Text"), Does.StartWith("版本: "));
+            Assert.That(GetProperty<string>(FindControl(form, "lblVersion"), "Text"), Does.Not.Contain("--"));
             Assert.That(GetProperty<string>(FindControl(form, "btnCheckUpdate"), "Text"), Is.EqualTo("检查更新"));
             Assert.That(GetProperty<string>(FindControl(form, "btnSource"), "Text"), Is.EqualTo("项目源码"));
         });
