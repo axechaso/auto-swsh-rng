@@ -27,4 +27,20 @@ public class EasyConScriptAdapterTests
             Assert.That(result.Diagnostics, Is.Empty);
         });
     }
+
+    [Test]
+    public void ToggleCommentCommentsUncommentedLinesLikeOriginalEasyCon()
+    {
+        var toggled = EasyConScriptAdapter.ToggleCommentLines("PRINT \"hello\"\n  WAIT 10");
+
+        Assert.That(toggled, Is.EqualTo("# PRINT \"hello\"\n  # WAIT 10"));
+    }
+
+    [Test]
+    public void ToggleCommentUncommentsAlreadyCommentedLinesLikeOriginalEasyCon()
+    {
+        var toggled = EasyConScriptAdapter.ToggleCommentLines("# PRINT \"hello\"\n  # WAIT 10");
+
+        Assert.That(toggled, Is.EqualTo("PRINT \"hello\"\n  WAIT 10"));
+    }
 }

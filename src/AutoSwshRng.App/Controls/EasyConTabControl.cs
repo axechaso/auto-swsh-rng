@@ -36,6 +36,7 @@ public sealed class EasyConTabControl : UserControl
 
         Controls.Add(root);
         WireFileActions();
+        WireEditActions();
         WirePageButtons();
         WireScriptActions();
     }
@@ -44,6 +45,11 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();
         FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
+    }
+
+    private void WireEditActions()
+    {
+        FindRequiredMenuItem("menuItemToggleComment").Click += (_, _) => ToggleCurrentComment();
     }
 
     private void WirePageButtons()
@@ -155,6 +161,50 @@ public sealed class EasyConTabControl : UserControl
         var status = FindRequiredControl<StatusStrip>("easyConStatusStrip");
         var item = status.Items.OfType<ToolStripStatusLabel>().First(candidate => candidate.Name == "toolStripStatusLabel1");
         item.Text = message;
+    }
+
+    private void ToggleCurrentComment()
+    {
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        if (string.IsNullOrEmpty(editor.Text))
+        {
+            return;
+        }
+
+        var selectionStart = Math.Clamp(editor.SelectionStart, 0, editor.Text.Length);
+        var selectionEnd = Math.Clamp(editor.SelectionStart + editor.SelectionLength, 0, editor.Text.Length);
+        var lineStart = FindLineStart(editor.Text, selectionStart);
+        var lineEnd = FindLineContentEnd(editor.Text, selectionEnd);
+        var selectedLines = editor.Text[lineStart..lineEnd];
+        var toggledLines = EasyConScriptAdapter.ToggleCommentLines(selectedLines);
+
+        editor.Text = editor.Text[..lineStart] + toggledLines + editor.Text[lineEnd..];
+        editor.SelectionStart = lineStart;
+        editor.SelectionLength = toggledLines.Length;
+    }
+
+    private static int FindLineStart(string text, int index)
+    {
+        if (index <= 0)
+        {
+            return 0;
+        }
+
+        var previousLineFeed = text.LastIndexOf('\n', index - 1);
+        return previousLineFeed < 0 ? 0 : previousLineFeed + 1;
+    }
+
+    private static int FindLineContentEnd(string text, int index)
+    {
+        var lineFeed = text.IndexOf('\n', index);
+        if (lineFeed < 0)
+        {
+            return text.Length;
+        }
+
+        return lineFeed > 0 && text[lineFeed - 1] == '\r'
+            ? lineFeed - 1
+            : lineFeed;
     }
 
     private ToolStripMenuItem FindRequiredMenuItem(string name)

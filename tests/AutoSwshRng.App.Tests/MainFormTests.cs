@@ -439,6 +439,22 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConToggleCommentMenuCommentsSelectedLine()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var menu = FindControl(form, "easyConOriginalMenu");
+
+        SetProperty(editor, "Text", "PRINT \"hello\"" + Environment.NewLine + "WAIT 10");
+        SetProperty(editor, "SelectionStart", "PRINT \"hello\"".Length + Environment.NewLine.Length);
+        SetProperty(editor, "SelectionLength", 0);
+        InvokeClick(FindToolStripItem(menu, "menuItemToggleComment"));
+
+        Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"hello\"" + Environment.NewLine + "# WAIT 10"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalContentShell()
     {
         using var form = new MainForm();

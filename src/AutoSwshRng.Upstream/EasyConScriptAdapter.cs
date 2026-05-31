@@ -42,6 +42,62 @@ public static class EasyConScriptAdapter
             Diagnostics: []);
     }
 
+    public static string ToggleCommentLines(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+
+        var separator = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = text.Split([separator], StringSplitOptions.None);
+        var shouldComment = lines.Any(CanComment);
+        return string.Join(separator, lines.Select(line => ToggleCommentLine(line, shouldComment)));
+    }
+
+    private static bool CanComment(string input)
+    {
+        var firstNonWhitespaceIndex = FindFirstNonWhitespaceIndex(input);
+        return firstNonWhitespaceIndex >= 0 && input[firstNonWhitespaceIndex] != '#';
+    }
+
+    private static string ToggleCommentLine(string input, bool shouldComment)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return input ?? string.Empty;
+        }
+
+        var firstNonWhitespaceIndex = FindFirstNonWhitespaceIndex(input);
+        if (firstNonWhitespaceIndex < 0)
+        {
+            return input;
+        }
+
+        if (shouldComment)
+        {
+            return input.Insert(firstNonWhitespaceIndex, "# ");
+        }
+
+        var removeCount = firstNonWhitespaceIndex + 1 < input.Length && input[firstNonWhitespaceIndex + 1] == ' '
+            ? 2
+            : 1;
+        return input.Remove(firstNonWhitespaceIndex, removeCount);
+    }
+
+    private static int FindFirstNonWhitespaceIndex(string input)
+    {
+        for (var i = 0; i < input.Length; i++)
+        {
+            if (!char.IsWhiteSpace(input[i]))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     private sealed class CapturingOutputAdapter : IOutputAdapter
     {
         private readonly List<string> printed = [];
