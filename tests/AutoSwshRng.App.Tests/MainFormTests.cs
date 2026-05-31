@@ -216,7 +216,7 @@ public class MainFormTests
             Assert.That(menu.GetType().Name, Is.EqualTo("MenuStrip"));
             Assert.That(GetToolStripItemTexts(menu), Is.SupersetOf(new[] { "文件", "编辑", "脚本", "搜图", "帮助" }));
             Assert.That(FindControl(form, "easyConScriptEditor"), Is.Not.Null);
-            Assert.That(FindControl(form, "easyConLogBox"), Is.Not.Null);
+            Assert.That(FindControl(form, "logTxtBox"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConSerialPanel"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConCapturePanel"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConRecordPanel"), Is.Not.Null);
@@ -248,6 +248,39 @@ public class MainFormTests
             Assert.That(GetProperty<Color>(log, "BackColor"), Is.EqualTo(Color.FromArgb(235, 234, 229)));
             Assert.That(GetProperty<Color>(editor, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
             Assert.That(GetProperty<bool>(log, "UseVisualStyleBackColor"), Is.False);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConTabRestoresOriginalContentShell()
+    {
+        using var form = new MainForm();
+
+        var mainSplit = FindControl(form, "mainSplit");
+        var contentPanel = FindControl(form, "contentPanel");
+        var editorHost = FindControl(form, "editorHost");
+        var logPanel = FindControl(form, "logPanel");
+        var clearLog = FindControl(form, "clsLogBtn");
+        var logText = FindControl(form, "logTxtBox");
+        var burnPanel = FindControl(form, "burnPanel");
+        var settingsPanel = FindControl(form, "settingsPanel");
+        var title = FindControl(form, "scriptTitleLabel");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(mainSplit.GetType().Name, Is.EqualTo("SplitContainer"));
+            Assert.That(GetProperty<Color>(mainSplit, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+            Assert.That(GetProperty<Color>(contentPanel, "BackColor"), Is.EqualTo(Color.FromArgb(242, 241, 237)));
+            Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo("未命名脚本"));
+            Assert.That(GetProperty<bool>(title, "Visible"), Is.False);
+            Assert.That(GetProperty<bool>(editorHost, "Visible"), Is.False);
+            Assert.That(GetProperty<object>(logPanel, "Dock").ToString(), Is.EqualTo("Fill"));
+            Assert.That(GetProperty<string>(clearLog, "AccessibleName"), Is.EqualTo("清除日志输出"));
+            Assert.That(GetProperty<Color>(logText, "BackColor"), Is.EqualTo(Color.FromArgb(64, 64, 64)));
+            Assert.That(GetProperty<Color>(logText, "ForeColor"), Is.EqualTo(Color.White));
+            Assert.That(GetProperty<bool>(burnPanel, "Visible"), Is.False);
+            Assert.That(GetProperty<bool>(settingsPanel, "Visible"), Is.False);
         });
     }
 

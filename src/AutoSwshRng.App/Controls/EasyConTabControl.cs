@@ -67,19 +67,20 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateMainArea()
     {
-        var main = new TableLayoutPanel
+        var mainSplit = new SplitContainer
         {
+            Name = "mainSplit",
+            Width = 916,
+            Height = 681,
             Dock = DockStyle.Fill,
-            ColumnCount = 3,
-            RowCount = 1,
+            BackColor = Color.FromArgb(230, 229, 224),
+            SplitterWidth = 6,
+            Panel2MinSize = 240,
         };
-        main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
-        main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
-        main.Controls.Add(CreatePageSidebar(), 0, 0);
-        main.Controls.Add(CreateEditorAndLog(), 1, 0);
-        main.Controls.Add(CreateRightPanel(), 2, 0);
-        return main;
+        mainSplit.Panel1.Controls.Add(CreateContentPanel());
+        mainSplit.Panel1.Controls.Add(CreatePageSidebar());
+        mainSplit.Panel2.Controls.Add(CreateRightPanel());
+        return mainSplit;
     }
 
     private static Control CreatePageSidebar()
@@ -87,7 +88,8 @@ public sealed class EasyConTabControl : UserControl
         var sideBar = new Panel
         {
             Name = "sideBar",
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Left,
+            Width = 40,
             BackColor = Color.FromArgb(230, 229, 224),
         };
         sideBar.Controls.Add(CreatePageButton("btnPageLog", "📄", Color.FromArgb(235, 234, 229), 10));
@@ -117,17 +119,44 @@ public sealed class EasyConTabControl : UserControl
         return button;
     }
 
-    private static Control CreateEditorAndLog()
+    private static Control CreateContentPanel()
     {
-        var area = new TableLayoutPanel
+        var contentPanel = new Panel
         {
+            Name = "contentPanel",
             Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 2,
+            BackColor = Color.FromArgb(242, 241, 237),
         };
-        area.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        area.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
 
+        contentPanel.Controls.Add(CreateEditorHost());
+        contentPanel.Controls.Add(CreateLogPanel());
+        contentPanel.Controls.Add(CreateBurnPanel());
+        contentPanel.Controls.Add(CreateSettingsPanel());
+        contentPanel.Controls.Add(new Label
+        {
+            Name = "scriptTitleLabel",
+            Text = "未命名脚本",
+            Dock = DockStyle.Top,
+            BackColor = Color.FromArgb(230, 229, 224),
+            Font = new Font("微软雅黑", 9F),
+            ForeColor = Color.FromArgb(38, 37, 30),
+            Height = 24,
+            Padding = new Padding(4, 0, 0, 0),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Visible = false,
+        });
+        return contentPanel;
+    }
+
+    private static Control CreateEditorHost()
+    {
+        var editorHost = new Panel
+        {
+            Name = "editorHost",
+            Dock = DockStyle.Fill,
+            Font = new Font("Consolas", 9F),
+            Visible = false,
+        };
         var editor = new TextBox
         {
             Name = "easyConScriptEditor",
@@ -146,25 +175,75 @@ public sealed class EasyConTabControl : UserControl
                 "PRESS B 30",
             WordWrap = false,
         };
+        editorHost.Controls.Add(editor);
+        return editorHost;
+    }
+
+    private static Control CreateLogPanel()
+    {
+        var logPanel = new Panel
+        {
+            Name = "logPanel",
+            Dock = DockStyle.Fill,
+            BackColor = SystemColors.Control,
+            ForeColor = Color.White,
+        };
 
         var log = new TextBox
         {
-            Name = "easyConLogBox",
-            Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(17, 17, 17),
-            ForeColor = Color.FromArgb(216, 255, 216),
+            Name = "logTxtBox",
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = Color.FromArgb(64, 64, 64),
+            ForeColor = Color.White,
             Font = new Font(FontFamily.GenericMonospace, 9),
+            Location = new Point(6, 10),
             Multiline = true,
             ReadOnly = true,
             ScrollBars = ScrollBars.Vertical,
+            Size = new Size(590, 644),
             Text = "[EasyCon] 等待设备连接..." + Environment.NewLine +
                 "[EasyCon] 脚本编辑器已就绪",
             WordWrap = false,
         };
 
-        area.Controls.Add(editor, 0, 0);
-        area.Controls.Add(log, 0, 1);
-        return area;
+        var clearLog = new Button
+        {
+            Name = "clsLogBtn",
+            AccessibleName = "清除日志输出",
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            BackColor = Color.Transparent,
+            FlatStyle = FlatStyle.Flat,
+            Location = new Point(564, 5),
+            Size = new Size(30, 30),
+            UseVisualStyleBackColor = false,
+        };
+        clearLog.FlatAppearance.BorderSize = 0;
+
+        logPanel.Controls.Add(clearLog);
+        logPanel.Controls.Add(log);
+        return logPanel;
+    }
+
+    private static Control CreateBurnPanel()
+    {
+        return new Panel
+        {
+            Name = "burnPanel",
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(242, 241, 237),
+            Visible = false,
+        };
+    }
+
+    private static Control CreateSettingsPanel()
+    {
+        return new Panel
+        {
+            Name = "settingsPanel",
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(242, 241, 237),
+            Visible = false,
+        };
     }
 
     private static Control CreateRightPanel()
