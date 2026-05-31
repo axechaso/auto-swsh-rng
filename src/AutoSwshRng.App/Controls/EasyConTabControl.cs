@@ -91,6 +91,10 @@ public sealed class EasyConTabControl : UserControl
         var runButton = FindRequiredControl<Button>("runStopBtn");
         runButton.Click += (_, _) => RunCurrentScript();
         FindRequiredMenuItem("runMenuItem").Click += (_, _) => RunCurrentScript();
+
+        var formatButton = FindRequiredControl<Button>("formatBtn");
+        formatButton.Click += (_, _) => FormatCurrentScript();
+        FindRequiredMenuItem("formatMenuItem").Click += (_, _) => FormatCurrentScript();
     }
 
     private void RunCurrentScript()
@@ -109,6 +113,21 @@ public sealed class EasyConTabControl : UserControl
         {
             log.AppendText(line);
         }
+    }
+
+    private void FormatCurrentScript()
+    {
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var log = FindRequiredControl<TextBox>("logTxtBox");
+        var result = EasyConScriptAdapter.Format(editor.Text);
+
+        if (result.HasErrors)
+        {
+            log.AppendText(string.Join(Environment.NewLine, result.Diagnostics));
+            return;
+        }
+
+        editor.Text = result.FormattedCode ?? string.Empty;
     }
 
     private ToolStripMenuItem FindRequiredMenuItem(string name)

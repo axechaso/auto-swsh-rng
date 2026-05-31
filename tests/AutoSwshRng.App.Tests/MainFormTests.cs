@@ -369,6 +369,35 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFormatButtonFormatsCurrentScript()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var formatButton = FindControl(form, "formatBtn");
+
+        SetProperty(editor, "Text", "PRINT \"hello\",\"world\"");
+        InvokeClick(formatButton);
+
+        Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"hello\", \"world\""));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConFormatMenuUsesFormatButtonPath()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var formatMenu = FindToolStripItem(menu, "formatMenuItem");
+
+        SetProperty(editor, "Text", "PRINT \"menu\",\"format\"");
+        InvokeClick(formatMenu);
+
+        Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"menu\", \"format\""));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalContentShell()
     {
         using var form = new MainForm();
