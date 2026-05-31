@@ -145,20 +145,14 @@ public sealed class OwoowTabControl : UserControl
         panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var tabs = new FlowLayoutPanel
+        var tabs = new TabControl
         {
+            Name = "owoowEncounterModeTabs",
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
         };
         foreach (var tab in new[] { "定点", "符号", "隐藏", "垂钓" })
         {
-            tabs.Controls.Add(new Button
-            {
-                Text = tab,
-                Width = 56,
-                Height = 30,
-            });
+            tabs.TabPages.Add(new TabPage(tab));
         }
 
         var encounter = new GroupBox

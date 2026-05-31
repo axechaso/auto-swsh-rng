@@ -112,6 +112,17 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void OwoowEncounterModesUseOriginalTabPages()
+    {
+        using var form = new MainForm();
+
+        var tabs = FindControl(form, "owoowEncounterModeTabs");
+
+        Assert.That(GetTabPageTitles(tabs), Is.EqualTo(new[] { "定点", "符号", "隐藏", "垂钓" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalMenuAndPanels()
     {
         using var form = new MainForm();
@@ -210,6 +221,17 @@ public class MainFormTests
         }
 
         return headers;
+    }
+
+    private static IReadOnlyList<string> GetTabPageTitles(object tabControl)
+    {
+        var titles = new List<string>();
+        foreach (var page in (IEnumerable)GetProperty<object>(tabControl, "TabPages"))
+        {
+            titles.Add(GetProperty<string>(page, "Text"));
+        }
+
+        return titles;
     }
 
     private static void AddTexts(object root, List<string> texts)
