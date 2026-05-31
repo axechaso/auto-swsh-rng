@@ -2,18 +2,18 @@ namespace AutoSwshRng.App.Controls;
 
 public sealed class OwoowTabControl : UserControl
 {
-    private static readonly string[] ToolMenuItems =
+    private static readonly (string Text, string Name, bool IsSelected)[] ToolMenuItems =
     [
-        "配置档",
-        "遭遇查询",
-        "个体帧搜索",
-        "ID抽奖",
-        "机器鹕",
-        "瓦特商店",
-        "挖挖伯",
-        "挖洞兄弟（技巧型）",
-        "吼鲸王再出现",
-        "Xoroshiro 工具",
+        ("配置档", "owoowMenuProfiles", false),
+        ("遭遇查询", "owoowMenuEncounterLookup", false),
+        ("个体帧搜索", "owoowMenuSpreadFinder", true),
+        ("ID抽奖", "owoowMenuLotoId", false),
+        ("机器鹕", "owoowMenuCramOMatic", false),
+        ("瓦特商店", "owoowMenuWattTrader", false),
+        ("挖挖伯", "owoowMenuDiggingPa", false),
+        ("挖洞兄弟（技巧型）", "owoowMenuDiggingBroSkill", false),
+        ("吼鲸王再出现", "owoowMenuWailordRespawn", false),
+        ("Xoroshiro 工具", "owoowMenuXoroshiroTools", false),
     ];
 
     public OwoowTabControl()
@@ -58,14 +58,22 @@ public sealed class OwoowTabControl : UserControl
 
         foreach (var item in ToolMenuItems)
         {
-            menu.Controls.Add(new Button
+            var button = new Button
             {
-                Text = item,
+                Name = item.Name,
+                Text = item.Text,
                 Width = 160,
                 Height = 32,
                 FlatStyle = FlatStyle.System,
                 TextAlign = ContentAlignment.MiddleLeft,
-            });
+                UseVisualStyleBackColor = !item.IsSelected,
+            };
+            if (item.IsSelected)
+            {
+                button.BackColor = Color.FromArgb(220, 236, 255);
+            }
+
+            menu.Controls.Add(button);
         }
 
         return menu;

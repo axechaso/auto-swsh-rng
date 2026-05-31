@@ -1,5 +1,6 @@
 using AutoSwshRng.App;
 using System.Collections;
+using System.Drawing;
 
 namespace AutoSwshRng.App.Tests;
 
@@ -40,6 +41,23 @@ public class MainFormTests
                 "吼鲸王再出现",
                 "Xoroshiro 工具",
             }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void OwoowToolMenuDefaultsToSpreadFinderSelection()
+    {
+        using var form = new MainForm();
+
+        var spreadFinder = FindControl(form, "owoowMenuSpreadFinder");
+        var profiles = FindControl(form, "owoowMenuProfiles");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(spreadFinder, "UseVisualStyleBackColor"), Is.False);
+            Assert.That(GetProperty<Color>(spreadFinder, "BackColor"), Is.EqualTo(Color.FromArgb(220, 236, 255)));
+            Assert.That(GetProperty<bool>(profiles, "UseVisualStyleBackColor"), Is.True);
+        });
     }
 
     [Test]
