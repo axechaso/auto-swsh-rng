@@ -67,14 +67,51 @@ public sealed class EasyConTabControl : UserControl
         var main = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
+            ColumnCount = 3,
             RowCount = 1,
         };
+        main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
-        main.Controls.Add(CreateEditorAndLog(), 0, 0);
-        main.Controls.Add(CreateRightPanel(), 1, 0);
+        main.Controls.Add(CreatePageSidebar(), 0, 0);
+        main.Controls.Add(CreateEditorAndLog(), 1, 0);
+        main.Controls.Add(CreateRightPanel(), 2, 0);
         return main;
+    }
+
+    private static Control CreatePageSidebar()
+    {
+        var sideBar = new Panel
+        {
+            Name = "sideBar",
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(230, 229, 224),
+        };
+        sideBar.Controls.Add(CreatePageButton("btnPageLog", "📄", Color.FromArgb(235, 234, 229), 10));
+        sideBar.Controls.Add(CreatePageButton("btnPageEditor", "📝", Color.FromArgb(230, 229, 224), 50));
+        sideBar.Controls.Add(CreatePageButton("btnPageBurn", "🔥", Color.FromArgb(230, 229, 224), 90));
+        sideBar.Controls.Add(CreatePageButton("btnPageSettings", "⚙", Color.FromArgb(230, 229, 224), 130));
+        return sideBar;
+    }
+
+    private static Button CreatePageButton(string name, string text, Color backColor, int top)
+    {
+        var button = new Button
+        {
+            Name = name,
+            Text = text,
+            Width = 36,
+            Height = 36,
+            Left = 2,
+            Top = top,
+            BackColor = backColor,
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI Emoji", 14F),
+            ForeColor = Color.FromArgb(38, 37, 30),
+            UseVisualStyleBackColor = false,
+        };
+        button.FlatAppearance.BorderSize = 0;
+        return button;
     }
 
     private static Control CreateEditorAndLog()

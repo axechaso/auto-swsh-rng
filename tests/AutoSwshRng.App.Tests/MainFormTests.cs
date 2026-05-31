@@ -228,6 +228,29 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConTabRestoresOriginalPageSidebar()
+    {
+        using var form = new MainForm();
+
+        var log = FindControl(form, "btnPageLog");
+        var editor = FindControl(form, "btnPageEditor");
+        var burn = FindControl(form, "btnPageBurn");
+        var settings = FindControl(form, "btnPageSettings");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(log, "Text"), Is.EqualTo("📄"));
+            Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("📝"));
+            Assert.That(GetProperty<string>(burn, "Text"), Is.EqualTo("🔥"));
+            Assert.That(GetProperty<string>(settings, "Text"), Is.EqualTo("⚙"));
+            Assert.That(GetProperty<Color>(log, "BackColor"), Is.EqualTo(Color.FromArgb(235, 234, 229)));
+            Assert.That(GetProperty<Color>(editor, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+            Assert.That(GetProperty<bool>(log, "UseVisualStyleBackColor"), Is.False);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabDoesNotAddAutoSwshRngLinkagePanelYet()
     {
         using var form = new MainForm();
