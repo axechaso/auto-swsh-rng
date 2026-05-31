@@ -37,29 +37,32 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateOriginalMenu()
     {
-        var menu = new FlowLayoutPanel
+        var menu = new MenuStrip
         {
             Name = "easyConOriginalMenu",
             Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(244, 244, 244),
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8, 3, 0, 0),
-            WrapContents = false,
+            Font = new Font("微软雅黑", 9F),
+            ImageScalingSize = new Size(20, 20),
         };
 
-        foreach (var item in MenuItems)
-        {
-            menu.Controls.Add(new Label
-            {
-                Text = item,
-                AutoSize = false,
-                Width = item == "ESP32" ? 55 : 48,
-                Height = 22,
-                TextAlign = ContentAlignment.MiddleLeft,
-            });
-        }
+        menu.Items.Add(CreateMenuItem("fileMenu", "文件"));
+        menu.Items.Add(CreateMenuItem("editMenu", "编辑"));
+        var scriptMenu = CreateMenuItem("scriptMenu", "脚本");
+        scriptMenu.Visible = false;
+        menu.Items.Add(scriptMenu);
+        menu.Items.Add(CreateMenuItem("captureMenu", "搜图"));
+        menu.Items.Add(CreateMenuItem("helpMenu", "帮助"));
 
         return menu;
+    }
+
+    private static ToolStripMenuItem CreateMenuItem(string name, string text)
+    {
+        return new ToolStripMenuItem
+        {
+            Name = name,
+            Text = text,
+        };
     }
 
     private static Control CreateMainArea()
@@ -288,18 +291,35 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateStatusStrip()
     {
-        var status = new FlowLayoutPanel
+        var status = new StatusStrip
         {
+            Name = "easyConStatusStrip",
             Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(244, 244, 244),
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8, 3, 0, 0),
-            WrapContents = false,
+            BackColor = Color.FromArgb(230, 229, 224),
+            ImageScalingSize = new Size(20, 20),
         };
-        status.Controls.Add(CreateLabel("串口状态: 未连接", 160));
-        status.Controls.Add(CreateLabel("采集状态: 未开启", 160));
-        status.Controls.Add(CreateLabel("日志: 自动保存关闭", 180));
+        status.Items.Add(new ToolStripStatusLabel
+        {
+            Name = "toolStripStatusLabel1",
+            AutoSize = false,
+            ForeColor = Color.FromArgb(38, 37, 30),
+            Size = new Size(300, 20),
+        });
+        status.Items.Add(CreateStatusLabel("toolStripStatusLabel2", " | "));
+        status.Items.Add(CreateStatusLabel("labelSerialStatus", "单片机未连接"));
+        status.Items.Add(CreateStatusLabel("toolStripStatusLabel3", " | "));
+        status.Items.Add(CreateStatusLabel("labelCaptureStatus", "采集卡未连接"));
         return status;
+    }
+
+    private static ToolStripStatusLabel CreateStatusLabel(string name, string text)
+    {
+        return new ToolStripStatusLabel
+        {
+            Name = name,
+            Text = text,
+            ForeColor = Color.FromArgb(140, 139, 132),
+        };
     }
 
     private static FlowLayoutPanel CreateGroupPanel(string title, int width, int height)

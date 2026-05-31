@@ -209,11 +209,12 @@ public class MainFormTests
         using var form = new MainForm();
 
         var menu = FindControl(form, "easyConOriginalMenu");
-        var menuLabels = GetDescendantTexts(menu);
+        var status = FindControl(form, "easyConStatusStrip");
 
         Assert.Multiple(() =>
         {
-            Assert.That(menuLabels, Is.SupersetOf(new[] { "文件", "编辑", "脚本", "搜图", "设置", "蓝牙", "ESP32", "画图", "帮助" }));
+            Assert.That(menu.GetType().Name, Is.EqualTo("MenuStrip"));
+            Assert.That(GetToolStripItemTexts(menu), Is.SupersetOf(new[] { "文件", "编辑", "脚本", "搜图", "帮助" }));
             Assert.That(FindControl(form, "easyConScriptEditor"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConLogBox"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConSerialPanel"), Is.Not.Null);
@@ -221,8 +222,9 @@ public class MainFormTests
             Assert.That(FindControl(form, "easyConRecordPanel"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConControllerPanel"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConFirmwarePanel"), Is.Not.Null);
-            Assert.That(GetDescendantTexts(form), Does.Contain("串口状态: 未连接"));
-            Assert.That(GetDescendantTexts(form), Does.Contain("采集状态: 未开启"));
+            Assert.That(status.GetType().Name, Is.EqualTo("StatusStrip"));
+            Assert.That(GetToolStripItemTexts(status), Does.Contain("单片机未连接"));
+            Assert.That(GetToolStripItemTexts(status), Does.Contain("采集卡未连接"));
         });
     }
 
@@ -400,6 +402,21 @@ public class MainFormTests
         }
 
         return titles;
+    }
+
+    private static IReadOnlyList<string> GetToolStripItemTexts(object toolStrip)
+    {
+        var texts = new List<string>();
+        foreach (var item in (IEnumerable)GetProperty<object>(toolStrip, "Items"))
+        {
+            var text = GetProperty<string>(item, "Text");
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                texts.Add(text);
+            }
+        }
+
+        return texts;
     }
 
     private static void AddTexts(object root, List<string> texts)
