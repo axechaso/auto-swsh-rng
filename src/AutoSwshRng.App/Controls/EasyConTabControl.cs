@@ -33,6 +33,54 @@ public sealed class EasyConTabControl : UserControl
         root.Controls.Add(CreateStatusStrip(), 0, 2);
 
         Controls.Add(root);
+        WirePageButtons();
+    }
+
+    private void WirePageButtons()
+    {
+        FindRequiredControl<Button>("btnPageEditor").Click += (_, _) => ShowPage("editorHost", "btnPageEditor", showScriptTitle: true);
+        FindRequiredControl<Button>("btnPageLog").Click += (_, _) => ShowPage("logPanel", "btnPageLog", showScriptTitle: false);
+        FindRequiredControl<Button>("btnPageBurn").Click += (_, _) => ShowPage("burnPanel", "btnPageBurn", showScriptTitle: false);
+        FindRequiredControl<Button>("btnPageSettings").Click += (_, _) => ShowPage("settingsPanel", "btnPageSettings", showScriptTitle: false);
+    }
+
+    private void ShowPage(string pageName, string selectedButtonName, bool showScriptTitle)
+    {
+        ResetPages();
+
+        var page = FindRequiredControl<Control>(pageName);
+        page.Visible = true;
+        page.BringToFront();
+
+        var scriptTitle = FindRequiredControl<Label>("scriptTitleLabel");
+        scriptTitle.Visible = showScriptTitle;
+        if (showScriptTitle)
+        {
+            scriptTitle.BringToFront();
+        }
+
+        FindRequiredControl<Button>(selectedButtonName).BackColor = Color.FromArgb(235, 234, 229);
+    }
+
+    private void ResetPages()
+    {
+        foreach (var pageName in new[] { "burnPanel", "settingsPanel", "logPanel", "editorHost" })
+        {
+            FindRequiredControl<Control>(pageName).Visible = false;
+        }
+
+        FindRequiredControl<Label>("scriptTitleLabel").Visible = false;
+
+        foreach (var buttonName in new[] { "btnPageEditor", "btnPageLog", "btnPageBurn", "btnPageSettings" })
+        {
+            FindRequiredControl<Button>(buttonName).BackColor = Color.FromArgb(230, 229, 224);
+        }
+    }
+
+    private T FindRequiredControl<T>(string name)
+        where T : Control
+    {
+        return Controls.Find(name, searchAllChildren: true).OfType<T>().First();
     }
 
     private static Control CreateOriginalMenu()

@@ -271,6 +271,57 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConSidebarButtonsSwitchOriginalPages()
+    {
+        using var form = new MainForm();
+        form.Show();
+        SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
+
+        var logButton = FindControl(form, "btnPageLog");
+        var editorButton = FindControl(form, "btnPageEditor");
+        var burnButton = FindControl(form, "btnPageBurn");
+        var settingsButton = FindControl(form, "btnPageSettings");
+
+        InvokeClick(editorButton);
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "editorHost"), "Visible"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "scriptTitleLabel"), "Visible"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "logPanel"), "Visible"), Is.False);
+            Assert.That(GetProperty<Color>(editorButton, "BackColor"), Is.EqualTo(Color.FromArgb(235, 234, 229)));
+            Assert.That(GetProperty<Color>(logButton, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+        });
+
+        InvokeClick(burnButton);
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "burnPanel"), "Visible"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "editorHost"), "Visible"), Is.False);
+            Assert.That(GetProperty<Color>(burnButton, "BackColor"), Is.EqualTo(Color.FromArgb(235, 234, 229)));
+            Assert.That(GetProperty<Color>(editorButton, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+        });
+
+        InvokeClick(settingsButton);
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "settingsPanel"), "Visible"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "burnPanel"), "Visible"), Is.False);
+            Assert.That(GetProperty<Color>(settingsButton, "BackColor"), Is.EqualTo(Color.FromArgb(235, 234, 229)));
+            Assert.That(GetProperty<Color>(burnButton, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+        });
+
+        InvokeClick(logButton);
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "logPanel"), "Visible"), Is.True);
+            Assert.That(GetProperty<bool>(FindControl(form, "settingsPanel"), "Visible"), Is.False);
+            Assert.That(GetProperty<Color>(logButton, "BackColor"), Is.EqualTo(Color.FromArgb(235, 234, 229)));
+            Assert.That(GetProperty<Color>(settingsButton, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalContentShell()
     {
         using var form = new MainForm();
@@ -468,6 +519,31 @@ public class MainFormTests
             }
 
             var match = FindControlOrDefault(child, name);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static object FindControlByType(object root, string typeName)
+    {
+        var match = FindControlByTypeOrDefault(root, typeName);
+        return match ?? throw new InvalidOperationException($"Control type '{typeName}' was not found.");
+    }
+
+    private static object? FindControlByTypeOrDefault(object root, string typeName)
+    {
+        if (root.GetType().Name == typeName)
+        {
+            return root;
+        }
+
+        foreach (var child in (IEnumerable)GetProperty<object>(root, "Controls"))
+        {
+            var match = FindControlByTypeOrDefault(child, typeName);
             if (match is not null)
             {
                 return match;
