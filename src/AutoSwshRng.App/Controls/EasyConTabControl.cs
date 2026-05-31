@@ -187,20 +187,41 @@ public sealed class EasyConTabControl : UserControl
 
     private static Control CreateRunPanel()
     {
-        var panel = CreateGroupPanel("脚本", 265, 92);
-        AddButtonGrid(panel, "运行", "停止");
-        AddButtonGrid(panel, "格式化", "脚本帮助");
-        panel.Controls.Add(CreateLabel("计时: 00:00:00", 240));
-        return panel;
+        var group = CreateOriginalGroupBox("grpScriptRun", "脚本运行", 265, 162);
+        group.Controls.Add(CreateOriginalButton("runStopBtn", "运行脚本", Color.FromArgb(31, 138, 101), Color.White, 8, 22, 206, 55));
+        group.Controls.Add(CreateOriginalButton("formatBtn", "格式化", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 85, 206, 30));
+        group.Controls.Add(new Label
+        {
+            Name = "timerLabel",
+            Text = "00:00:00",
+            Font = new Font("Consolas", 12F),
+            ForeColor = Color.FromArgb(38, 37, 30),
+            Location = new Point(8, 123),
+            Size = new Size(206, 30),
+            TextAlign = ContentAlignment.MiddleCenter,
+        });
+        return group;
     }
 
     private static Control CreateSerialPanel()
     {
-        var panel = CreateGroupPanel("串口", 265, 112);
-        panel.Name = "easyConSerialPanel";
-        AddTextRow(panel, "COM:", "COM3");
-        AddButtonGrid(panel, "搜索", "连接");
-        return panel;
+        var group = CreateOriginalGroupBox("grpDevice", "设备连接", 265, 130);
+        group.Controls.Add(new Panel
+        {
+            Name = "easyConSerialPanel",
+            Width = 1,
+            Height = 1,
+            Visible = false,
+        });
+        group.Controls.Add(new ComboBox
+        {
+            Name = "comboComPort",
+            Location = new Point(8, 22),
+            Size = new Size(206, 28),
+        });
+        group.Controls.Add(CreateOriginalButton("btnAutoConnect", "自动连接", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 30));
+        group.Controls.Add(CreateOriginalButton("btnManualConnect", "手动连接", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 90, 206, 30));
+        return group;
     }
 
     private static Control CreateCapturePanel()
@@ -274,6 +295,45 @@ public sealed class EasyConTabControl : UserControl
             TextAlign = ContentAlignment.MiddleLeft,
         });
         return panel;
+    }
+
+    private static GroupBox CreateOriginalGroupBox(string name, string title, int width, int height)
+    {
+        return new GroupBox
+        {
+            Name = name,
+            Text = title,
+            Width = width,
+            Height = height,
+            ForeColor = Color.FromArgb(38, 37, 30),
+            Margin = new Padding(10, 3, 10, 0),
+        };
+    }
+
+    private static Button CreateOriginalButton(
+        string name,
+        string text,
+        Color backColor,
+        Color foreColor,
+        int left,
+        int top,
+        int width,
+        int height)
+    {
+        var button = new Button
+        {
+            Name = name,
+            Text = text,
+            BackColor = backColor,
+            ForeColor = foreColor,
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("微软雅黑", 9F),
+            Location = new Point(left, top),
+            Size = new Size(width, height),
+            UseVisualStyleBackColor = false,
+        };
+        button.FlatAppearance.BorderSize = 0;
+        return button;
     }
 
     private static void AddTextRow(FlowLayoutPanel parent, string label, string value)

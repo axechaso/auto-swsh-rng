@@ -251,6 +251,37 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConTabRestoresOriginalRunAndDeviceControls()
+    {
+        using var form = new MainForm();
+
+        var scriptGroup = FindControl(form, "grpScriptRun");
+        var runStop = FindControl(form, "runStopBtn");
+        var format = FindControl(form, "formatBtn");
+        var timer = FindControl(form, "timerLabel");
+        var deviceGroup = FindControl(form, "grpDevice");
+        var combo = FindControl(form, "comboComPort");
+        var autoConnect = FindControl(form, "btnAutoConnect");
+        var manualConnect = FindControl(form, "btnManualConnect");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(scriptGroup.GetType().Name, Is.EqualTo("GroupBox"));
+            Assert.That(GetProperty<string>(scriptGroup, "Text"), Is.EqualTo("脚本运行"));
+            Assert.That(GetProperty<string>(runStop, "Text"), Is.EqualTo("运行脚本"));
+            Assert.That(GetProperty<Color>(runStop, "BackColor"), Is.EqualTo(Color.FromArgb(31, 138, 101)));
+            Assert.That(GetProperty<bool>(runStop, "UseVisualStyleBackColor"), Is.False);
+            Assert.That(GetProperty<string>(format, "Text"), Is.EqualTo("格式化"));
+            Assert.That(GetProperty<string>(timer, "Text"), Is.EqualTo("00:00:00"));
+            Assert.That(GetProperty<string>(deviceGroup, "Text"), Is.EqualTo("设备连接"));
+            Assert.That(combo.GetType().Name, Is.EqualTo("ComboBox"));
+            Assert.That(GetProperty<string>(autoConnect, "Text"), Is.EqualTo("自动连接"));
+            Assert.That(GetProperty<string>(manualConnect, "Text"), Is.EqualTo("手动连接"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabDoesNotAddAutoSwshRngLinkagePanelYet()
     {
         using var form = new MainForm();
