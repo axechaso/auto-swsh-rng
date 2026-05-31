@@ -540,6 +540,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFirmwareBoardComboUsesOriginalBoardList()
+    {
+        using var form = new MainForm();
+
+        var boardType = FindControl(form, "comboBoardType");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                GetComboBoxItemTexts(boardType),
+                Is.EqualTo(new[] { "Leonardo", "Teensy 2.0", "Teensy 2.0++", "Beetle", "Arduino UNO R3" }));
+            Assert.That(GetProperty<string>(GetProperty<object>(boardType, "SelectedItem"), "DisplayName"), Is.EqualTo("Leonardo"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalSettingsPanelControls()
     {
         using var form = new MainForm();
@@ -744,6 +761,17 @@ public class MainFormTests
         }
 
         return titles;
+    }
+
+    private static IReadOnlyList<string> GetComboBoxItemTexts(object comboBox)
+    {
+        var texts = new List<string>();
+        foreach (var item in (IEnumerable)GetProperty<object>(comboBox, "Items"))
+        {
+            texts.Add(item.ToString() ?? string.Empty);
+        }
+
+        return texts;
     }
 
     private static IReadOnlyList<string> GetToolStripItemTexts(object toolStrip)

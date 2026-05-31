@@ -8,6 +8,15 @@ namespace AutoSwshRng.Upstream;
 
 public static class EasyConScriptAdapter
 {
+    private static readonly EasyConBoardDefinition[] SupportedBoards =
+    [
+        new("Leonardo", "Leonardo", 924),
+        new("Teensy 2.0", "Teensy2", 924),
+        new("Teensy 2.0++", "Teensy2pp", 3996),
+        new("Beetle", "Beetle", 924),
+        new("Arduino UNO R3", "UNO", 412),
+    ];
+
     public static EasyConScriptResult Evaluate(string scriptText)
     {
         var output = new CapturingOutputAdapter();
@@ -40,6 +49,11 @@ public static class EasyConScriptAdapter
             HasErrors: false,
             FormattedCode: formatted,
             Diagnostics: []);
+    }
+
+    public static IReadOnlyList<EasyConBoardDefinition> GetSupportedBoards()
+    {
+        return SupportedBoards;
     }
 
     public static string ToggleCommentLines(string text)
@@ -129,3 +143,14 @@ public sealed record EasyConScriptFormatResult(
     bool HasErrors,
     string? FormattedCode,
     IReadOnlyList<string> Diagnostics);
+
+public sealed record EasyConBoardDefinition(
+    string DisplayName,
+    string CoreName,
+    int DataSize)
+{
+    public override string ToString()
+    {
+        return DisplayName;
+    }
+}

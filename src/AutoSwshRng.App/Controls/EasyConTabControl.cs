@@ -39,6 +39,7 @@ public sealed class EasyConTabControl : UserControl
         WireEditActions();
         WirePageButtons();
         WireScriptActions();
+        PopulateFirmwareBoards();
     }
 
     private void WireFileActions()
@@ -108,6 +109,16 @@ public sealed class EasyConTabControl : UserControl
         var formatButton = FindRequiredControl<Button>("formatBtn");
         formatButton.Click += (_, _) => FormatCurrentScript();
         FindRequiredMenuItem("formatMenuItem").Click += (_, _) => FormatCurrentScript();
+    }
+
+    private void PopulateFirmwareBoards()
+    {
+        var boardType = FindRequiredControl<ComboBox>("comboBoardType");
+        boardType.Items.AddRange(EasyConScriptAdapter.GetSupportedBoards().Cast<object>().ToArray());
+        if (boardType.Items.Count > 0)
+        {
+            boardType.SelectedIndex = 0;
+        }
     }
 
     private void RunCurrentScript()

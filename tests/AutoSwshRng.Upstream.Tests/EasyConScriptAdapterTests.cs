@@ -43,4 +43,14 @@ public class EasyConScriptAdapterTests
 
         Assert.That(toggled, Is.EqualTo("PRINT \"hello\"\n  WAIT 10"));
     }
+
+    [Test]
+    public void SupportedBoardsMatchOriginalEasyConOrder()
+    {
+        var boards = EasyConScriptAdapter.GetSupportedBoards();
+
+        Assert.That(
+            boards.Select(board => board.DisplayName),
+            Is.EqualTo(new[] { "Leonardo", "Teensy 2.0", "Teensy 2.0++", "Beetle", "Arduino UNO R3" }));
+    }
 }
