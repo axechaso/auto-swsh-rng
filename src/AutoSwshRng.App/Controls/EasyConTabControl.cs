@@ -116,9 +116,14 @@ public sealed class EasyConTabControl : UserControl
         var log = FindRequiredControl<TextBox>("logTxtBox");
         var result = EasyConScriptAdapter.Evaluate(editor.Text);
 
+        log.AppendText("-- 开始运行 --" + Environment.NewLine);
+        ShowStatus("运行中");
+
         if (result.HasErrors)
         {
-            log.AppendText(string.Join(Environment.NewLine, result.Diagnostics));
+            log.AppendText(string.Join(Environment.NewLine, result.Diagnostics) + Environment.NewLine);
+            log.AppendText("-- 运行出错 --" + Environment.NewLine);
+            ShowStatus("运行出错");
             return;
         }
 
@@ -126,6 +131,9 @@ public sealed class EasyConTabControl : UserControl
         {
             log.AppendText(line);
         }
+
+        log.AppendText("-- 运行结束 --" + Environment.NewLine);
+        ShowStatus("运行结束");
     }
 
     private void NewCurrentScript()

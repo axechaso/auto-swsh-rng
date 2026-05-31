@@ -369,6 +369,29 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonShowsOriginalRunLogAndStatus()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var runButton = FindControl(form, "runStopBtn");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetProperty(logText, "Text", string.Empty);
+        InvokeClick(runButton);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("-- 开始运行 --"));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("hello"));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("-- 运行结束 --"));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("运行结束"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConFormatButtonFormatsCurrentScript()
     {
         using var form = new MainForm();
