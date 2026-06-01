@@ -995,6 +995,20 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureConsoleButtonUsesOriginalOpenAction()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var opened = false;
+
+        SetField(easyCon, "openCaptureConsole", new Action(() => opened = true));
+        InvokeClick(FindControl(form, "btnOpenCaptureConsole"));
+
+        Assert.That(opened, Is.True);
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConDisconnectedDeviceButtonsShowOriginalWarning()
     {
         using var form = new MainForm();

@@ -14,6 +14,7 @@ public sealed class EasyConTabControl : UserControl
     private Action<string> openExternalLink = null!;
     private Func<string[]> getSerialPortNames = null!;
     private Func<IReadOnlyList<(string Name, int Index)>> getVideoSources = null!;
+    private Action openCaptureConsole = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -38,6 +39,7 @@ public sealed class EasyConTabControl : UserControl
         openExternalLink = OpenExternalLink;
         getSerialPortNames = GetSerialPortNames;
         getVideoSources = GetVideoSources;
+        openCaptureConsole = () => { };
 
         var root = new TableLayoutPanel
         {
@@ -134,6 +136,7 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredControl<ComboBox>("comboComPort").DropDown += (_, _) => RefreshSerialPorts();
         FindRequiredControl<ComboBox>("comboVideoSource").DropDown += (_, _) => RefreshVideoSources();
+        FindRequiredControl<Button>("btnOpenCaptureConsole").Click += (_, _) => openCaptureConsole();
     }
 
     private void WirePageButtons()
