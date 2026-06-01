@@ -7,6 +7,11 @@
     <ProjectReference Include="..\..\third_party\owoow\owoow.Core\owoow.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\third_party\EasyCon\src\EasyCon2.UI.Common\Resources\Docs\scriptdoc.txt"
+                      LogicalName="AutoSwshRng.Upstream.Resources.EasyCon.scriptdoc.txt" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

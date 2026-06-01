@@ -65,4 +65,17 @@ public class EasyConScriptAdapterTests
             Assert.That(captureTypes.Select(type => type.Name), Is.SupersetOf(new[] { "DSHOW", "MSMF", "FFMPEG" }));
         });
     }
+
+    [Test]
+    public void ScriptSyntaxHelpUsesOriginalEasyConDocument()
+    {
+        var help = EasyConScriptAdapter.GetScriptSyntaxHelp();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(help, Does.Contain("所有代码不区分大小写"));
+            Assert.That(help, Does.Contain("语法：PRINT 输出内容"));
+            Assert.That(help, Does.Contain("语法：ALERT 输出内容"));
+        });
+    }
 }

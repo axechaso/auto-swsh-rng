@@ -48,7 +48,7 @@ public sealed class EasyConTabControl : UserControl
         getSerialPortNames = GetSerialPortNames;
         getVideoSources = GetVideoSources;
         openCaptureConsole = () => { };
-        openScriptSyntaxHelp = () => ShowPendingOriginalDialog("脚本语法");
+        openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = () => ShowPendingOriginalDialog("推送配置");
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
@@ -327,6 +327,11 @@ public sealed class EasyConTabControl : UserControl
     private void ShowPendingOriginalDialog(string title)
     {
         showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
+    }
+
+    private void ShowScriptSyntaxHelp()
+    {
+        showEasyConMessage("脚本语法", EasyConScriptAdapter.GetScriptSyntaxHelp());
     }
 
     private async Task CheckForUpdatesAsync()

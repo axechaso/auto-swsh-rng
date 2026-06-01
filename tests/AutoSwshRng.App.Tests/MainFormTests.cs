@@ -1033,6 +1033,27 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConScriptSyntaxMenuShowsOriginalHelpDocument()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindToolStripItem(menu, "menuItemScriptSyntax"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages.Single().Title, Is.EqualTo("脚本语法"));
+            Assert.That(messages.Single().Message, Does.Contain("所有代码不区分大小写"));
+            Assert.That(messages.Single().Message, Does.Contain("语法：PRINT 输出内容"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCheckUpdateButtonUsesOriginalUpdateChecker()
     {
         using var form = new MainForm();

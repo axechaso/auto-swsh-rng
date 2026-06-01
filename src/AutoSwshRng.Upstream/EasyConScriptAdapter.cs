@@ -2,12 +2,15 @@ using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace AutoSwshRng.Upstream;
 
 public static class EasyConScriptAdapter
 {
+    private const string ScriptSyntaxHelpResourceName = "AutoSwshRng.Upstream.Resources.EasyCon.scriptdoc.txt";
+
     private static readonly EasyConBoardDefinition[] SupportedBoards =
     [
         new("Leonardo", "Leonardo", 924),
@@ -96,6 +99,14 @@ public static class EasyConScriptAdapter
     public static IReadOnlyList<EasyConCaptureTypeDefinition> GetCaptureTypes()
     {
         return CaptureTypes;
+    }
+
+    public static string GetScriptSyntaxHelp()
+    {
+        using var stream = typeof(EasyConScriptAdapter).Assembly.GetManifestResourceStream(ScriptSyntaxHelpResourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{ScriptSyntaxHelpResourceName}' was not found.");
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        return reader.ReadToEnd();
     }
 
     public static string ToggleCommentLines(string text)
