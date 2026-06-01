@@ -981,6 +981,20 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConVideoSourceDropDownRefreshesOriginalSourceList()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var combo = FindControl(form, "comboVideoSource");
+
+        SetField(easyCon, "getVideoSources", new Func<IReadOnlyList<(string Name, int Index)>>(() => [("OBS Virtual Camera", 0), ("Capture Card", 1)]));
+        InvokeDropDown(combo);
+
+        Assert.That(GetComboBoxItemTexts(combo), Is.EqualTo(new[] { "OBS Virtual Camera", "Capture Card" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConDisconnectedDeviceButtonsShowOriginalWarning()
     {
         using var form = new MainForm();

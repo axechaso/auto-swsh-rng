@@ -13,6 +13,7 @@ public sealed class EasyConTabControl : UserControl
     private Action<string, string> showEasyConMessage = null!;
     private Action<string> openExternalLink = null!;
     private Func<string[]> getSerialPortNames = null!;
+    private Func<IReadOnlyList<(string Name, int Index)>> getVideoSources = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -36,6 +37,7 @@ public sealed class EasyConTabControl : UserControl
         showEasyConMessage = ShowEasyConMessageBox;
         openExternalLink = OpenExternalLink;
         getSerialPortNames = GetSerialPortNames;
+        getVideoSources = GetVideoSources;
 
         var root = new TableLayoutPanel
         {
@@ -129,6 +131,7 @@ public sealed class EasyConTabControl : UserControl
     private void WireDeviceListActions()
     {
         FindRequiredControl<ComboBox>("comboComPort").DropDown += (_, _) => RefreshSerialPorts();
+        FindRequiredControl<ComboBox>("comboVideoSource").DropDown += (_, _) => RefreshVideoSources();
     }
 
     private void WirePageButtons()
@@ -324,6 +327,13 @@ public sealed class EasyConTabControl : UserControl
         combo.Items.AddRange(getSerialPortNames().Cast<object>().ToArray());
     }
 
+    private void RefreshVideoSources()
+    {
+        var combo = FindRequiredControl<ComboBox>("comboVideoSource");
+        combo.Items.Clear();
+        combo.Items.AddRange(getVideoSources().Select(source => new VideoSourceItem(source.Name, source.Index)).Cast<object>().ToArray());
+    }
+
     private void InitializeOriginalStartupState()
     {
         var version = typeof(EasyConTabControl).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
@@ -492,6 +502,11 @@ public sealed class EasyConTabControl : UserControl
         return [.. EasyDevice.ECDevice.GetPortNames()];
     }
 
+    private static IReadOnlyList<(string Name, int Index)> GetVideoSources()
+    {
+        return [];
+    }
+
     private void FormatCurrentScript()
     {
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
@@ -649,6 +664,14 @@ public sealed class EasyConTabControl : UserControl
             Text = text,
             ShortcutKeys = shortcutKeys,
         };
+    }
+
+    private sealed record VideoSourceItem(string Name, int Index)
+    {
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 
     private static Control CreateMainArea()
