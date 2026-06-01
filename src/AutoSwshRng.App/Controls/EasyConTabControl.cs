@@ -11,6 +11,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<string?> chooseSaveScriptPath = null!;
     private Func<DialogResult> confirmSaveModifiedScript = null!;
     private Action<string, string> showEasyConMessage = null!;
+    private Action<string> openExternalLink = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -32,6 +33,7 @@ public sealed class EasyConTabControl : UserControl
         chooseSaveScriptPath = ShowSaveScriptDialog;
         confirmSaveModifiedScript = ShowSaveModifiedDialog;
         showEasyConMessage = ShowEasyConMessageBox;
+        openExternalLink = OpenExternalLink;
 
         var root = new TableLayoutPanel
         {
@@ -53,6 +55,7 @@ public sealed class EasyConTabControl : UserControl
         WireCaptureActions();
         WireHelpActions();
         WireDeviceGuardActions();
+        WireSettingsActions();
         WirePageButtons();
         WireScriptActions();
         PopulateFirmwareBoards();
@@ -113,6 +116,11 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowDeviceNotConnectedWarning();
+    }
+
+    private void WireSettingsActions()
+    {
+        FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
     }
 
     private void WirePageButtons()
@@ -457,6 +465,11 @@ public sealed class EasyConTabControl : UserControl
     private static void ShowEasyConMessageBox(string title, string message)
     {
         MessageBox.Show(message, title);
+    }
+
+    private static void OpenExternalLink(string url)
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
     }
 
     private void FormatCurrentScript()

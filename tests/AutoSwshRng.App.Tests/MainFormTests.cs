@@ -1001,6 +1001,20 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConSourceButtonOpensOriginalProjectUrl()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var openedUrls = new List<string>();
+
+        SetField(easyCon, "openExternalLink", new Action<string>(openedUrls.Add));
+        InvokeClick(FindControl(form, "btnSource"));
+
+        Assert.That(openedUrls, Is.EqualTo(new[] { "https://github.com/EasyConNS/EasyCon" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabDoesNotAddAutoSwshRngLinkagePanelYet()
     {
         using var form = new MainForm();
