@@ -10,6 +10,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<string?> chooseOpenScriptPath = null!;
     private Func<string?> chooseSaveScriptPath = null!;
     private Func<DialogResult> confirmSaveModifiedScript = null!;
+    private Action<string, string> showEasyConMessage = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -30,6 +31,7 @@ public sealed class EasyConTabControl : UserControl
         chooseOpenScriptPath = ShowOpenScriptDialog;
         chooseSaveScriptPath = ShowSaveScriptDialog;
         confirmSaveModifiedScript = ShowSaveModifiedDialog;
+        showEasyConMessage = ShowEasyConMessageBox;
 
         var root = new TableLayoutPanel
         {
@@ -49,6 +51,7 @@ public sealed class EasyConTabControl : UserControl
         WireFileActions();
         WireEditActions();
         WireCaptureActions();
+        WireHelpActions();
         WirePageButtons();
         WireScriptActions();
         PopulateFirmwareBoards();
@@ -90,6 +93,15 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredMenuItem("captureTypeMenu").DropDownOpening += (_, _) => PopulateCaptureTypeMenu();
         FindRequiredMenuItem("setEnvVarMenuItem").Click += (_, _) => SetCaptureEnvironmentVariable();
+        FindRequiredMenuItem("captureHelpMenuItem").Click += (_, _) => ShowCaptureHelp();
+    }
+
+    private void WireHelpActions()
+    {
+        FindRequiredMenuItem("menuItemFirmwareMode").Click += (_, _) => ShowFirmwareModeHelp();
+        FindRequiredMenuItem("menuItemOnlineMode").Click += (_, _) => ShowOnlineModeHelp();
+        FindRequiredMenuItem("menuItemFlashMode").Click += (_, _) => ShowFlashModeHelp();
+        FindRequiredMenuItem("menuItemAbout").Click += (_, _) => ShowAboutMessage();
     }
 
     private void WirePageButtons()
@@ -196,6 +208,65 @@ public sealed class EasyConTabControl : UserControl
         Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0");
         var value = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
         ShowStatus($"环境变量设置成功：{value}");
+    }
+
+    private void ShowCaptureHelp()
+    {
+        showEasyConMessage("采集卡",
+            "默认采集卡类型选择any，会自动选择合适的采集卡" + Environment.NewLine +
+            "- 常见采集卡类型是DSHOW，MSMF，DC1394等" + Environment.NewLine +
+            "- obs30+版本已支持内置虚拟摄像头，无需安装额外插件" + Environment.NewLine +
+            "- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开" + Environment.NewLine +
+            "- 如果遇到搜图卡顿问题可尝试点击一次 <设置环境变量> 菜单" + Environment.NewLine +
+            "- 详细使用教程见群946057081文档");
+    }
+
+    private void ShowFirmwareModeHelp()
+    {
+        showEasyConMessage("固件模式",
+            "- 生成固件后手动刷入单片机的模式" + Environment.NewLine +
+            "- 独立挂机，即插即用" + Environment.NewLine +
+            "- 支持极限效率脚本" + Environment.NewLine +
+            "- 不需要任何额外配件" + Environment.NewLine + Environment.NewLine +
+            "详细使用教程见群946057081文档");
+    }
+
+    private void ShowOnlineModeHelp()
+    {
+        showEasyConMessage("联机模式",
+            "- 使用电脑控制单片机的模式" + Environment.NewLine +
+            "- 可视化运行，一键切换脚本（即将实装）" + Environment.NewLine +
+            "- 无需反复刷固件" + Environment.NewLine +
+            "- 支持超长脚本" + Environment.NewLine +
+            "- 可使用虚拟手柄，用键盘玩游戏" + Environment.NewLine + Environment.NewLine +
+            "详细使用教程见群946057081文档");
+    }
+
+    private void ShowFlashModeHelp()
+    {
+        showEasyConMessage("烧录模式",
+            "- 连线烧录后脱机运行的模式" + Environment.NewLine +
+            "- 独立挂机，即插即用" + Environment.NewLine +
+            "- 一键烧录，可控运行" + Environment.NewLine +
+            "- 无需反复刷固件" + Environment.NewLine +
+            "- 支持极限效率脚本" + Environment.NewLine + Environment.NewLine +
+            "详细使用教程见群946057081文档");
+    }
+
+    private void ShowAboutMessage()
+    {
+        var version = typeof(EasyConTabControl).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
+        var plusIndex = version.IndexOf('+', StringComparison.Ordinal);
+        if (plusIndex > 0)
+        {
+            version = version[..plusIndex];
+        }
+
+        showEasyConMessage("关于",
+            $"伊机控 v{version}  QQ群 946057081" + Environment.NewLine + Environment.NewLine +
+            "Copyright © 2020. 铃落(Nukieberry)" + Environment.NewLine +
+            "Copyright © 2021. elmagnifico" + Environment.NewLine +
+            "Copyright © 2025. 卡尔(ca1e)");
     }
 
     private void InitializeOriginalStartupState()
@@ -349,6 +420,11 @@ public sealed class EasyConTabControl : UserControl
     private DialogResult ShowSaveModifiedDialog()
     {
         return MessageBox.Show("文件已编辑，是否保存？", string.Empty, MessageBoxButtons.YesNoCancel);
+    }
+
+    private static void ShowEasyConMessageBox(string title, string message)
+    {
+        MessageBox.Show(message, title);
     }
 
     private void FormatCurrentScript()

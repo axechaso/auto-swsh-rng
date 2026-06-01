@@ -309,6 +309,34 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConHelpMenusShowOriginalModeAndAboutMessages()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindToolStripItem(menu, "menuItemFirmwareMode"));
+        InvokeClick(FindToolStripItem(menu, "menuItemOnlineMode"));
+        InvokeClick(FindToolStripItem(menu, "menuItemFlashMode"));
+        InvokeClick(FindToolStripItem(menu, "captureHelpMenuItem"));
+        InvokeClick(FindToolStripItem(menu, "menuItemAbout"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages.Select(item => item.Title), Is.EqualTo(new[] { "固件模式", "联机模式", "烧录模式", "采集卡", "关于" }));
+            Assert.That(messages[0].Message, Does.Contain("生成固件"));
+            Assert.That(messages[1].Message, Does.Contain("电脑控制"));
+            Assert.That(messages[2].Message, Does.Contain("连线烧录"));
+            Assert.That(messages[3].Message, Does.Contain("默认采集卡类型"));
+            Assert.That(messages[4].Message, Does.Contain("伊机控 v"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConStartupLogMatchesOriginalWelcomeMessages()
     {
         using var form = new MainForm();
