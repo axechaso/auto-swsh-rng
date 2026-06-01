@@ -1009,6 +1009,30 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConUtilityEntrypointsUseOriginalDialogActions()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var opened = new List<string>();
+
+        SetField(easyCon, "openScriptSyntaxHelp", new Action(() => opened.Add("script-syntax")));
+        SetField(easyCon, "openAlertConfigDialog", new Action(() => opened.Add("alert-config")));
+        SetField(easyCon, "openEspConfigDialog", new Action(() => opened.Add("esp-config")));
+        SetField(easyCon, "openDrawingBoard", new Action(() => opened.Add("drawing-board")));
+        SetField(easyCon, "openKeyMappingDialog", new Action(() => opened.Add("key-mapping")));
+
+        InvokeClick(FindToolStripItem(menu, "menuItemScriptSyntax"));
+        InvokeClick(FindControl(form, "btnAlertConfig"));
+        InvokeClick(FindControl(form, "btnESPConfig"));
+        InvokeClick(FindControl(form, "btnDrawingBoard"));
+        InvokeClick(FindControl(form, "btnKeyMapping"));
+
+        Assert.That(opened, Is.EqualTo(new[] { "script-syntax", "alert-config", "esp-config", "drawing-board", "key-mapping" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConDisconnectedDeviceButtonsShowOriginalWarning()
     {
         using var form = new MainForm();

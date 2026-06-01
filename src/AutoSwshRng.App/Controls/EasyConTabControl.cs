@@ -15,6 +15,11 @@ public sealed class EasyConTabControl : UserControl
     private Func<string[]> getSerialPortNames = null!;
     private Func<IReadOnlyList<(string Name, int Index)>> getVideoSources = null!;
     private Action openCaptureConsole = null!;
+    private Action openScriptSyntaxHelp = null!;
+    private Action openAlertConfigDialog = null!;
+    private Action openEspConfigDialog = null!;
+    private Action openDrawingBoard = null!;
+    private Action openKeyMappingDialog = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -40,6 +45,11 @@ public sealed class EasyConTabControl : UserControl
         getSerialPortNames = GetSerialPortNames;
         getVideoSources = GetVideoSources;
         openCaptureConsole = () => { };
+        openScriptSyntaxHelp = () => ShowPendingOriginalDialog("脚本语法");
+        openAlertConfigDialog = () => ShowPendingOriginalDialog("推送配置");
+        openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
+        openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
+        openKeyMappingDialog = () => ShowPendingOriginalDialog("按键映射");
 
         var root = new TableLayoutPanel
         {
@@ -112,6 +122,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredMenuItem("menuItemFirmwareMode").Click += (_, _) => ShowFirmwareModeHelp();
         FindRequiredMenuItem("menuItemOnlineMode").Click += (_, _) => ShowOnlineModeHelp();
         FindRequiredMenuItem("menuItemFlashMode").Click += (_, _) => ShowFlashModeHelp();
+        FindRequiredMenuItem("menuItemScriptSyntax").Click += (_, _) => openScriptSyntaxHelp();
         FindRequiredMenuItem("menuItemAbout").Click += (_, _) => ShowAboutMessage();
     }
 
@@ -129,6 +140,10 @@ public sealed class EasyConTabControl : UserControl
 
     private void WireSettingsActions()
     {
+        FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
+        FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
+        FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
+        FindRequiredControl<Button>("btnKeyMapping").Click += (_, _) => openKeyMappingDialog();
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
     }
 
@@ -302,6 +317,11 @@ public sealed class EasyConTabControl : UserControl
             "Copyright © 2020. 铃落(Nukieberry)" + Environment.NewLine +
             "Copyright © 2021. elmagnifico" + Environment.NewLine +
             "Copyright © 2025. 卡尔(ca1e)");
+    }
+
+    private void ShowPendingOriginalDialog(string title)
+    {
+        showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
     }
 
     private void ShowDeviceNotConnectedWarning()
