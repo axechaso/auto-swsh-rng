@@ -1033,6 +1033,31 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCheckUpdateButtonUsesOriginalUpdateChecker()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+        using var shown = new ManualResetEventSlim();
+
+        SetField(easyCon, "checkForUpdateMessageAsync", new Func<Task<string?>>(() => Task.FromResult<string?>("暂时没有发现新版本")));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) =>
+        {
+            messages.Add((title, message));
+            shown.Set();
+        }));
+
+        InvokeClick(FindControl(form, "btnCheckUpdate"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(shown.Wait(TimeSpan.FromSeconds(2)), Is.True);
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "暂时没有发现新版本") }));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConDisconnectedDeviceButtonsShowOriginalWarning()
     {
         using var form = new MainForm();

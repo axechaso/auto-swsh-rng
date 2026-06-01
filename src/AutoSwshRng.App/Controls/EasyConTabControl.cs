@@ -1,4 +1,6 @@
 using AutoSwshRng.Upstream;
+using System.Reflection;
+using System.Text.Json;
 
 namespace AutoSwshRng.App.Controls;
 
@@ -20,6 +22,7 @@ public sealed class EasyConTabControl : UserControl
     private Action openEspConfigDialog = null!;
     private Action openDrawingBoard = null!;
     private Action openKeyMappingDialog = null!;
+    private Func<Task<string?>> checkForUpdateMessageAsync = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -50,6 +53,7 @@ public sealed class EasyConTabControl : UserControl
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
         openKeyMappingDialog = () => ShowPendingOriginalDialog("按键映射");
+        checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
 
         var root = new TableLayoutPanel
         {
@@ -144,6 +148,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
         FindRequiredControl<Button>("btnKeyMapping").Click += (_, _) => openKeyMappingDialog();
+        FindRequiredControl<Button>("btnCheckUpdate").Click += (_, _) => _ = CheckForUpdatesAsync();
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
     }
 
@@ -322,6 +327,66 @@ public sealed class EasyConTabControl : UserControl
     private void ShowPendingOriginalDialog(string title)
     {
         showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var message = await checkForUpdateMessageAsync();
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                showEasyConMessage(string.Empty, message);
+            }
+        }
+        catch
+        {
+            ShowStatus("检查更新失败");
+        }
+    }
+
+    private static async Task<string?> GetOriginalUpdateMessageAsync()
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        var data = await client.GetStringAsync("https://gitee.com/api/v5/repos/EasyConNS/EasyCon/tags");
+        var tags = JsonSerializer.Deserialize<UpdateTag[]>(data, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        });
+
+        var newVersion = tags?
+            .Select(tag => TryParseTagVersion(tag.Name))
+            .OfType<Version>()
+            .OrderDescending()
+            .FirstOrDefault();
+        if (newVersion is null)
+        {
+            return null;
+        }
+
+        var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
+        return newVersion > currentVersion
+            ? $"发现新版本{newVersion}，快去群文件里看看吧"
+            : "暂时没有发现新版本";
+    }
+
+    private static Version? TryParseTagVersion(string? tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName))
+        {
+            return null;
+        }
+
+        var value = tagName.Trim();
+        if (value.StartsWith('v') || value.StartsWith('V'))
+        {
+            value = value[1..];
+        }
+
+        var versionText = new string(value.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray());
+        return Version.TryParse(versionText, out var version)
+            ? version
+            : null;
     }
 
     private void ShowDeviceNotConnectedWarning()
@@ -698,6 +763,8 @@ public sealed class EasyConTabControl : UserControl
             return Name;
         }
     }
+
+    private sealed record UpdateTag(string Name);
 
     private static Control CreateMainArea()
     {
