@@ -7,6 +7,7 @@ public sealed class EasyConTabControl : UserControl
     private string? currentScriptPath;
     private string selectedCaptureType = "ANY";
     private Func<string?> chooseOpenScriptPath = null!;
+    private Func<string?> chooseSaveScriptPath = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -25,6 +26,7 @@ public sealed class EasyConTabControl : UserControl
     {
         Dock = DockStyle.Fill;
         chooseOpenScriptPath = ShowOpenScriptDialog;
+        chooseSaveScriptPath = ShowSaveScriptDialog;
 
         var root = new TableLayoutPanel
         {
@@ -54,6 +56,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();
         FindRequiredMenuItem("menuItemOpen").Click += (_, _) => OpenCurrentScript();
         FindRequiredMenuItem("menuItemSave").Click += (_, _) => SaveCurrentScript();
+        FindRequiredMenuItem("menuItemSaveAs").Click += (_, _) => SaveCurrentScript(asNew: true);
         FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
         FindRequiredMenuItem("menuItemExit").Click += (_, _) => FindForm()?.Close();
     }
@@ -248,11 +251,18 @@ public sealed class EasyConTabControl : UserControl
         ShowStatus("文件已关闭");
     }
 
-    private void SaveCurrentScript()
+    private void SaveCurrentScript(bool asNew = false)
     {
-        if (currentScriptPath is null)
+        if (asNew || currentScriptPath is null)
         {
-            return;
+            var path = chooseSaveScriptPath();
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            currentScriptPath = path;
+            FindRequiredControl<Label>("scriptTitleLabel").Text = Path.GetFileName(path);
         }
 
         File.WriteAllText(currentScriptPath, FindRequiredControl<TextBox>("easyConScriptEditor").Text);
@@ -264,6 +274,19 @@ public sealed class EasyConTabControl : UserControl
         using var dialog = new OpenFileDialog
         {
             Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*",
+        };
+
+        return dialog.ShowDialog(FindForm()) == DialogResult.OK
+            ? dialog.FileName
+            : null;
+    }
+
+    private string? ShowSaveScriptDialog()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*",
+            FileName = "未命名脚本.txt",
         };
 
         return dialog.ShowDialog(FindForm()) == DialogResult.OK

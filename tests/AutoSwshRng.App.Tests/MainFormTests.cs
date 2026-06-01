@@ -608,6 +608,40 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConSaveAsMenuWritesSelectedScriptFileLikeOriginal()
+    {
+        var tempPath = Path.Combine(TestContext.CurrentContext.WorkDirectory, "easycon-save-as-script.ecs");
+        File.Delete(tempPath);
+
+        try
+        {
+            using var form = new MainForm();
+            var easyCon = FindControlByType(form, "EasyConTabControl");
+            var editor = FindControl(form, "easyConScriptEditor");
+            var title = FindControl(form, "scriptTitleLabel");
+            var menu = FindControl(form, "easyConOriginalMenu");
+            var status = FindControl(form, "easyConStatusStrip");
+
+            SetField(easyCon, "chooseSaveScriptPath", new Func<string?>(() => tempPath));
+            SetProperty(editor, "Text", "PRINT \"save as\"");
+            SetProperty(title, "Text", "old.ecs");
+            InvokeClick(FindToolStripItem(menu, "menuItemSaveAs"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadAllText(tempPath), Is.EqualTo("PRINT \"save as\""));
+                Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo(Path.GetFileName(tempPath)));
+                Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已保存"));
+            });
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCloseMenuClearsScriptAndShowsOriginalStatus()
     {
         using var form = new MainForm();
