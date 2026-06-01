@@ -52,6 +52,7 @@ public sealed class EasyConTabControl : UserControl
         WireEditActions();
         WireCaptureActions();
         WireHelpActions();
+        WireDeviceGuardActions();
         WirePageButtons();
         WireScriptActions();
         PopulateFirmwareBoards();
@@ -102,6 +103,12 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredMenuItem("menuItemOnlineMode").Click += (_, _) => ShowOnlineModeHelp();
         FindRequiredMenuItem("menuItemFlashMode").Click += (_, _) => ShowFlashModeHelp();
         FindRequiredMenuItem("menuItemAbout").Click += (_, _) => ShowAboutMessage();
+    }
+
+    private void WireDeviceGuardActions()
+    {
+        FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowDeviceNotConnectedWarning();
     }
 
     private void WirePageButtons()
@@ -267,6 +274,11 @@ public sealed class EasyConTabControl : UserControl
             "Copyright © 2020. 铃落(Nukieberry)" + Environment.NewLine +
             "Copyright © 2021. elmagnifico" + Environment.NewLine +
             "Copyright © 2025. 卡尔(ca1e)");
+    }
+
+    private void ShowDeviceNotConnectedWarning()
+    {
+        showEasyConMessage(string.Empty, "请先连接设备");
     }
 
     private void InitializeOriginalStartupState()
