@@ -5,9 +5,11 @@ namespace AutoSwshRng.App.Controls;
 public sealed class EasyConTabControl : UserControl
 {
     private string? currentScriptPath;
+    private bool currentScriptModified;
     private string selectedCaptureType = "ANY";
     private Func<string?> chooseOpenScriptPath = null!;
     private Func<string?> chooseSaveScriptPath = null!;
+    private Func<DialogResult> confirmSaveModifiedScript = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -27,6 +29,7 @@ public sealed class EasyConTabControl : UserControl
         Dock = DockStyle.Fill;
         chooseOpenScriptPath = ShowOpenScriptDialog;
         chooseSaveScriptPath = ShowSaveScriptDialog;
+        confirmSaveModifiedScript = ShowSaveModifiedDialog;
 
         var root = new TableLayoutPanel
         {
@@ -42,6 +45,7 @@ public sealed class EasyConTabControl : UserControl
         root.Controls.Add(CreateStatusStrip(), 0, 2);
 
         Controls.Add(root);
+        WireEditorState();
         WireFileActions();
         WireEditActions();
         WireCaptureActions();
@@ -58,7 +62,18 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredMenuItem("menuItemSave").Click += (_, _) => SaveCurrentScript();
         FindRequiredMenuItem("menuItemSaveAs").Click += (_, _) => SaveCurrentScript(asNew: true);
         FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
-        FindRequiredMenuItem("menuItemExit").Click += (_, _) => FindForm()?.Close();
+        FindRequiredMenuItem("menuItemExit").Click += (_, _) =>
+        {
+            if (CloseCurrentScript())
+            {
+                FindForm()?.Close();
+            }
+        };
+    }
+
+    private void WireEditorState()
+    {
+        FindRequiredControl<TextBox>("easyConScriptEditor").TextChanged += (_, _) => currentScriptModified = true;
     }
 
     private void WireEditActions()
@@ -224,8 +239,10 @@ public sealed class EasyConTabControl : UserControl
 
     private void NewCurrentScript()
     {
-        CloseCurrentScript();
-        ShowStatus("新建完毕");
+        if (CloseCurrentScript())
+        {
+            ShowStatus("新建完毕");
+        }
     }
 
     private void OpenCurrentScript()
@@ -236,29 +253,41 @@ public sealed class EasyConTabControl : UserControl
             return;
         }
 
-        CloseCurrentScript();
+        if (!CloseCurrentScript())
+        {
+            return;
+        }
+
         currentScriptPath = path;
         FindRequiredControl<TextBox>("easyConScriptEditor").Text = File.ReadAllText(path);
         FindRequiredControl<Label>("scriptTitleLabel").Text = Path.GetFileName(path);
+        currentScriptModified = false;
         ShowStatus("文件已打开");
     }
 
-    private void CloseCurrentScript()
+    private bool CloseCurrentScript()
     {
+        if (!ConfirmCloseModifiedScript())
+        {
+            return false;
+        }
+
         currentScriptPath = null;
         FindRequiredControl<TextBox>("easyConScriptEditor").Clear();
         FindRequiredControl<Label>("scriptTitleLabel").Text = "未命名脚本";
+        currentScriptModified = false;
         ShowStatus("文件已关闭");
+        return true;
     }
 
-    private void SaveCurrentScript(bool asNew = false)
+    private bool SaveCurrentScript(bool asNew = false)
     {
         if (asNew || currentScriptPath is null)
         {
             var path = chooseSaveScriptPath();
             if (string.IsNullOrWhiteSpace(path))
             {
-                return;
+                return false;
             }
 
             currentScriptPath = path;
@@ -266,7 +295,25 @@ public sealed class EasyConTabControl : UserControl
         }
 
         File.WriteAllText(currentScriptPath, FindRequiredControl<TextBox>("easyConScriptEditor").Text);
+        currentScriptModified = false;
         ShowStatus("文件已保存");
+        return true;
+    }
+
+    private bool ConfirmCloseModifiedScript()
+    {
+        if (!currentScriptModified)
+        {
+            return true;
+        }
+
+        var result = confirmSaveModifiedScript();
+        return result switch
+        {
+            DialogResult.Cancel => false,
+            DialogResult.Yes => SaveCurrentScript(),
+            _ => true,
+        };
     }
 
     private string? ShowOpenScriptDialog()
@@ -292,6 +339,11 @@ public sealed class EasyConTabControl : UserControl
         return dialog.ShowDialog(FindForm()) == DialogResult.OK
             ? dialog.FileName
             : null;
+    }
+
+    private DialogResult ShowSaveModifiedDialog()
+    {
+        return MessageBox.Show("文件已编辑，是否保存？", string.Empty, MessageBoxButtons.YesNoCancel);
     }
 
     private void FormatCurrentScript()

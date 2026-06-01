@@ -525,9 +525,11 @@ public class MainFormTests
         using var form = new MainForm();
         var editor = FindControl(form, "easyConScriptEditor");
         var title = FindControl(form, "scriptTitleLabel");
+        var easyCon = FindControlByType(form, "EasyConTabControl");
         var menu = FindControl(form, "easyConOriginalMenu");
         var status = FindControl(form, "easyConStatusStrip");
 
+        SetField(easyCon, "confirmSaveModifiedScript", new Func<System.Windows.Forms.DialogResult>(() => System.Windows.Forms.DialogResult.No));
         SetProperty(editor, "Text", "PRINT \"old\"");
         SetProperty(title, "Text", "旧脚本.ecs");
         InvokeClick(FindToolStripItem(menu, "menuItemNew"));
@@ -557,6 +559,7 @@ public class MainFormTests
             var status = FindControl(form, "easyConStatusStrip");
 
             SetField(easyCon, "chooseOpenScriptPath", new Func<string?>(() => tempPath));
+            SetField(easyCon, "confirmSaveModifiedScript", new Func<System.Windows.Forms.DialogResult>(() => System.Windows.Forms.DialogResult.No));
             SetProperty(editor, "Text", "PRINT \"old\"");
             SetProperty(title, "Text", "old.ecs");
             InvokeClick(FindToolStripItem(menu, "menuItemOpen"));
@@ -646,9 +649,11 @@ public class MainFormTests
     {
         using var form = new MainForm();
         var editor = FindControl(form, "easyConScriptEditor");
+        var easyCon = FindControlByType(form, "EasyConTabControl");
         var menu = FindControl(form, "easyConOriginalMenu");
         var status = FindControl(form, "easyConStatusStrip");
 
+        SetField(easyCon, "confirmSaveModifiedScript", new Func<System.Windows.Forms.DialogResult>(() => System.Windows.Forms.DialogResult.No));
         SetProperty(editor, "Text", "PRINT \"old\"");
         InvokeClick(FindToolStripItem(menu, "menuItemClose"));
 
@@ -657,6 +662,41 @@ public class MainFormTests
             Assert.That(GetProperty<string>(editor, "Text"), Is.Empty);
             Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已关闭"));
         });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConCloseMenuCancelKeepsModifiedScriptLikeOriginal()
+    {
+        var tempPath = Path.Combine(TestContext.CurrentContext.WorkDirectory, "easycon-close-cancel-script.ecs");
+        File.WriteAllText(tempPath, "PRINT \"old\"");
+
+        try
+        {
+            using var form = new MainForm();
+            var easyCon = FindControlByType(form, "EasyConTabControl");
+            var editor = FindControl(form, "easyConScriptEditor");
+            var title = FindControl(form, "scriptTitleLabel");
+            var menu = FindControl(form, "easyConOriginalMenu");
+            var status = FindControl(form, "easyConStatusStrip");
+
+            SetField(easyCon, "chooseOpenScriptPath", new Func<string?>(() => tempPath));
+            InvokeClick(FindToolStripItem(menu, "menuItemOpen"));
+            SetField(easyCon, "confirmSaveModifiedScript", new Func<System.Windows.Forms.DialogResult>(() => System.Windows.Forms.DialogResult.Cancel));
+            SetProperty(editor, "Text", "PRINT \"changed\"");
+            InvokeClick(FindToolStripItem(menu, "menuItemClose"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"changed\""));
+                Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo(Path.GetFileName(tempPath)));
+                Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已打开"));
+            });
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
     }
 
     [Test]
