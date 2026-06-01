@@ -934,6 +934,20 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConComPortDropDownRefreshesOriginalPortList()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var combo = FindControl(form, "comboComPort");
+
+        SetField(easyCon, "getSerialPortNames", new Func<string[]>(() => ["COM3", "COM9"]));
+        InvokeDropDown(combo);
+
+        Assert.That(GetComboBoxItemTexts(combo), Is.EqualTo(new[] { "COM3", "COM9" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalCaptureRecordAndControllerControls()
     {
         using var form = new MainForm();
@@ -1254,5 +1268,11 @@ public class MainFormTests
                 types: Type.EmptyTypes,
                 modifiers: null)!
             .Invoke(target, []);
+    }
+
+    private static void InvokeDropDown(object target)
+    {
+        target.GetType().GetMethod("OnDropDown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(target, [EventArgs.Empty]);
     }
 }

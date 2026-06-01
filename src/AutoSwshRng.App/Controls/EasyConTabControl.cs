@@ -12,6 +12,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<DialogResult> confirmSaveModifiedScript = null!;
     private Action<string, string> showEasyConMessage = null!;
     private Action<string> openExternalLink = null!;
+    private Func<string[]> getSerialPortNames = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -34,6 +35,7 @@ public sealed class EasyConTabControl : UserControl
         confirmSaveModifiedScript = ShowSaveModifiedDialog;
         showEasyConMessage = ShowEasyConMessageBox;
         openExternalLink = OpenExternalLink;
+        getSerialPortNames = GetSerialPortNames;
 
         var root = new TableLayoutPanel
         {
@@ -56,6 +58,7 @@ public sealed class EasyConTabControl : UserControl
         WireHelpActions();
         WireDeviceGuardActions();
         WireSettingsActions();
+        WireDeviceListActions();
         WirePageButtons();
         WireScriptActions();
         PopulateFirmwareBoards();
@@ -121,6 +124,11 @@ public sealed class EasyConTabControl : UserControl
     private void WireSettingsActions()
     {
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
+    }
+
+    private void WireDeviceListActions()
+    {
+        FindRequiredControl<ComboBox>("comboComPort").DropDown += (_, _) => RefreshSerialPorts();
     }
 
     private void WirePageButtons()
@@ -309,6 +317,13 @@ public sealed class EasyConTabControl : UserControl
         }
     }
 
+    private void RefreshSerialPorts()
+    {
+        var combo = FindRequiredControl<ComboBox>("comboComPort");
+        combo.Items.Clear();
+        combo.Items.AddRange(getSerialPortNames().Cast<object>().ToArray());
+    }
+
     private void InitializeOriginalStartupState()
     {
         var version = typeof(EasyConTabControl).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
@@ -470,6 +485,11 @@ public sealed class EasyConTabControl : UserControl
     private static void OpenExternalLink(string url)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+    }
+
+    private static string[] GetSerialPortNames()
+    {
+        return [.. EasyDevice.ECDevice.GetPortNames()];
     }
 
     private void FormatCurrentScript()
