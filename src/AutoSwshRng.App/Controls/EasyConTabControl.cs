@@ -107,6 +107,10 @@ public sealed class EasyConTabControl : UserControl
 
     private void WireDeviceGuardActions()
     {
+        FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => ShowManualConnectPortRequiredWarning();
+        FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ShowCaptureSourceRequiredWarning();
+        FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowDeviceNotConnectedWarning();
     }
@@ -279,6 +283,22 @@ public sealed class EasyConTabControl : UserControl
     private void ShowDeviceNotConnectedWarning()
     {
         showEasyConMessage(string.Empty, "请先连接设备");
+    }
+
+    private void ShowManualConnectPortRequiredWarning()
+    {
+        if (string.IsNullOrWhiteSpace(FindRequiredControl<ComboBox>("comboComPort").Text))
+        {
+            showEasyConMessage(string.Empty, "请先选择或输入串口");
+        }
+    }
+
+    private void ShowCaptureSourceRequiredWarning()
+    {
+        if (FindRequiredControl<ComboBox>("comboVideoSource").SelectedItem is null)
+        {
+            showEasyConMessage(string.Empty, "请先选择视频源");
+        }
     }
 
     private void InitializeOriginalStartupState()

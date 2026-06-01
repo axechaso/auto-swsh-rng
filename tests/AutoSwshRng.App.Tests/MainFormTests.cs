@@ -982,6 +982,25 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConGuardedDeviceActionsShowOriginalWarnings()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        InvokeClick(FindControl(form, "btnManualConnect"));
+        InvokeClick(FindControl(form, "btnCaptureToggle"));
+        InvokeClick(FindControl(form, "btnRemoteStart"));
+        InvokeClick(FindControl(form, "btnRemoteStop"));
+
+        Assert.That(
+            messages.Select(item => item.Message),
+            Is.EqualTo(new[] { "请先选择或输入串口", "请先选择视频源", "请先连接设备", "请先连接设备" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabDoesNotAddAutoSwshRngLinkagePanelYet()
     {
         using var form = new MainForm();
