@@ -53,6 +53,7 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();
         FindRequiredMenuItem("menuItemOpen").Click += (_, _) => OpenCurrentScript();
+        FindRequiredMenuItem("menuItemSave").Click += (_, _) => SaveCurrentScript();
         FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
         FindRequiredMenuItem("menuItemExit").Click += (_, _) => FindForm()?.Close();
     }
@@ -245,6 +246,17 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<TextBox>("easyConScriptEditor").Clear();
         FindRequiredControl<Label>("scriptTitleLabel").Text = "未命名脚本";
         ShowStatus("文件已关闭");
+    }
+
+    private void SaveCurrentScript()
+    {
+        if (currentScriptPath is null)
+        {
+            return;
+        }
+
+        File.WriteAllText(currentScriptPath, FindRequiredControl<TextBox>("easyConScriptEditor").Text);
+        ShowStatus("文件已保存");
     }
 
     private string? ShowOpenScriptDialog()
