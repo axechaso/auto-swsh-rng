@@ -542,6 +542,40 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConOpenMenuLoadsSelectedScriptFileLikeOriginal()
+    {
+        var tempPath = Path.Combine(TestContext.CurrentContext.WorkDirectory, "easycon-open-script.ecs");
+        File.WriteAllText(tempPath, "PRINT \"opened\"" + Environment.NewLine + "WAIT 1");
+
+        try
+        {
+            using var form = new MainForm();
+            var easyCon = FindControlByType(form, "EasyConTabControl");
+            var editor = FindControl(form, "easyConScriptEditor");
+            var title = FindControl(form, "scriptTitleLabel");
+            var menu = FindControl(form, "easyConOriginalMenu");
+            var status = FindControl(form, "easyConStatusStrip");
+
+            SetField(easyCon, "chooseOpenScriptPath", new Func<string?>(() => tempPath));
+            SetProperty(editor, "Text", "PRINT \"old\"");
+            SetProperty(title, "Text", "old.ecs");
+            InvokeClick(FindToolStripItem(menu, "menuItemOpen"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"opened\"" + Environment.NewLine + "WAIT 1"));
+                Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo(Path.GetFileName(tempPath)));
+                Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已打开"));
+            });
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCloseMenuClearsScriptAndShowsOriginalStatus()
     {
         using var form = new MainForm();
@@ -978,6 +1012,19 @@ public class MainFormTests
     private static void SetProperty(object target, string propertyName, object value)
     {
         target.GetType().GetProperty(propertyName)!.SetValue(target, value);
+    }
+
+    private static void SetField(object target, string fieldName, object value)
+    {
+        var field = target.GetType().GetField(
+            fieldName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (field is null)
+        {
+            throw new InvalidOperationException($"Field '{fieldName}' was not found.");
+        }
+
+        field.SetValue(target, value);
     }
 
     private static void InvokeClick(object target)

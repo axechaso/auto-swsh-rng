@@ -4,7 +4,9 @@ namespace AutoSwshRng.App.Controls;
 
 public sealed class EasyConTabControl : UserControl
 {
+    private string? currentScriptPath;
     private string selectedCaptureType = "ANY";
+    private Func<string?> chooseOpenScriptPath = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -22,6 +24,7 @@ public sealed class EasyConTabControl : UserControl
     public EasyConTabControl()
     {
         Dock = DockStyle.Fill;
+        chooseOpenScriptPath = ShowOpenScriptDialog;
 
         var root = new TableLayoutPanel
         {
@@ -49,6 +52,7 @@ public sealed class EasyConTabControl : UserControl
     private void WireFileActions()
     {
         FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();
+        FindRequiredMenuItem("menuItemOpen").Click += (_, _) => OpenCurrentScript();
         FindRequiredMenuItem("menuItemClose").Click += (_, _) => CloseCurrentScript();
         FindRequiredMenuItem("menuItemExit").Click += (_, _) => FindForm()?.Close();
     }
@@ -220,11 +224,39 @@ public sealed class EasyConTabControl : UserControl
         ShowStatus("新建完毕");
     }
 
+    private void OpenCurrentScript()
+    {
+        var path = chooseOpenScriptPath();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        CloseCurrentScript();
+        currentScriptPath = path;
+        FindRequiredControl<TextBox>("easyConScriptEditor").Text = File.ReadAllText(path);
+        FindRequiredControl<Label>("scriptTitleLabel").Text = Path.GetFileName(path);
+        ShowStatus("文件已打开");
+    }
+
     private void CloseCurrentScript()
     {
+        currentScriptPath = null;
         FindRequiredControl<TextBox>("easyConScriptEditor").Clear();
         FindRequiredControl<Label>("scriptTitleLabel").Text = "未命名脚本";
         ShowStatus("文件已关闭");
+    }
+
+    private string? ShowOpenScriptDialog()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*",
+        };
+
+        return dialog.ShowDialog(FindForm()) == DialogResult.OK
+            ? dialog.FileName
+            : null;
     }
 
     private void FormatCurrentScript()
