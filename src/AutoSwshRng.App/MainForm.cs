@@ -5,6 +5,8 @@ namespace AutoSwshRng.App;
 
 public sealed class MainForm : Form
 {
+    private readonly EasyConTabControl easyConTab = new();
+
     private readonly TabControl mainTabs = new()
     {
         Dock = DockStyle.Fill,
@@ -18,10 +20,11 @@ public sealed class MainForm : Form
         Size = new Size(1120, 720);
 
         mainTabs.TabPages.Add(CreateControlTab("owoow", new OwoowTabControl()));
-        mainTabs.TabPages.Add(CreateControlTab("伊机控", new EasyConTabControl()));
+        mainTabs.TabPages.Add(CreateControlTab("伊机控", easyConTab));
         mainTabs.TabPages.Add(CreateControlTab("自动化流程", new AutomationFlowTabControl()));
 
         Controls.Add(mainTabs);
+        FormClosing += MainFormClosing;
     }
 
     public IReadOnlyList<string> TabTitles => mainTabs.TabPages.Cast<TabPage>().Select(page => page.Text).ToArray();
@@ -34,6 +37,14 @@ public sealed class MainForm : Form
         };
         page.Controls.Add(control);
         return page;
+    }
+
+    private void MainFormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (!easyConTab.CloseForParentForm())
+        {
+            e.Cancel = true;
+        }
     }
 
 }

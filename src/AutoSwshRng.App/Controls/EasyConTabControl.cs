@@ -55,6 +55,11 @@ public sealed class EasyConTabControl : UserControl
         InitializeOriginalStartupState();
     }
 
+    public bool CloseForParentForm()
+    {
+        return CloseCurrentScript();
+    }
+
     private void WireFileActions()
     {
         FindRequiredMenuItem("menuItemNew").Click += (_, _) => NewCurrentScript();

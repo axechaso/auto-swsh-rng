@@ -714,6 +714,36 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConWindowCloseCancelKeepsParentFormOpenLikeOriginal()
+    {
+        var tempPath = Path.Combine(TestContext.CurrentContext.WorkDirectory, "easycon-window-close-cancel-script.ecs");
+        File.WriteAllText(tempPath, "PRINT \"old\"");
+
+        try
+        {
+            using var form = new MainForm();
+            form.Show();
+            var easyCon = FindControlByType(form, "EasyConTabControl");
+            var editor = FindControl(form, "easyConScriptEditor");
+            var menu = FindControl(form, "easyConOriginalMenu");
+
+            SetField(easyCon, "chooseOpenScriptPath", new Func<string?>(() => tempPath));
+            InvokeClick(FindToolStripItem(menu, "menuItemOpen"));
+            SetField(easyCon, "confirmSaveModifiedScript", new Func<System.Windows.Forms.DialogResult>(() => System.Windows.Forms.DialogResult.Cancel));
+            SetProperty(editor, "Text", "PRINT \"changed\"");
+
+            form.Close();
+
+            Assert.That(GetProperty<bool>(form, "IsDisposed"), Is.False);
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConToggleCommentMenuCommentsSelectedLine()
     {
         using var form = new MainForm();
