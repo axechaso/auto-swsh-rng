@@ -1010,6 +1010,21 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConDisconnectedFlashButtonsShowOriginalWarning()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        InvokeClick(FindControl(form, "btnFlash"));
+        InvokeClick(FindControl(form, "btnFlashClear"));
+
+        Assert.That(messages.Select(item => item.Message), Is.EqualTo(new[] { "请先连接设备", "请先连接设备" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConGuardedDeviceActionsShowOriginalWarnings()
     {
         using var form = new MainForm();
