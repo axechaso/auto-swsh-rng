@@ -10,6 +10,7 @@ namespace AutoSwshRng.Upstream;
 public static class EasyConScriptAdapter
 {
     private const string ScriptSyntaxHelpResourceName = "AutoSwshRng.Upstream.Resources.EasyCon.scriptdoc.txt";
+    private const string CaptureHelpResourceName = "AutoSwshRng.Upstream.Resources.EasyCon.capturedoc.txt";
 
     private static readonly EasyConBoardDefinition[] SupportedBoards =
     [
@@ -103,8 +104,18 @@ public static class EasyConScriptAdapter
 
     public static string GetScriptSyntaxHelp()
     {
-        using var stream = typeof(EasyConScriptAdapter).Assembly.GetManifestResourceStream(ScriptSyntaxHelpResourceName)
-            ?? throw new InvalidOperationException($"Embedded resource '{ScriptSyntaxHelpResourceName}' was not found.");
+        return ReadEmbeddedUtf8Resource(ScriptSyntaxHelpResourceName);
+    }
+
+    public static string GetCaptureHelp()
+    {
+        return ReadEmbeddedUtf8Resource(CaptureHelpResourceName);
+    }
+
+    private static string ReadEmbeddedUtf8Resource(string resourceName)
+    {
+        using var stream = typeof(EasyConScriptAdapter).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' was not found.");
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
         return reader.ReadToEnd();
     }

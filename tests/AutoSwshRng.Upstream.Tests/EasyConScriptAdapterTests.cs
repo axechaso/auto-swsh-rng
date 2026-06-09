@@ -78,4 +78,17 @@ public class EasyConScriptAdapterTests
             Assert.That(help, Does.Contain("语法：ALERT 输出内容"));
         });
     }
+
+    [Test]
+    public void CaptureHelpUsesOriginalEasyConDocument()
+    {
+        var help = EasyConScriptAdapter.GetCaptureHelp();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(help, Does.Contain("操作说明："));
+            Assert.That(help, Does.Contain("点击圈选范围"));
+            Assert.That(help, Does.Contain("【搜图语法】"));
+        });
+    }
 }
