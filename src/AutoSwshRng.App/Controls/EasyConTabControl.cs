@@ -24,6 +24,7 @@ public sealed class EasyConTabControl : UserControl
     private Action openDrawingBoard = null!;
     private Action openKeyMappingDialog = null!;
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
+    private Func<Task<(bool Success, string? Port)>> autoConnectDeviceAsync = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -55,6 +56,7 @@ public sealed class EasyConTabControl : UserControl
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
         openKeyMappingDialog = ShowKeyMappingDialog;
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
+        autoConnectDeviceAsync = () => Task.FromResult((false, (string?)null));
 
         var root = new TableLayoutPanel
         {
@@ -133,6 +135,7 @@ public sealed class EasyConTabControl : UserControl
 
     private void WireDeviceGuardActions()
     {
+        FindRequiredControl<Button>("btnAutoConnect").Click += (_, _) => _ = AutoConnectDeviceAsync();
         FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => ShowManualConnectPortRequiredWarning();
         FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ShowCaptureSourceRequiredWarning();
         FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => ShowDeviceNotConnectedWarning();
@@ -436,6 +439,27 @@ public sealed class EasyConTabControl : UserControl
     private void ShowDeviceNotConnectedWarning()
     {
         showEasyConMessage(string.Empty, "请先连接设备");
+    }
+
+    private async Task AutoConnectDeviceAsync()
+    {
+        ShowStatus("尝试连接...");
+        var (success, port) = await autoConnectDeviceAsync();
+
+        if (success && !string.IsNullOrWhiteSpace(port))
+        {
+            FindRequiredControl<ComboBox>("comboComPort").Text = port;
+            return;
+        }
+
+        var ports = getSerialPortNames();
+        showEasyConMessage(
+            string.Empty,
+            "找不到设备！请确认：" + Environment.NewLine +
+            "1.已经为单片机烧好固件" + Environment.NewLine +
+            "2.已经连好TTL线" + Environment.NewLine +
+            "3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁" + Environment.NewLine + Environment.NewLine +
+            $"可用端口：{string.Join("、", ports)}");
     }
 
     private void ShowManualConnectPortRequiredWarning()

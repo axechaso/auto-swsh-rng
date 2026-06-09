@@ -949,6 +949,56 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConAutoConnectFailureShowsOriginalDeviceHelp()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var messages = new List<(string Title, string Message)>();
+        using var shown = new ManualResetEventSlim();
+
+        SetField(easyCon, "getSerialPortNames", new Func<string[]>(() => ["COM3", "COM9"]));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) =>
+        {
+            messages.Add((title, message));
+            shown.Set();
+        }));
+
+        InvokeClick(FindControl(form, "btnAutoConnect"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(shown.Wait(TimeSpan.FromSeconds(2)), Is.True);
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("尝试连接..."));
+            Assert.That(messages.Single().Title, Is.EqualTo(string.Empty));
+            Assert.That(messages.Single().Message, Does.Contain("找不到设备！请确认："));
+            Assert.That(messages.Single().Message, Does.Contain("可用端口：COM3、COM9"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConAutoConnectSuccessSelectsOriginalConnectedPort()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var combo = FindControl(form, "comboComPort");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "autoConnectDeviceAsync", new Func<Task<(bool Success, string? Port)>>(() => Task.FromResult((true, (string?)"COM7"))));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnAutoConnect"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(combo, "Text"), Is.EqualTo("COM7"));
+            Assert.That(messages, Is.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalCaptureRecordAndControllerControls()
     {
         using var form = new MainForm();
