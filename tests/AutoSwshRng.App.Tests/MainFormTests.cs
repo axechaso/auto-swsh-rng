@@ -1010,6 +1010,21 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureConsoleButtonShowsOriginalPendingMessageByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnOpenCaptureConsole"));
+
+        Assert.That(messages, Is.EqualTo(new[] { ("搜图", "搜图控制台功能开发中") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConUtilityEntrypointsUseOriginalDialogActions()
     {
         using var form = new MainForm();

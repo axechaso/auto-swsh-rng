@@ -48,7 +48,7 @@ public sealed class EasyConTabControl : UserControl
         openExternalLink = OpenExternalLink;
         getSerialPortNames = GetSerialPortNames;
         getVideoSources = GetVideoSources;
-        openCaptureConsole = () => { };
+        openCaptureConsole = ShowCaptureConsolePendingMessage;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = () => ShowPendingOriginalDialog("推送配置");
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
@@ -327,6 +327,11 @@ public sealed class EasyConTabControl : UserControl
     private void ShowScriptSyntaxHelp()
     {
         showEasyConMessage("脚本语法", EasyConScriptAdapter.GetScriptSyntaxHelp());
+    }
+
+    private void ShowCaptureConsolePendingMessage()
+    {
+        showEasyConMessage("搜图", "搜图控制台功能开发中");
     }
 
     private void ShowKeyMappingDialog()
