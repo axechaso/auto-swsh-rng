@@ -1049,6 +1049,28 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConAlertConfigButtonShowsOriginalDefaultProviders()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnAlertConfig"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages.Single().Title, Is.EqualTo("推送配置"));
+            Assert.That(messages.Single().Message, Does.Contain("超时: 10 秒"));
+            Assert.That(messages.Single().Message, Does.Contain("PushPlus: 关闭"));
+            Assert.That(messages.Single().Message, Does.Contain("Bark: 关闭"));
+            Assert.That(messages.Single().Message, Does.Contain("自定义Webhook: 关闭"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConScriptSyntaxMenuShowsOriginalHelpDocument()
     {
         using var form = new MainForm();

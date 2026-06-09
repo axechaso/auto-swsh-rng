@@ -107,4 +107,20 @@ public class EasyConScriptAdapterTests
             Assert.That(mapping.Single(entry => entry.ControlName == "RSUp").KeyCode, Is.EqualTo(38));
         });
     }
+
+    [Test]
+    public void DefaultAlertConfigUsesOriginalEasyConProviders()
+    {
+        var config = EasyConScriptAdapter.GetDefaultAlertConfig();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(config.TimeoutSeconds, Is.EqualTo(10));
+            Assert.That(config.Providers.Select(provider => provider.Name), Is.EqualTo(new[] { "PushPlus", "Bark", "自定义Webhook" }));
+            Assert.That(config.Providers.Select(provider => provider.Enabled), Is.EqualTo(new[] { false, false, false }));
+            Assert.That(config.Providers.Single(provider => provider.Name == "PushPlus").Method, Is.EqualTo("GET"));
+            Assert.That(config.Providers.Single(provider => provider.Name == "Bark").Method, Is.EqualTo("GET"));
+            Assert.That(config.Providers.Single(provider => provider.Name == "自定义Webhook").Method, Is.EqualTo("POST"));
+        });
+    }
 }

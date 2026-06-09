@@ -50,7 +50,7 @@ public sealed class EasyConTabControl : UserControl
         getVideoSources = GetVideoSources;
         openCaptureConsole = ShowCaptureConsolePendingMessage;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
-        openAlertConfigDialog = () => ShowPendingOriginalDialog("推送配置");
+        openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
         openKeyMappingDialog = ShowKeyMappingDialog;
@@ -346,6 +346,24 @@ public sealed class EasyConTabControl : UserControl
         }
 
         showEasyConMessage("按键映射", message.ToString().TrimEnd());
+    }
+
+    private void ShowAlertConfigDialog()
+    {
+        var config = EasyConScriptAdapter.GetDefaultAlertConfig();
+        var message = new StringBuilder();
+        message.Append("超时: ");
+        message.Append(config.TimeoutSeconds);
+        message.AppendLine(" 秒");
+
+        foreach (var provider in config.Providers)
+        {
+            message.Append(provider.Name);
+            message.Append(": ");
+            message.AppendLine(provider.Enabled ? "开启" : "关闭");
+        }
+
+        showEasyConMessage("推送配置", message.ToString().TrimEnd());
     }
 
     private static string KeyCodeToDisplayName(int keyCode)

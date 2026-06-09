@@ -150,6 +150,58 @@ public static class EasyConScriptAdapter
             .ToArray();
     }
 
+    public static EasyConAlertConfigDefinition GetDefaultAlertConfig()
+    {
+        var config = new AlertConfig
+        {
+            timeout = 10,
+            alerts =
+            [
+                new AlertItem
+                {
+                    name = "PushPlus",
+                    enable = false,
+                    url = "https://www.pushplus.plus/send/{{token}}?content={{content}}&title={{title}}",
+                    token = string.Empty,
+                },
+                new AlertItem
+                {
+                    name = "Bark",
+                    enable = false,
+                    url = "https://api.day.app/{{token}}/{{title}}/{{content}}?group={{group}}&icon={{icon}}",
+                    token = string.Empty,
+                    variables = new Dictionary<string, string>
+                    {
+                        ["group"] = "伊机控",
+                        ["icon"] = "https://avatars.githubusercontent.com/u/107608104?s=48&v=4",
+                    },
+                },
+                new AlertItem
+                {
+                    name = "自定义Webhook",
+                    enable = false,
+                    method = "POST",
+                    url = "https://example.com/webhook",
+                    token = string.Empty,
+                    headers = new Dictionary<string, string>
+                    {
+                        ["Authorization"] = "Bearer {{token}}",
+                        ["Content-Type"] = "application/json",
+                    },
+                    body = "{\"msg\":\"{{content}}\"}",
+                    variables = new Dictionary<string, string>
+                    {
+                        ["chat_id"] = string.Empty,
+                    },
+                },
+            ],
+        };
+
+        return new EasyConAlertConfigDefinition(
+            config.timeout,
+            config.alerts.Select(alert => new EasyConAlertProviderDefinition(alert.name, alert.enable, alert.method)).ToArray());
+    }
+
     public static string GetScriptSyntaxHelp()
     {
         return ReadEmbeddedUtf8Resource(ScriptSyntaxHelpResourceName);
@@ -274,3 +326,12 @@ public sealed record EasyConCaptureTypeDefinition(
 public sealed record EasyConKeyMappingEntry(
     string ControlName,
     int KeyCode);
+
+public sealed record EasyConAlertConfigDefinition(
+    int TimeoutSeconds,
+    IReadOnlyList<EasyConAlertProviderDefinition> Providers);
+
+public sealed record EasyConAlertProviderDefinition(
+    string Name,
+    bool Enabled,
+    string Method);
