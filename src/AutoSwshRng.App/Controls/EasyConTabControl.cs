@@ -1,5 +1,6 @@
 using AutoSwshRng.Upstream;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 
 namespace AutoSwshRng.App.Controls;
@@ -52,7 +53,7 @@ public sealed class EasyConTabControl : UserControl
         openAlertConfigDialog = () => ShowPendingOriginalDialog("推送配置");
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
-        openKeyMappingDialog = () => ShowPendingOriginalDialog("按键映射");
+        openKeyMappingDialog = ShowKeyMappingDialog;
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
 
         var root = new TableLayoutPanel
@@ -326,6 +327,27 @@ public sealed class EasyConTabControl : UserControl
     private void ShowScriptSyntaxHelp()
     {
         showEasyConMessage("脚本语法", EasyConScriptAdapter.GetScriptSyntaxHelp());
+    }
+
+    private void ShowKeyMappingDialog()
+    {
+        var message = new StringBuilder();
+        foreach (var entry in EasyConScriptAdapter.GetDefaultKeyMapping())
+        {
+            message.Append(entry.ControlName);
+            message.Append(": ");
+            message.Append(KeyCodeToDisplayName(entry.KeyCode));
+            message.AppendLine();
+        }
+
+        showEasyConMessage("按键映射", message.ToString().TrimEnd());
+    }
+
+    private static string KeyCodeToDisplayName(int keyCode)
+    {
+        return keyCode == 0
+            ? string.Empty
+            : Enum.GetName(typeof(Keys), (Keys)keyCode) ?? keyCode.ToString();
     }
 
     private async Task CheckForUpdatesAsync()

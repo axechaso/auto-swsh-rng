@@ -91,4 +91,20 @@ public class EasyConScriptAdapterTests
             Assert.That(help, Does.Contain("【搜图语法】"));
         });
     }
+
+    [Test]
+    public void DefaultKeyMappingUsesOriginalEasyConConfig()
+    {
+        var mapping = EasyConScriptAdapter.GetDefaultKeyMapping();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(mapping, Has.Count.EqualTo(30));
+            Assert.That(mapping.Single(entry => entry.ControlName == "A").KeyCode, Is.EqualTo(76));
+            Assert.That(mapping.Single(entry => entry.ControlName == "B").KeyCode, Is.EqualTo(75));
+            Assert.That(mapping.Single(entry => entry.ControlName == "Plus").KeyCode, Is.EqualTo(107));
+            Assert.That(mapping.Single(entry => entry.ControlName == "LSUp").KeyCode, Is.EqualTo(87));
+            Assert.That(mapping.Single(entry => entry.ControlName == "RSUp").KeyCode, Is.EqualTo(38));
+        });
+    }
 }

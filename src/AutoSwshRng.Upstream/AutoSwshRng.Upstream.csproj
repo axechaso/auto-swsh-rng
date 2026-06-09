@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AutoSwshRng.Core\AutoSwshRng.Core.csproj" />
+    <ProjectReference Include="..\..\third_party\EasyCon\src\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\..\third_party\EasyCon\src\EasyCon.Device\EasyCon.Device.csproj" />
     <ProjectReference Include="..\..\third_party\EasyCon\src\EasyCon.Script\EasyCon.Script.csproj" />
     <ProjectReference Include="..\..\third_party\owoow\owoow.Core\owoow.Core.csproj" />

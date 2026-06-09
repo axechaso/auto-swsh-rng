@@ -1,5 +1,6 @@
 using EasyCon.Script;
 using EasyCon.Script.Syntax;
+using EasyCon.Core.Config;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Text;
@@ -58,6 +59,40 @@ public static class EasyConScriptAdapter
         new("XINE", 2400),
     ];
 
+    private static readonly string[] KeyMappingOrder =
+    [
+        "A",
+        "B",
+        "X",
+        "Y",
+        "L",
+        "R",
+        "ZL",
+        "ZR",
+        "Plus",
+        "Minus",
+        "Capture",
+        "Home",
+        "LClick",
+        "RClick",
+        "Up",
+        "Down",
+        "Left",
+        "Right",
+        "UpRight",
+        "DownRight",
+        "UpLeft",
+        "DownLeft",
+        "LSUp",
+        "LSDown",
+        "LSLeft",
+        "LSRight",
+        "RSUp",
+        "RSDown",
+        "RSLeft",
+        "RSRight",
+    ];
+
     public static EasyConScriptResult Evaluate(string scriptText)
     {
         var output = new CapturingOutputAdapter();
@@ -100,6 +135,19 @@ public static class EasyConScriptAdapter
     public static IReadOnlyList<EasyConCaptureTypeDefinition> GetCaptureTypes()
     {
         return CaptureTypes;
+    }
+
+    public static IReadOnlyList<EasyConKeyMappingEntry> GetDefaultKeyMapping()
+    {
+        var config = new KeyMappingConfig();
+        return KeyMappingOrder
+            .Select(name =>
+            {
+                var property = typeof(KeyMappingConfig).GetProperty(name)
+                    ?? throw new InvalidOperationException($"EasyCon key mapping property '{name}' was not found.");
+                return new EasyConKeyMappingEntry(name, (int)property.GetValue(config)!);
+            })
+            .ToArray();
     }
 
     public static string GetScriptSyntaxHelp()
@@ -222,3 +270,7 @@ public sealed record EasyConBoardDefinition(
 public sealed record EasyConCaptureTypeDefinition(
     string Name,
     int Value);
+
+public sealed record EasyConKeyMappingEntry(
+    string ControlName,
+    int KeyCode);

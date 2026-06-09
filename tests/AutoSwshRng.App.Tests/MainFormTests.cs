@@ -1080,6 +1080,28 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConKeyMappingButtonShowsOriginalDefaultMappings()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnKeyMapping"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages.Single().Title, Is.EqualTo("按键映射"));
+            Assert.That(messages.Single().Message, Does.Contain("A: L"));
+            Assert.That(messages.Single().Message, Does.Contain("B: K"));
+            Assert.That(messages.Single().Message, Does.Contain("LSUp: W"));
+            Assert.That(messages.Single().Message, Does.Contain("RSUp: Up"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConDisconnectedDeviceButtonsShowOriginalWarning()
     {
         using var form = new MainForm();
