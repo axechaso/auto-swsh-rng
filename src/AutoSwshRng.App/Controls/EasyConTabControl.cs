@@ -26,6 +26,8 @@ public sealed class EasyConTabControl : UserControl
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
     private Func<Task<(bool Success, string? Port)>> autoConnectDeviceAsync = null!;
     private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
+    private Func<bool> isDeviceConnected = null!;
+    private Func<bool> unpairDevice = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -59,6 +61,8 @@ public sealed class EasyConTabControl : UserControl
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
         autoConnectDeviceAsync = () => Task.FromResult((false, (string?)null));
         manualConnectDeviceAsync = _ => Task.FromResult(false);
+        isDeviceConnected = () => false;
+        unpairDevice = () => false;
 
         var root = new TableLayoutPanel
         {
@@ -154,6 +158,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
         FindRequiredControl<Button>("btnKeyMapping").Click += (_, _) => openKeyMappingDialog();
+        FindRequiredControl<Button>("btnUnpair").Click += (_, _) => UnpairDevice();
         FindRequiredControl<Button>("btnCheckUpdate").Click += (_, _) => _ = CheckForUpdatesAsync();
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
     }
@@ -441,6 +446,23 @@ public sealed class EasyConTabControl : UserControl
     private void ShowDeviceNotConnectedWarning()
     {
         showEasyConMessage(string.Empty, "请先连接设备");
+    }
+
+    private void UnpairDevice()
+    {
+        if (!isDeviceConnected())
+        {
+            return;
+        }
+
+        if (unpairDevice())
+        {
+            ShowStatus("取消配对成功");
+        }
+        else
+        {
+            ShowStatus("取消配对失败");
+        }
     }
 
     private async Task AutoConnectDeviceAsync()

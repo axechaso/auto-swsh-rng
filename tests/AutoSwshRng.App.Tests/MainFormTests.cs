@@ -1152,6 +1152,47 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConUnpairButtonShowsOriginalSuccessStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var unpairCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "unpairDevice", new Func<bool>(() =>
+        {
+            unpairCalls++;
+            return true;
+        }));
+
+        InvokeClick(FindControl(form, "btnUnpair"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(unpairCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("取消配对成功"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConUnpairButtonShowsOriginalFailureStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "unpairDevice", new Func<bool>(() => false));
+
+        InvokeClick(FindControl(form, "btnUnpair"));
+
+        Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("取消配对失败"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConScriptSyntaxMenuShowsOriginalHelpDocument()
     {
         using var form = new MainForm();
