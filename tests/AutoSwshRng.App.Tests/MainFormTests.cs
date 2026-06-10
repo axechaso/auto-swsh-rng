@@ -999,6 +999,37 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConManualConnectFailureShowsOriginalPortHelp()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var combo = FindControl(form, "comboComPort");
+        var status = FindControl(form, "easyConStatusStrip");
+        var messages = new List<(string Title, string Message)>();
+        var requestedPorts = new List<string>();
+
+        SetProperty(combo, "Text", "COM7");
+        SetField(easyCon, "manualConnectDeviceAsync", new Func<string, Task<bool>>(port =>
+        {
+            requestedPorts.Add(port);
+            return Task.FromResult(false);
+        }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnManualConnect"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(requestedPorts, Is.EqualTo(new[] { "COM7" }));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("尝试连接..."));
+            Assert.That(messages.Single().Title, Is.EqualTo("连接失败"));
+            Assert.That(messages.Single().Message, Does.Contain("连接失败！端口 COM7 不存在、无法使用或已被占用。"));
+            Assert.That(messages.Single().Message, Does.Contain("请在设备管理器确认 TTL 所在串口正确识别。关闭其他占用USB的程序，并重启软件再试。"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalCaptureRecordAndControllerControls()
     {
         using var form = new MainForm();

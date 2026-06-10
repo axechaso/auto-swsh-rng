@@ -25,6 +25,7 @@ public sealed class EasyConTabControl : UserControl
     private Action openKeyMappingDialog = null!;
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
     private Func<Task<(bool Success, string? Port)>> autoConnectDeviceAsync = null!;
+    private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -57,6 +58,7 @@ public sealed class EasyConTabControl : UserControl
         openKeyMappingDialog = ShowKeyMappingDialog;
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
         autoConnectDeviceAsync = () => Task.FromResult((false, (string?)null));
+        manualConnectDeviceAsync = _ => Task.FromResult(false);
 
         var root = new TableLayoutPanel
         {
@@ -136,7 +138,7 @@ public sealed class EasyConTabControl : UserControl
     private void WireDeviceGuardActions()
     {
         FindRequiredControl<Button>("btnAutoConnect").Click += (_, _) => _ = AutoConnectDeviceAsync();
-        FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => ShowManualConnectPortRequiredWarning();
+        FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => _ = ManualConnectDeviceAsync();
         FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ShowCaptureSourceRequiredWarning();
         FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => ShowDeviceNotConnectedWarning();
@@ -462,11 +464,23 @@ public sealed class EasyConTabControl : UserControl
             $"可用端口：{string.Join("、", ports)}");
     }
 
-    private void ShowManualConnectPortRequiredWarning()
+    private async Task ManualConnectDeviceAsync()
     {
-        if (string.IsNullOrWhiteSpace(FindRequiredControl<ComboBox>("comboComPort").Text))
+        var port = FindRequiredControl<ComboBox>("comboComPort").Text;
+        if (string.IsNullOrWhiteSpace(port))
         {
             showEasyConMessage(string.Empty, "请先选择或输入串口");
+            return;
+        }
+
+        ShowStatus("尝试连接...");
+        var success = await manualConnectDeviceAsync(port);
+        if (!success)
+        {
+            showEasyConMessage(
+                "连接失败",
+                $"连接失败！端口 {port} 不存在、无法使用或已被占用。" + Environment.NewLine +
+                "请在设备管理器确认 TTL 所在串口正确识别。关闭其他占用USB的程序，并重启软件再试。");
         }
     }
 
