@@ -868,6 +868,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConGenerateFirmwareRequiresOriginalBoardSelection()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var boardType = FindControl(form, "comboBoardType");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(boardType, "SelectedIndex", -1);
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnGenFirmware"));
+
+        Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "请先选择板型") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalSettingsPanelControls()
     {
         using var form = new MainForm();

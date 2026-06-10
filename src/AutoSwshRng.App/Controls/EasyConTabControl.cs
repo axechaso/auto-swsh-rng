@@ -88,6 +88,7 @@ public sealed class EasyConTabControl : UserControl
         WireDeviceListActions();
         WirePageButtons();
         WireScriptActions();
+        WireFirmwareActions();
         PopulateFirmwareBoards();
         InitializeOriginalStartupState();
     }
@@ -176,6 +177,11 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnPageLog").Click += (_, _) => ShowPage("logPanel", "btnPageLog", showScriptTitle: false);
         FindRequiredControl<Button>("btnPageBurn").Click += (_, _) => ShowPage("burnPanel", "btnPageBurn", showScriptTitle: false);
         FindRequiredControl<Button>("btnPageSettings").Click += (_, _) => ShowPage("settingsPanel", "btnPageSettings", showScriptTitle: false);
+    }
+
+    private void WireFirmwareActions()
+    {
+        FindRequiredControl<Button>("btnGenFirmware").Click += (_, _) => GenerateFirmware();
     }
 
     private void ShowPage(string pageName, string selectedButtonName, bool showScriptTitle)
@@ -570,6 +576,14 @@ public sealed class EasyConTabControl : UserControl
 
         log.AppendText("-- 运行结束 --" + Environment.NewLine);
         ShowStatus("运行结束");
+    }
+
+    private void GenerateFirmware()
+    {
+        if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is null)
+        {
+            showEasyConMessage(string.Empty, "请先选择板型");
+        }
     }
 
     private void NewCurrentScript()
