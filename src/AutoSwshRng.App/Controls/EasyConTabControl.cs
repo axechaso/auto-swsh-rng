@@ -582,6 +582,11 @@ public sealed class EasyConTabControl : UserControl
         if (flashDevice(assembly.Bytes))
         {
             ShowStatus("烧录成功");
+            if (FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked)
+            {
+                remoteStartDevice();
+                ShowStatus("烧录成功，已自动运行");
+            }
         }
         else
         {

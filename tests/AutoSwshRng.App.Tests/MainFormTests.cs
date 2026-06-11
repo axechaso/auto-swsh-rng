@@ -1480,6 +1480,39 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFlashAutoRunsAfterOriginalSuccessfulFlashWhenEnabled()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var autoRun = FindControl(form, "chkAutoRunAfterFlash");
+        var status = FindControl(form, "easyConStatusStrip");
+        var remoteStartCalls = 0;
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetProperty(autoRun, "Checked", true);
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+            new Upstream.EasyConFirmwareAssemblyResult(true, [0x01, 0x02], null)));
+        SetField(easyCon, "flashDevice", new Func<IReadOnlyList<byte>, bool>(_ => true));
+        SetField(easyCon, "remoteStartDevice", new Func<bool>(() =>
+        {
+            remoteStartCalls++;
+            return true;
+        }));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(remoteStartCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("烧录成功，已自动运行"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRemoteStartShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();
