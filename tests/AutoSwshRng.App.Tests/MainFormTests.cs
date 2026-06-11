@@ -1346,6 +1346,88 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRemoteStartShowsOriginalSuccessStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var startCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "remoteStartDevice", new Func<bool>(() =>
+        {
+            startCalls++;
+            return true;
+        }));
+
+        InvokeClick(FindControl(form, "btnRemoteStart"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(startCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("远程运行已开始"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRemoteStartShowsOriginalFailureStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "remoteStartDevice", new Func<bool>(() => false));
+
+        InvokeClick(FindControl(form, "btnRemoteStart"));
+
+        Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("远程运行失败"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRemoteStopShowsOriginalSuccessStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var stopCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "remoteStopDevice", new Func<bool>(() =>
+        {
+            stopCalls++;
+            return true;
+        }));
+
+        InvokeClick(FindControl(form, "btnRemoteStop"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(stopCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("远程停止成功"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRemoteStopShowsOriginalFailureStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "remoteStopDevice", new Func<bool>(() => false));
+
+        InvokeClick(FindControl(form, "btnRemoteStop"));
+
+        Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("远程停止失败"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConGuardedDeviceActionsShowOriginalWarnings()
     {
         using var form = new MainForm();

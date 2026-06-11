@@ -28,6 +28,8 @@ public sealed class EasyConTabControl : UserControl
     private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
     private Func<bool> isDeviceConnected = null!;
     private Func<bool> unpairDevice = null!;
+    private Func<bool> remoteStartDevice = null!;
+    private Func<bool> remoteStopDevice = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -63,6 +65,8 @@ public sealed class EasyConTabControl : UserControl
         manualConnectDeviceAsync = _ => Task.FromResult(false);
         isDeviceConnected = () => false;
         unpairDevice = () => false;
+        remoteStartDevice = () => false;
+        remoteStopDevice = () => false;
 
         var root = new TableLayoutPanel
         {
@@ -145,8 +149,8 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnAutoConnect").Click += (_, _) => _ = AutoConnectDeviceAsync();
         FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => _ = ManualConnectDeviceAsync();
         FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ShowCaptureSourceRequiredWarning();
-        FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => ShowDeviceNotConnectedWarning();
-        FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => RemoteStartDevice();
+        FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => RemoteStopDevice();
         FindRequiredControl<Button>("btnFlash").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
@@ -468,6 +472,42 @@ public sealed class EasyConTabControl : UserControl
         else
         {
             ShowStatus("取消配对失败");
+        }
+    }
+
+    private void RemoteStartDevice()
+    {
+        if (!isDeviceConnected())
+        {
+            ShowDeviceNotConnectedWarning();
+            return;
+        }
+
+        if (remoteStartDevice())
+        {
+            ShowStatus("远程运行已开始");
+        }
+        else
+        {
+            ShowStatus("远程运行失败");
+        }
+    }
+
+    private void RemoteStopDevice()
+    {
+        if (!isDeviceConnected())
+        {
+            ShowDeviceNotConnectedWarning();
+            return;
+        }
+
+        if (remoteStopDevice())
+        {
+            ShowStatus("远程停止成功");
+        }
+        else
+        {
+            ShowStatus("远程停止失败");
         }
     }
 
