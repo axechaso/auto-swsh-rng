@@ -1387,6 +1387,29 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFlashShowsOriginalCompileErrorWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(editor, "Text", "PRINT");
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages.Single().Title, Is.EqualTo("编译出错"));
+            Assert.That(messages.Single().Message, Is.Not.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRemoteStartShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();

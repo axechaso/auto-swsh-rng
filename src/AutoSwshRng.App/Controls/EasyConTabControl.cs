@@ -31,6 +31,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<bool> remoteStartDevice = null!;
     private Func<bool> remoteStopDevice = null!;
     private Func<bool> flashClearDevice = null!;
+    private Func<int> getDeviceFirmwareVersion = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -69,6 +70,7 @@ public sealed class EasyConTabControl : UserControl
         remoteStartDevice = () => false;
         remoteStopDevice = () => false;
         flashClearDevice = () => false;
+        getDeviceFirmwareVersion = () => 0;
 
         var root = new TableLayoutPanel
         {
@@ -153,7 +155,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ShowCaptureSourceRequiredWarning();
         FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => RemoteStartDevice();
         FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => RemoteStopDevice();
-        FindRequiredControl<Button>("btnFlash").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnFlash").Click += (_, _) => FlashDevice();
         FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => FlashClearDevice();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowDeviceNotConnectedWarning();
@@ -528,6 +530,34 @@ public sealed class EasyConTabControl : UserControl
         else
         {
             ShowStatus("清除烧录失败");
+        }
+    }
+
+    private void FlashDevice()
+    {
+        if (!isDeviceConnected())
+        {
+            ShowDeviceNotConnectedWarning();
+            return;
+        }
+
+        if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is null)
+        {
+            showEasyConMessage(string.Empty, "请先选择板型");
+            return;
+        }
+
+        if (getDeviceFirmwareVersion() != 0x45)
+        {
+            showEasyConMessage(string.Empty, "单片机固件版本不匹配，请先更新固件");
+            return;
+        }
+
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var result = EasyConScriptAdapter.Format(editor.Text);
+        if (result.HasErrors)
+        {
+            showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
         }
     }
 
