@@ -32,6 +32,8 @@ public sealed class EasyConTabControl : UserControl
     private Func<bool> remoteStopDevice = null!;
     private Func<bool> flashClearDevice = null!;
     private Func<int> getDeviceFirmwareVersion = null!;
+    private Func<string, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
+    private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -71,6 +73,8 @@ public sealed class EasyConTabControl : UserControl
         remoteStopDevice = () => false;
         flashClearDevice = () => false;
         getDeviceFirmwareVersion = () => 0;
+        assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
+        flashDevice = _ => false;
 
         var root = new TableLayoutPanel
         {
@@ -541,7 +545,8 @@ public sealed class EasyConTabControl : UserControl
             return;
         }
 
-        if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is null)
+        var board = FindRequiredControl<ComboBox>("comboBoardType").SelectedItem as EasyConBoardDefinition;
+        if (board is null)
         {
             showEasyConMessage(string.Empty, "请先选择板型");
             return;
@@ -561,10 +566,26 @@ public sealed class EasyConTabControl : UserControl
             return;
         }
 
-        var assembly = EasyConScriptAdapter.AssembleFirmwareScript(editor.Text);
+        var assembly = assembleFirmwareScript(editor.Text);
         if (!assembly.Success || assembly.Bytes.Count == 0)
         {
             showEasyConMessage(string.Empty, "编译结果为空，无法烧录");
+            return;
+        }
+
+        if (assembly.Bytes.Count > board.DataSize)
+        {
+            showEasyConMessage(string.Empty, $"脚本编译后 {assembly.Bytes.Count} 字节，超出 {board.DisplayName} 的 {board.DataSize} 字节限制");
+            return;
+        }
+
+        if (flashDevice(assembly.Bytes))
+        {
+            ShowStatus("烧录成功");
+        }
+        else
+        {
+            ShowStatus("烧录失败");
         }
     }
 

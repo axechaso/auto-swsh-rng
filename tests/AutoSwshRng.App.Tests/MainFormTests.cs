@@ -1429,6 +1429,57 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFlashShowsOriginalSuccessStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var status = FindControl(form, "easyConStatusStrip");
+        var flashed = new List<byte[]>();
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+            new Upstream.EasyConFirmwareAssemblyResult(true, [0x01, 0x02], null)));
+        SetField(easyCon, "flashDevice", new Func<IReadOnlyList<byte>, bool>(bytes =>
+        {
+            flashed.Add(bytes.ToArray());
+            return true;
+        }));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(flashed.Single(), Is.EqualTo(new byte[] { 0x01, 0x02 }));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("烧录成功"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConFlashShowsOriginalFailureStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+            new Upstream.EasyConFirmwareAssemblyResult(true, [0x01, 0x02], null)));
+        SetField(easyCon, "flashDevice", new Func<IReadOnlyList<byte>, bool>(_ => false));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("烧录失败"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRemoteStartShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();
