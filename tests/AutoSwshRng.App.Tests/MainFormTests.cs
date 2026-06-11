@@ -1410,6 +1410,25 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFlashShowsOriginalAssemblyFailureWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "编译结果为空，无法烧录") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRemoteStartShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();
