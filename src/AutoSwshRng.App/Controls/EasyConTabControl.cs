@@ -583,6 +583,14 @@ public sealed class EasyConTabControl : UserControl
         if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is null)
         {
             showEasyConMessage(string.Empty, "请先选择板型");
+            return;
+        }
+
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var result = EasyConScriptAdapter.Format(editor.Text);
+        if (result.HasErrors)
+        {
+            showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
         }
     }
 

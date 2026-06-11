@@ -885,6 +885,27 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConGenerateFirmwareShowsOriginalCompileError()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(editor, "Text", "PRINT");
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnGenFirmware"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages.Single().Title, Is.EqualTo("编译出错"));
+            Assert.That(messages.Single().Message, Is.Not.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalSettingsPanelControls()
     {
         using var form = new MainForm();
