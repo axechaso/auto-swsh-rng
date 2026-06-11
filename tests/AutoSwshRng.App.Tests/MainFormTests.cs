@@ -906,6 +906,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConGenerateFirmwareShowsOriginalAssemblyFailure()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnGenFirmware"));
+
+        Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "生成固件失败：此版本暂不支持编译") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalSettingsPanelControls()
     {
         using var form = new MainForm();

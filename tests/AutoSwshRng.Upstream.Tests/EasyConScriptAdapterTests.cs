@@ -29,6 +29,19 @@ public class EasyConScriptAdapterTests
     }
 
     [Test]
+    public void FirmwareAssemblyReportsOriginalUnsupportedCompilerMessage()
+    {
+        var result = EasyConScriptAdapter.AssembleFirmwareScript("PRINT \"hello\"");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Bytes, Is.Empty);
+            Assert.That(result.ErrorMessage, Is.EqualTo("此版本暂不支持编译"));
+        });
+    }
+
+    [Test]
     public void ToggleCommentCommentsUncommentedLinesLikeOriginalEasyCon()
     {
         var toggled = EasyConScriptAdapter.ToggleCommentLines("PRINT \"hello\"\n  WAIT 10");

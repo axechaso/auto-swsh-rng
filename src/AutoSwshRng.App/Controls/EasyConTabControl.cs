@@ -591,6 +591,13 @@ public sealed class EasyConTabControl : UserControl
         if (result.HasErrors)
         {
             showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
+            return;
+        }
+
+        var assembly = EasyConScriptAdapter.AssembleFirmwareScript(editor.Text);
+        if (!assembly.Success)
+        {
+            showEasyConMessage(string.Empty, $"生成固件失败：{assembly.ErrorMessage}");
         }
     }
 

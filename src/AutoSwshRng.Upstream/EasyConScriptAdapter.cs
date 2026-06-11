@@ -1,6 +1,8 @@
 using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyCon.Core.Config;
+using EasyCon.Core;
+using EasyCon.Script.Assembly;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Text;
@@ -125,6 +127,41 @@ public static class EasyConScriptAdapter
             HasErrors: false,
             FormattedCode: formatted,
             Diagnostics: []);
+    }
+
+    public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(string scriptText)
+    {
+        var scripter = new Scripter();
+        var diagnostics = scripter.Parse(scriptText, null!, []);
+        if (diagnostics.HasErrors())
+        {
+            return new EasyConFirmwareAssemblyResult(
+                Success: false,
+                Bytes: [],
+                ErrorMessage: string.Join(Environment.NewLine, diagnostics.Where(diagnostic => diagnostic.IsError).Select(diagnostic => diagnostic.Message)));
+        }
+
+        try
+        {
+            return new EasyConFirmwareAssemblyResult(
+                Success: true,
+                Bytes: scripter.Assemble(auto: true),
+                ErrorMessage: null);
+        }
+        catch (NotImplementedException)
+        {
+            return new EasyConFirmwareAssemblyResult(
+                Success: false,
+                Bytes: [],
+                ErrorMessage: "此版本暂不支持编译");
+        }
+        catch (AssembleException ex)
+        {
+            return new EasyConFirmwareAssemblyResult(
+                Success: false,
+                Bytes: [],
+                ErrorMessage: ex.Message);
+        }
     }
 
     public static IReadOnlyList<EasyConBoardDefinition> GetSupportedBoards()
@@ -307,6 +344,11 @@ public sealed record EasyConScriptFormatResult(
     bool HasErrors,
     string? FormattedCode,
     IReadOnlyList<string> Diagnostics);
+
+public sealed record EasyConFirmwareAssemblyResult(
+    bool Success,
+    IReadOnlyList<byte> Bytes,
+    string? ErrorMessage);
 
 public sealed record EasyConBoardDefinition(
     string DisplayName,
