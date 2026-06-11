@@ -1204,17 +1204,14 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConCaptureConsoleButtonShowsOriginalPendingMessageByDefault()
+    public void EasyConCaptureConsoleButtonShowsOriginalDisconnectedStatusByDefault()
     {
         using var form = new MainForm();
-        var easyCon = FindControlByType(form, "EasyConTabControl");
-        var messages = new List<(string Title, string Message)>();
-
-        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        var status = FindControl(form, "easyConStatusStrip");
 
         InvokeClick(FindControl(form, "btnOpenCaptureConsole"));
 
-        Assert.That(messages, Is.EqualTo(new[] { ("搜图", "搜图控制台功能开发中") }));
+        Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("请先连接视频源"));
     }
 
     [Test]

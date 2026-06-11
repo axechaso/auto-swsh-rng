@@ -63,7 +63,7 @@ public sealed class EasyConTabControl : UserControl
         getVideoSources = GetVideoSources;
         connectCaptureSource = _ => false;
         disconnectCaptureSource = () => { };
-        openCaptureConsole = ShowCaptureConsolePendingMessage;
+        openCaptureConsole = ShowCaptureConsoleDisconnectedStatus;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
@@ -362,9 +362,9 @@ public sealed class EasyConTabControl : UserControl
         showEasyConMessage("脚本语法", EasyConScriptAdapter.GetScriptSyntaxHelp());
     }
 
-    private void ShowCaptureConsolePendingMessage()
+    private void ShowCaptureConsoleDisconnectedStatus()
     {
-        showEasyConMessage("搜图", "搜图控制台功能开发中");
+        ShowStatus("请先连接视频源");
     }
 
     private void ShowKeyMappingDialog()
