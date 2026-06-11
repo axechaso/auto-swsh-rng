@@ -1410,6 +1410,41 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFlashRequiresOriginalBoardSelectionWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var boardType = FindControl(form, "comboBoardType");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(boardType, "SelectedIndex", -1);
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "请先选择板型") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConFlashShowsOriginalFirmwareVersionMismatchWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x44));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "单片机固件版本不匹配，请先更新固件") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConFlashShowsOriginalAssemblyFailureWhenConnected()
     {
         using var form = new MainForm();
@@ -1425,6 +1460,29 @@ public class MainFormTests
         InvokeClick(FindControl(form, "btnFlash"));
 
         Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "编译结果为空，无法烧录") }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConFlashShowsOriginalBoardDataSizeLimitWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var boardType = FindControl(form, "comboBoardType");
+        var messages = new List<(string Title, string Message)>();
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetProperty(boardType, "SelectedIndex", 4);
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+            new Upstream.EasyConFirmwareAssemblyResult(true, Enumerable.Repeat<byte>(0x01, 413).ToArray(), null)));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnFlash"));
+
+        Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "脚本编译后 413 字节，超出 Arduino UNO R3 的 412 字节限制") }));
     }
 
     [Test]
