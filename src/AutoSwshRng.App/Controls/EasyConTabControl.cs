@@ -10,6 +10,7 @@ public sealed class EasyConTabControl : UserControl
     private string? currentScriptPath;
     private bool currentScriptModified;
     private string selectedCaptureType = "ANY";
+    private bool captureSourceConnected;
     private Func<string?> chooseOpenScriptPath = null!;
     private Func<string?> chooseSaveScriptPath = null!;
     private Func<DialogResult> confirmSaveModifiedScript = null!;
@@ -17,6 +18,8 @@ public sealed class EasyConTabControl : UserControl
     private Action<string> openExternalLink = null!;
     private Func<string[]> getSerialPortNames = null!;
     private Func<IReadOnlyList<(string Name, int Index)>> getVideoSources = null!;
+    private Func<int, bool> connectCaptureSource = null!;
+    private Action disconnectCaptureSource = null!;
     private Action openCaptureConsole = null!;
     private Action openScriptSyntaxHelp = null!;
     private Action openAlertConfigDialog = null!;
@@ -58,6 +61,8 @@ public sealed class EasyConTabControl : UserControl
         openExternalLink = OpenExternalLink;
         getSerialPortNames = GetSerialPortNames;
         getVideoSources = GetVideoSources;
+        connectCaptureSource = _ => false;
+        disconnectCaptureSource = () => { };
         openCaptureConsole = ShowCaptureConsolePendingMessage;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
@@ -156,7 +161,7 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredControl<Button>("btnAutoConnect").Click += (_, _) => _ = AutoConnectDeviceAsync();
         FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => _ = ManualConnectDeviceAsync();
-        FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ShowCaptureSourceRequiredWarning();
+        FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ToggleCaptureSource();
         FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => RemoteStartDevice();
         FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => RemoteStopDevice();
         FindRequiredControl<Button>("btnFlash").Click += (_, _) => FlashDevice();
@@ -641,6 +646,39 @@ public sealed class EasyConTabControl : UserControl
         {
             showEasyConMessage(string.Empty, "请先选择视频源");
         }
+    }
+
+    private void ToggleCaptureSource()
+    {
+        if (captureSourceConnected)
+        {
+            disconnectCaptureSource();
+            UpdateCaptureStatus(connected: false);
+            return;
+        }
+
+        if (FindRequiredControl<ComboBox>("comboVideoSource").SelectedItem is not VideoSourceItem item)
+        {
+            showEasyConMessage(string.Empty, "请先选择视频源");
+            return;
+        }
+
+        if (connectCaptureSource(item.Index))
+        {
+            UpdateCaptureStatus(connected: true);
+        }
+    }
+
+    private void UpdateCaptureStatus(bool connected)
+    {
+        var label = FindRequiredControl<StatusStrip>("easyConStatusStrip")
+            .Items
+            .OfType<ToolStripStatusLabel>()
+            .Single(item => item.Name == "labelCaptureStatus");
+        label.Text = connected ? "采集卡已连接" : "采集卡未连接";
+        label.ForeColor = connected ? Color.FromArgb(31, 138, 101) : Color.FromArgb(140, 139, 132);
+        FindRequiredControl<Button>("btnCaptureToggle").Text = connected ? "断开视频源" : "连接视频源";
+        captureSourceConnected = connected;
     }
 
     private void RefreshSerialPorts()

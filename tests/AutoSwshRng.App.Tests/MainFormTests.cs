@@ -1132,6 +1132,64 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureToggleShowsOriginalConnectedStateWhenSourceConnects()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var combo = FindControl(form, "comboVideoSource");
+        var captureToggle = FindControl(form, "btnCaptureToggle");
+        var captureStatus = FindToolStripItem(FindControl(form, "easyConStatusStrip"), "labelCaptureStatus");
+        var connectedSources = new List<int>();
+
+        SetField(easyCon, "getVideoSources", new Func<IReadOnlyList<(string Name, int Index)>>(() => [("OBS Virtual Camera", 0), ("Capture Card", 1)]));
+        SetField(easyCon, "connectCaptureSource", new Func<int, bool>(index =>
+        {
+            connectedSources.Add(index);
+            return true;
+        }));
+        InvokeDropDown(combo);
+        SetProperty(combo, "SelectedIndex", 1);
+
+        InvokeClick(captureToggle);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(connectedSources, Is.EqualTo(new[] { 1 }));
+            Assert.That(GetProperty<string>(captureStatus, "Text"), Is.EqualTo("采集卡已连接"));
+            Assert.That(GetProperty<string>(captureToggle, "Text"), Is.EqualTo("断开视频源"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureToggleShowsOriginalDisconnectedStateWhenAlreadyConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var combo = FindControl(form, "comboVideoSource");
+        var captureToggle = FindControl(form, "btnCaptureToggle");
+        var captureStatus = FindToolStripItem(FindControl(form, "easyConStatusStrip"), "labelCaptureStatus");
+        var disconnectCalls = 0;
+
+        SetField(easyCon, "getVideoSources", new Func<IReadOnlyList<(string Name, int Index)>>(() => [("OBS Virtual Camera", 0)]));
+        SetField(easyCon, "connectCaptureSource", new Func<int, bool>(_ => true));
+        SetField(easyCon, "disconnectCaptureSource", new Action(() => disconnectCalls++));
+        InvokeDropDown(combo);
+        SetProperty(combo, "SelectedIndex", 0);
+        InvokeClick(captureToggle);
+
+        InvokeClick(captureToggle);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(disconnectCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(captureStatus, "Text"), Is.EqualTo("采集卡未连接"));
+            Assert.That(GetProperty<string>(captureToggle, "Text"), Is.EqualTo("连接视频源"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCaptureConsoleButtonUsesOriginalOpenAction()
     {
         using var form = new MainForm();
@@ -1851,10 +1909,13 @@ public class MainFormTests
                 continue;
             }
 
-            var match = FindToolStripItemOrDefault((IEnumerable)GetProperty<object>(item, "DropDownItems"), name);
-            if (match is not null)
+            if (item.GetType().GetProperty("DropDownItems") is not null)
             {
-                return match;
+                var match = FindToolStripItemOrDefault((IEnumerable)GetProperty<object>(item, "DropDownItems"), name);
+                if (match is not null)
+                {
+                    return match;
+                }
             }
         }
 
