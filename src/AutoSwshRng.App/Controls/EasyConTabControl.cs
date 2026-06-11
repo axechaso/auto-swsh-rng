@@ -30,6 +30,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<bool> unpairDevice = null!;
     private Func<bool> remoteStartDevice = null!;
     private Func<bool> remoteStopDevice = null!;
+    private Func<bool> flashClearDevice = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -67,6 +68,7 @@ public sealed class EasyConTabControl : UserControl
         unpairDevice = () => false;
         remoteStartDevice = () => false;
         remoteStopDevice = () => false;
+        flashClearDevice = () => false;
 
         var root = new TableLayoutPanel
         {
@@ -152,7 +154,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => RemoteStartDevice();
         FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => RemoteStopDevice();
         FindRequiredControl<Button>("btnFlash").Click += (_, _) => ShowDeviceNotConnectedWarning();
-        FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => FlashClearDevice();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
         FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowDeviceNotConnectedWarning();
     }
@@ -508,6 +510,24 @@ public sealed class EasyConTabControl : UserControl
         else
         {
             ShowStatus("远程停止失败");
+        }
+    }
+
+    private void FlashClearDevice()
+    {
+        if (!isDeviceConnected())
+        {
+            ShowDeviceNotConnectedWarning();
+            return;
+        }
+
+        if (flashClearDevice())
+        {
+            ShowStatus("清除烧录成功");
+        }
+        else
+        {
+            ShowStatus("清除烧录失败");
         }
     }
 

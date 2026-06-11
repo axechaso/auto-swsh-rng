@@ -1346,6 +1346,47 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFlashClearShowsOriginalSuccessStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var flashCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "flashClearDevice", new Func<bool>(() =>
+        {
+            flashCalls++;
+            return true;
+        }));
+
+        InvokeClick(FindControl(form, "btnFlashClear"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(flashCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("清除烧录成功"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConFlashClearShowsOriginalFailureStatusWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "flashClearDevice", new Func<bool>(() => false));
+
+        InvokeClick(FindControl(form, "btnFlashClear"));
+
+        Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("清除烧录失败"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRemoteStartShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();
