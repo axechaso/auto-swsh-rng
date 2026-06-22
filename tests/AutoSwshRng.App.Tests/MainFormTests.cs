@@ -291,6 +291,61 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFindNextButtonSelectsNextMatch()
+    {
+        using var form = new MainForm();
+        form.Show();
+        SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
+
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var editor = FindControl(form, "easyConScriptEditor");
+
+        SetProperty(editor, "Text", "WAIT 100" + Environment.NewLine + "PRESS A" + Environment.NewLine + "PRESS B");
+        SetProperty(editor, "SelectionStart", 0);
+        SetProperty(editor, "SelectionLength", 0);
+        InvokeClick(FindToolStripItem(menu, "menuItemFindReplace"));
+        SetProperty(FindControl(form, "findTextBox"), "Text", "PRESS");
+
+        InvokeClick(FindControl(form, "btnFindNext"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<int>(editor, "SelectionStart"), Is.EqualTo(("WAIT 100" + Environment.NewLine).Length));
+            Assert.That(GetProperty<int>(editor, "SelectionLength"), Is.EqualTo("PRESS".Length));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConReplaceButtonReplacesSelectedMatch()
+    {
+        using var form = new MainForm();
+        form.Show();
+        SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
+
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var editor = FindControl(form, "easyConScriptEditor");
+
+        SetProperty(editor, "Text", "PRESS A" + Environment.NewLine + "PRESS B");
+        SetProperty(editor, "SelectionStart", 0);
+        SetProperty(editor, "SelectionLength", 0);
+        InvokeClick(FindToolStripItem(menu, "menuItemFindReplace"));
+        SetProperty(FindControl(form, "findTextBox"), "Text", "PRESS");
+        SetProperty(FindControl(form, "replaceTextBox"), "Text", "CLICK");
+        InvokeClick(FindControl(form, "btnFindNext"));
+
+        InvokeClick(FindControl(form, "btnReplaceNext"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("CLICK A" + Environment.NewLine + "PRESS B"));
+            Assert.That(GetProperty<int>(editor, "SelectionStart"), Is.EqualTo("CLICK".Length));
+            Assert.That(GetProperty<int>(editor, "SelectionLength"), Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCaptureTypeMenuPopulatesOriginalOpenCvApis()
     {
         using var form = new MainForm();

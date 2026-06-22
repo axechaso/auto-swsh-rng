@@ -151,7 +151,9 @@ public sealed class EasyConTabControl : UserControl
     private void WireEditActions()
     {
         FindRequiredMenuItem("menuItemFindReplace").Click += (_, _) => openFindReplacePanel();
-        FindRequiredMenuItem("menuItemFindNext").Click += (_, _) => { };
+        FindRequiredMenuItem("menuItemFindNext").Click += (_, _) => FindNextMatch();
+        FindRequiredControl<Button>("btnFindNext").Click += (_, _) => FindNextMatch();
+        FindRequiredControl<Button>("btnReplaceNext").Click += (_, _) => ReplaceCurrentMatch();
         FindRequiredMenuItem("menuItemToggleComment").Click += (_, _) => ToggleCurrentComment();
     }
 
@@ -386,6 +388,51 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Panel>("findReplacePanel").Visible = true;
         findBox.Focus();
         ShowStatus("查找替换");
+    }
+
+    private void FindNextMatch()
+    {
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var findText = FindRequiredControl<TextBox>("findTextBox").Text;
+        if (string.IsNullOrEmpty(findText))
+        {
+            return;
+        }
+
+        var startIndex = editor.SelectionStart + editor.SelectionLength;
+        var index = editor.Text.IndexOf(findText, startIndex, StringComparison.OrdinalIgnoreCase);
+        if (index < 0 && startIndex > 0)
+        {
+            index = editor.Text.IndexOf(findText, 0, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (index >= 0)
+        {
+            editor.Select(index, findText.Length);
+            editor.Focus();
+        }
+    }
+
+    private void ReplaceCurrentMatch()
+    {
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var findText = FindRequiredControl<TextBox>("findTextBox").Text;
+        if (string.IsNullOrEmpty(findText))
+        {
+            return;
+        }
+
+        if (!string.Equals(editor.SelectedText, findText, StringComparison.OrdinalIgnoreCase))
+        {
+            FindNextMatch();
+            return;
+        }
+
+        var replaceText = FindRequiredControl<TextBox>("replaceTextBox").Text;
+        var selectionStart = editor.SelectionStart;
+        editor.SelectedText = replaceText;
+        editor.Select(selectionStart + replaceText.Length, 0);
+        editor.Focus();
     }
 
     private void ShowScriptSyntaxHelp()
