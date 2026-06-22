@@ -374,6 +374,17 @@ public sealed class EasyConTabControl : UserControl
 
     private void ShowFindReplacePanel()
     {
+        ShowPage("editorHost", "btnPageEditor", showScriptTitle: true);
+
+        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
+        var findBox = FindRequiredControl<TextBox>("findTextBox");
+        if (editor.SelectionLength > 0)
+        {
+            findBox.Text = editor.SelectedText;
+        }
+
+        FindRequiredControl<Panel>("findReplacePanel").Visible = true;
+        findBox.Focus();
         ShowStatus("查找替换");
     }
 
@@ -1246,6 +1257,7 @@ public sealed class EasyConTabControl : UserControl
             Font = new Font("Consolas", 9F),
             Visible = false,
         };
+        editorHost.Controls.Add(CreateFindReplacePanel());
         var editor = new TextBox
         {
             Name = "easyConScriptEditor",
@@ -1266,6 +1278,57 @@ public sealed class EasyConTabControl : UserControl
         };
         editorHost.Controls.Add(editor);
         return editorHost;
+    }
+
+    private static Control CreateFindReplacePanel()
+    {
+        var panel = new TableLayoutPanel
+        {
+            Name = "findReplacePanel",
+            Dock = DockStyle.Top,
+            Height = 34,
+            ColumnCount = 6,
+            RowCount = 1,
+            BackColor = Color.FromArgb(230, 229, 224),
+            Padding = new Padding(6, 4, 6, 4),
+            Visible = false,
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
+        panel.Controls.Add(CreateFindPanelLabel("查找:"), 0, 0);
+        panel.Controls.Add(CreateFindPanelTextBox("findTextBox"), 1, 0);
+        panel.Controls.Add(CreateFindPanelLabel("替换:"), 2, 0);
+        panel.Controls.Add(CreateFindPanelTextBox("replaceTextBox"), 3, 0);
+        panel.Controls.Add(CreateOriginalButton("btnFindNext", "下一个", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 0, 0, 62, 23), 4, 0);
+        panel.Controls.Add(CreateOriginalButton("btnReplaceNext", "替换", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 0, 0, 62, 23), 5, 0);
+        return panel;
+    }
+
+    private static Label CreateFindPanelLabel(string text)
+    {
+        return new Label
+        {
+            Text = text,
+            Dock = DockStyle.Fill,
+            Font = new Font("微软雅黑", 9F),
+            ForeColor = Color.FromArgb(38, 37, 30),
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+    }
+
+    private static TextBox CreateFindPanelTextBox(string name)
+    {
+        return new TextBox
+        {
+            Name = name,
+            Dock = DockStyle.Fill,
+            Font = new Font("微软雅黑", 9F),
+            Margin = new Padding(0, 0, 6, 0),
+        };
     }
 
     private static Control CreateLogPanel()

@@ -264,6 +264,33 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFindReplacePanelBecomesVisibleWithSelectedText()
+    {
+        using var form = new MainForm();
+        form.Show();
+        SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
+
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var editor = FindControl(form, "easyConScriptEditor");
+
+        SetProperty(editor, "Text", "WAIT 100" + Environment.NewLine + "PRESS A");
+        SetProperty(editor, "SelectionStart", 5);
+        SetProperty(editor, "SelectionLength", 3);
+
+        Assert.That(GetProperty<bool>(FindControl(form, "findReplacePanel"), "Visible"), Is.False);
+
+        InvokeClick(FindToolStripItem(menu, "menuItemFindReplace"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindControl(form, "findReplacePanel"), "Visible"), Is.True);
+            Assert.That(GetProperty<string>(FindControl(form, "findTextBox"), "Text"), Is.EqualTo("100"));
+            Assert.That(GetProperty<bool>(FindControl(form, "editorHost"), "Visible"), Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCaptureTypeMenuPopulatesOriginalOpenCvApis()
     {
         using var form = new MainForm();
