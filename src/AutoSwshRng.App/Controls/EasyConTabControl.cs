@@ -18,6 +18,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<DialogResult> confirmSaveModifiedScript = null!;
     private Action<string, string> showEasyConMessage = null!;
     private Action<string> openExternalLink = null!;
+    private Action openFindReplacePanel = null!;
     private Func<string[]> getSerialPortNames = null!;
     private Func<IReadOnlyList<(string Name, int Index)>> getVideoSources = null!;
     private Func<int, bool> connectCaptureSource = null!;
@@ -65,6 +66,7 @@ public sealed class EasyConTabControl : UserControl
         confirmSaveModifiedScript = ShowSaveModifiedDialog;
         showEasyConMessage = ShowEasyConMessageBox;
         openExternalLink = OpenExternalLink;
+        openFindReplacePanel = ShowFindReplacePanel;
         getSerialPortNames = GetSerialPortNames;
         getVideoSources = GetVideoSources;
         connectCaptureSource = _ => false;
@@ -148,6 +150,8 @@ public sealed class EasyConTabControl : UserControl
 
     private void WireEditActions()
     {
+        FindRequiredMenuItem("menuItemFindReplace").Click += (_, _) => openFindReplacePanel();
+        FindRequiredMenuItem("menuItemFindNext").Click += (_, _) => { };
         FindRequiredMenuItem("menuItemToggleComment").Click += (_, _) => ToggleCurrentComment();
     }
 
@@ -366,6 +370,11 @@ public sealed class EasyConTabControl : UserControl
     private void ShowPendingOriginalDialog(string title)
     {
         showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
+    }
+
+    private void ShowFindReplacePanel()
+    {
+        ShowStatus("查找替换");
     }
 
     private void ShowScriptSyntaxHelp()

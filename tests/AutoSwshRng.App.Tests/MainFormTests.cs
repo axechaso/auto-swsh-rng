@@ -248,6 +248,22 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFindReplaceMenuOpensOriginalSearchPanel()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var opened = 0;
+
+        SetField(easyCon, "openFindReplacePanel", new Action(() => opened++));
+
+        InvokeClick(FindToolStripItem(menu, "menuItemFindReplace"));
+
+        Assert.That(opened, Is.EqualTo(1));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConCaptureTypeMenuPopulatesOriginalOpenCvApis()
     {
         using var form = new MainForm();
