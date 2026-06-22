@@ -26,6 +26,7 @@ public sealed class EasyConTabControl : UserControl
     private Action openEspConfigDialog = null!;
     private Action openDrawingBoard = null!;
     private Action openKeyMappingDialog = null!;
+    private Action openVirtualController = null!;
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
     private Func<Task<(bool Success, string? Port)>> autoConnectDeviceAsync = null!;
     private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
@@ -69,6 +70,7 @@ public sealed class EasyConTabControl : UserControl
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
         openKeyMappingDialog = ShowKeyMappingDialog;
+        openVirtualController = () => ShowPendingOriginalDialog("虚拟手柄");
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
         autoConnectDeviceAsync = () => Task.FromResult((false, (string?)null));
         manualConnectDeviceAsync = _ => Task.FromResult(false);
@@ -167,7 +169,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnFlash").Click += (_, _) => FlashDevice();
         FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => FlashClearDevice();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
-        FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowVirtualController();
     }
 
     private void WireSettingsActions()
@@ -469,6 +471,17 @@ public sealed class EasyConTabControl : UserControl
     private void ShowDeviceNotConnectedWarning()
     {
         showEasyConMessage(string.Empty, "请先连接设备");
+    }
+
+    private void ShowVirtualController()
+    {
+        if (!isDeviceConnected())
+        {
+            ShowDeviceNotConnectedWarning();
+            return;
+        }
+
+        openVirtualController();
     }
 
     private void UnpairDevice()

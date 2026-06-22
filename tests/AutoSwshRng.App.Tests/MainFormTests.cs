@@ -1727,6 +1727,28 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConShowControllerOpensOriginalControllerWhenConnected()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+        var openCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "openVirtualController", new Action(() => openCalls++));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnShowController"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(openCalls, Is.EqualTo(1));
+            Assert.That(messages, Is.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConSourceButtonOpensOriginalProjectUrl()
     {
         using var form = new MainForm();
