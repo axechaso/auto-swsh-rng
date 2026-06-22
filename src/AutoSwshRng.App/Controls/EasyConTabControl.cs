@@ -11,6 +11,8 @@ public sealed class EasyConTabControl : UserControl
     private bool currentScriptModified;
     private string selectedCaptureType = "ANY";
     private bool captureSourceConnected;
+    private bool virtualControllerBound;
+    private EasyConRecordState recordState = EasyConRecordState.Stopped;
     private Func<string?> chooseOpenScriptPath = null!;
     private Func<string?> chooseSaveScriptPath = null!;
     private Func<DialogResult> confirmSaveModifiedScript = null!;
@@ -38,6 +40,9 @@ public sealed class EasyConTabControl : UserControl
     private Func<int> getDeviceFirmwareVersion = null!;
     private Func<string, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
     private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
+    private Action startRecordDevice = null!;
+    private Action pauseRecordDevice = null!;
+    private Action stopRecordDevice = null!;
 
     private static readonly string[] MenuItems =
     [
@@ -82,6 +87,9 @@ public sealed class EasyConTabControl : UserControl
         getDeviceFirmwareVersion = () => 0;
         assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
         flashDevice = _ => false;
+        startRecordDevice = () => { };
+        pauseRecordDevice = () => { };
+        stopRecordDevice = () => { };
 
         var root = new TableLayoutPanel
         {
@@ -168,7 +176,8 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => RemoteStopDevice();
         FindRequiredControl<Button>("btnFlash").Click += (_, _) => FlashDevice();
         FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => FlashClearDevice();
-        FindRequiredControl<Button>("btnRecord").Click += (_, _) => ShowDeviceNotConnectedWarning();
+        FindRequiredControl<Button>("btnRecord").Click += (_, _) => ToggleScriptRecording();
+        FindRequiredControl<Button>("btnRecordPause").Click += (_, _) => ToggleScriptRecordingPause();
         FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowVirtualController();
     }
 
@@ -482,6 +491,62 @@ public sealed class EasyConTabControl : UserControl
         }
 
         openVirtualController();
+        virtualControllerBound = true;
+    }
+
+    private void ToggleScriptRecording()
+    {
+        if (recordState == EasyConRecordState.Stopped)
+        {
+            if (!isDeviceConnected())
+            {
+                ShowDeviceNotConnectedWarning();
+                return;
+            }
+
+            if (!virtualControllerBound)
+            {
+                showEasyConMessage(string.Empty, "请先绑定虚拟手柄");
+                return;
+            }
+
+            openVirtualController();
+            recordState = EasyConRecordState.Started;
+            FindRequiredControl<Button>("btnRecord").Text = "停止录制";
+            FindRequiredControl<Button>("btnRecordPause").Enabled = true;
+            FindRequiredControl<TextBox>("easyConScriptEditor").ReadOnly = true;
+            startRecordDevice();
+            ShowStatus("开始录制");
+            return;
+        }
+
+        recordState = EasyConRecordState.Stopped;
+        var pauseButton = FindRequiredControl<Button>("btnRecordPause");
+        FindRequiredControl<Button>("btnRecord").Text = "录制脚本";
+        pauseButton.Text = "暂停录制";
+        pauseButton.Enabled = false;
+        FindRequiredControl<TextBox>("easyConScriptEditor").ReadOnly = false;
+        stopRecordDevice();
+        ShowStatus("录制完成");
+    }
+
+    private void ToggleScriptRecordingPause()
+    {
+        var pauseButton = FindRequiredControl<Button>("btnRecordPause");
+        if (recordState == EasyConRecordState.Started)
+        {
+            recordState = EasyConRecordState.Paused;
+            pauseRecordDevice();
+            pauseButton.Text = "继续录制";
+            ShowStatus("录制已暂停");
+        }
+        else if (recordState == EasyConRecordState.Paused)
+        {
+            recordState = EasyConRecordState.Started;
+            startRecordDevice();
+            pauseButton.Text = "暂停录制";
+            ShowStatus("继续录制");
+        }
     }
 
     private void UnpairDevice()
@@ -1072,6 +1137,13 @@ public sealed class EasyConTabControl : UserControl
     }
 
     private sealed record UpdateTag(string Name);
+
+    private enum EasyConRecordState
+    {
+        Stopped,
+        Started,
+        Paused,
+    }
 
     private static Control CreateMainArea()
     {

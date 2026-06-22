@@ -1749,6 +1749,93 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRecordStartsWhenDeviceConnectedAndControllerBound()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var record = FindControl(form, "btnRecord");
+        var pause = FindControl(form, "btnRecordPause");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "openVirtualController", new Action(() => { }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnShowController"));
+        InvokeClick(record);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(record, "Text"), Is.EqualTo("停止录制"));
+            Assert.That(GetProperty<bool>(pause, "Enabled"), Is.True);
+            Assert.That(GetProperty<bool>(editor, "ReadOnly"), Is.True);
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("开始录制"));
+            Assert.That(messages, Is.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRecordLifecycleInvokesOriginalRecordActions()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var record = FindControl(form, "btnRecord");
+        var pause = FindControl(form, "btnRecordPause");
+        var startCalls = 0;
+        var pauseCalls = 0;
+        var stopCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "openVirtualController", new Action(() => { }));
+        SetField(easyCon, "startRecordDevice", new Action(() => startCalls++));
+        SetField(easyCon, "pauseRecordDevice", new Action(() => pauseCalls++));
+        SetField(easyCon, "stopRecordDevice", new Action(() => stopCalls++));
+
+        InvokeClick(FindControl(form, "btnShowController"));
+        InvokeClick(record);
+        InvokeClick(pause);
+        InvokeClick(pause);
+        InvokeClick(record);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(startCalls, Is.EqualTo(2));
+            Assert.That(pauseCalls, Is.EqualTo(1));
+            Assert.That(stopCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(record, "Text"), Is.EqualTo("录制脚本"));
+            Assert.That(GetProperty<string>(pause, "Text"), Is.EqualTo("暂停录制"));
+            Assert.That(GetProperty<bool>(pause, "Enabled"), Is.False);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRecordRequiresOriginalVirtualControllerBinding()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var record = FindControl(form, "btnRecord");
+        var pause = FindControl(form, "btnRecordPause");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(record);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "请先绑定虚拟手柄") }));
+            Assert.That(GetProperty<string>(record, "Text"), Is.EqualTo("录制脚本"));
+            Assert.That(GetProperty<bool>(pause, "Enabled"), Is.False);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConSourceButtonOpensOriginalProjectUrl()
     {
         using var form = new MainForm();
