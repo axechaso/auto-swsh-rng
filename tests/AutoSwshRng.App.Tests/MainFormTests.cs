@@ -424,12 +424,12 @@ public class MainFormTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(messages.Select(item => item.Title), Is.EqualTo(new[] { "固件模式", "联机模式", "烧录模式", "搜图说明", "关于" }));
+            Assert.That(messages.Select(item => item.Title), Is.EqualTo(new[] { "固件模式", "联机模式", "烧录模式", "采集卡", "关于" }));
             Assert.That(messages[0].Message, Does.Contain("生成固件"));
             Assert.That(messages[1].Message, Does.Contain("电脑控制"));
             Assert.That(messages[2].Message, Does.Contain("连线烧录"));
-            Assert.That(messages[3].Message, Does.Contain("操作说明："));
-            Assert.That(messages[3].Message, Does.Contain("【搜图语法】"));
+            Assert.That(messages[3].Message, Does.Contain("默认采集卡类型选择any"));
+            Assert.That(messages[3].Message, Does.Contain("设置环境变量"));
             Assert.That(messages[4].Message, Does.Contain("伊机控 v"));
             Assert.That(messages[4].Message, Does.Contain("QQ群:946057081"));
         });

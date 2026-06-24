@@ -341,7 +341,13 @@ public sealed class EasyConTabControl : UserControl
 
     private void ShowCaptureHelp()
     {
-        showEasyConMessage("搜图说明", EasyConScriptAdapter.GetCaptureHelp());
+        showEasyConMessage("采集卡",
+            "默认采集卡类型选择any，会自动选择合适的采集卡" + Environment.NewLine +
+            "- 常见采集卡类型是DSHOW，MSMF，DC1394等" + Environment.NewLine +
+            "- obs30+版本已支持内置虚拟摄像头，无需安装额外插件" + Environment.NewLine +
+            "- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开" + Environment.NewLine +
+            "- 如果遇到搜图卡顿问题可尝试点击一次<设置环境变量>菜单" + Environment.NewLine +
+            "- 详细使用教程见群946057081文档");
     }
 
     private void ShowFirmwareModeHelp()
