@@ -28,6 +28,7 @@ public sealed class EasyConTabControl : UserControl
     private Action openAlertConfigDialog = null!;
     private Action openEspConfigDialog = null!;
     private Action openDrawingBoard = null!;
+    private Action openBluetoothSettingDialog = null!;
     private Action openKeyMappingDialog = null!;
     private Action openVirtualController = null!;
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
@@ -81,6 +82,7 @@ public sealed class EasyConTabControl : UserControl
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
+        openBluetoothSettingDialog = () => ShowPendingOriginalDialog("蓝牙设置");
         openKeyMappingDialog = ShowKeyMappingDialog;
         openVirtualController = () => ShowPendingOriginalDialog("虚拟手柄");
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
@@ -212,6 +214,7 @@ public sealed class EasyConTabControl : UserControl
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
+        FindRequiredControl<Button>("btnBluetoothSetting").Click += (_, _) => openBluetoothSettingDialog();
         FindRequiredControl<Button>("btnKeyMapping").Click += (_, _) => openKeyMappingDialog();
         FindRequiredControl<Button>("btnUnpair").Click += (_, _) => UnpairDevice();
         FindRequiredControl<Button>("btnCheckUpdate").Click += (_, _) => _ = CheckForUpdatesAsync();
