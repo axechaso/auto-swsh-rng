@@ -431,6 +431,7 @@ public class MainFormTests
             Assert.That(messages[3].Message, Does.Contain("操作说明："));
             Assert.That(messages[3].Message, Does.Contain("【搜图语法】"));
             Assert.That(messages[4].Message, Does.Contain("伊机控 v"));
+            Assert.That(messages[4].Message, Does.Contain("QQ群:946057081"));
         });
     }
 

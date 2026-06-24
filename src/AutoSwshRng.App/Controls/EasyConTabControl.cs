@@ -386,7 +386,7 @@ public sealed class EasyConTabControl : UserControl
         }
 
         showEasyConMessage("关于",
-            $"伊机控 v{version}  QQ群 946057081" + Environment.NewLine + Environment.NewLine +
+            $"伊机控 v{version}  QQ群:946057081" + Environment.NewLine + Environment.NewLine +
             "Copyright © 2020. 铃落(Nukieberry)" + Environment.NewLine +
             "Copyright © 2021. elmagnifico" + Environment.NewLine +
             "Copyright © 2025. 卡尔(ca1e)");
