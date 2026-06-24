@@ -1074,6 +1074,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConAutoSaveLogSettingUpdatesOriginalConfigFlag()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var autoSaveLog = FindControl(form, "chkAutoSaveLog");
+        var states = new List<bool>();
+
+        SetField(easyCon, "setAutoSaveLogEnabled", new Action<bool>(states.Add));
+
+        SetProperty(autoSaveLog, "Checked", true);
+        SetProperty(autoSaveLog, "Checked", false);
+
+        Assert.That(states, Is.EqualTo(new[] { true, false }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalRunAndDeviceControls()
     {
         using var form = new MainForm();

@@ -42,6 +42,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<string, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
     private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
     private Action<bool> setDebugLogEnabled = null!;
+    private Action<bool> setAutoSaveLogEnabled = null!;
     private Action startRecordDevice = null!;
     private Action pauseRecordDevice = null!;
     private Action stopRecordDevice = null!;
@@ -91,6 +92,7 @@ public sealed class EasyConTabControl : UserControl
         assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
         flashDevice = _ => false;
         setDebugLogEnabled = _ => { };
+        setAutoSaveLogEnabled = _ => { };
         startRecordDevice = () => { };
         pauseRecordDevice = () => { };
         stopRecordDevice = () => { };
@@ -193,6 +195,8 @@ public sealed class EasyConTabControl : UserControl
     {
         FindRequiredControl<CheckBox>("chkDebugLog").CheckedChanged += (_, _) =>
             setDebugLogEnabled(FindRequiredControl<CheckBox>("chkDebugLog").Checked);
+        FindRequiredControl<CheckBox>("chkAutoSaveLog").CheckedChanged += (_, _) =>
+            setAutoSaveLogEnabled(FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked);
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
