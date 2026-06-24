@@ -1108,6 +1108,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConAutoCompletionSettingUpdatesOriginalEditorConfig()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var autoCompletion = FindControl(form, "chkAutoCompletion");
+        var states = new List<bool>();
+
+        SetField(easyCon, "setAutoCompletionEnabled", new Action<bool>(states.Add));
+
+        SetProperty(autoCompletion, "Checked", true);
+        SetProperty(autoCompletion, "Checked", false);
+
+        Assert.That(states, Is.EqualTo(new[] { true, false }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalRunAndDeviceControls()
     {
         using var form = new MainForm();
