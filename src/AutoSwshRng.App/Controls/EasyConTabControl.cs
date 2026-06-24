@@ -41,6 +41,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<int> getDeviceFirmwareVersion = null!;
     private Func<string, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
     private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
+    private Action<bool> setDebugLogEnabled = null!;
     private Action startRecordDevice = null!;
     private Action pauseRecordDevice = null!;
     private Action stopRecordDevice = null!;
@@ -89,6 +90,7 @@ public sealed class EasyConTabControl : UserControl
         getDeviceFirmwareVersion = () => 0;
         assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
         flashDevice = _ => false;
+        setDebugLogEnabled = _ => { };
         startRecordDevice = () => { };
         pauseRecordDevice = () => { };
         stopRecordDevice = () => { };
@@ -189,6 +191,8 @@ public sealed class EasyConTabControl : UserControl
 
     private void WireSettingsActions()
     {
+        FindRequiredControl<CheckBox>("chkDebugLog").CheckedChanged += (_, _) =>
+            setDebugLogEnabled(FindRequiredControl<CheckBox>("chkDebugLog").Checked);
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();

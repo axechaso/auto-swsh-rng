@@ -1057,6 +1057,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConDebugLogSettingUpdatesOriginalDeviceFlag()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var debugLog = FindControl(form, "chkDebugLog");
+        var states = new List<bool>();
+
+        SetField(easyCon, "setDebugLogEnabled", new Action<bool>(states.Add));
+
+        SetProperty(debugLog, "Checked", true);
+        SetProperty(debugLog, "Checked", false);
+
+        Assert.That(states, Is.EqualTo(new[] { true, false }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalRunAndDeviceControls()
     {
         using var form = new MainForm();
