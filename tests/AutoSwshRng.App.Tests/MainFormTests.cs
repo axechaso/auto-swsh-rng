@@ -1125,6 +1125,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCodeFoldingSettingUpdatesOriginalEditorConfig()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var folding = FindControl(form, "chkFolding");
+        var states = new List<bool>();
+
+        SetField(easyCon, "setCodeFoldingEnabled", new Action<bool>(states.Add));
+
+        SetProperty(folding, "Checked", false);
+        SetProperty(folding, "Checked", true);
+
+        Assert.That(states, Is.EqualTo(new[] { false, true }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalRunAndDeviceControls()
     {
         using var form = new MainForm();
