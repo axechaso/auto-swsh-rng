@@ -81,7 +81,7 @@ public sealed class EasyConTabControl : UserControl
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = OpenOriginalEspConfigDialog;
-        openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
+        openDrawingBoard = OpenOriginalDrawingBoard;
         openBluetoothSettingDialog = () => ShowPendingOriginalDialog("蓝牙设置");
         openKeyMappingDialog = ShowKeyMappingDialog;
         openVirtualController = () => ShowPendingOriginalDialog("虚拟手柄");
@@ -406,6 +406,12 @@ public sealed class EasyConTabControl : UserControl
     private static void OpenOriginalEspConfigDialog()
     {
         var form = new EasyCon2.Forms.ESPConfig(null!);
+        form.Show();
+    }
+
+    private static void OpenOriginalDrawingBoard()
+    {
+        var form = new EasyCon2.Forms.DrawingBoard(null!);
         form.Show();
     }
 

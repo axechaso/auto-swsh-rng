@@ -1481,6 +1481,38 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConDrawingBoardButtonOpensOriginalFormByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        Form? drawingBoard = null;
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        try
+        {
+            InvokeClick(FindControl(form, "btnDrawingBoard"));
+            drawingBoard = Application.OpenForms
+                .Cast<Form>()
+                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "DrawingBoard");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages, Is.Empty);
+                Assert.That(drawingBoard, Is.Not.Null);
+                Assert.That(drawingBoard!.Text, Is.EqualTo("画板"));
+            });
+        }
+        finally
+        {
+            drawingBoard?.Close();
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConUnpairButtonShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();
