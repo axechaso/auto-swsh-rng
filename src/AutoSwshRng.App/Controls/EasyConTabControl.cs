@@ -80,7 +80,7 @@ public sealed class EasyConTabControl : UserControl
         openCaptureConsole = ShowCaptureConsoleDisconnectedStatus;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
-        openEspConfigDialog = () => ShowPendingOriginalDialog("ESP32设置");
+        openEspConfigDialog = OpenOriginalEspConfigDialog;
         openDrawingBoard = () => ShowPendingOriginalDialog("画图工具");
         openBluetoothSettingDialog = () => ShowPendingOriginalDialog("蓝牙设置");
         openKeyMappingDialog = ShowKeyMappingDialog;
@@ -401,6 +401,12 @@ public sealed class EasyConTabControl : UserControl
     private void ShowPendingOriginalDialog(string title)
     {
         showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
+    }
+
+    private static void OpenOriginalEspConfigDialog()
+    {
+        var form = new EasyCon2.Forms.ESPConfig(null!);
+        form.Show();
     }
 
     private void ShowFindReplacePanel()

@@ -1,6 +1,7 @@
 using AutoSwshRng.App;
 using System.Collections;
 using System.Drawing;
+using System.Windows.Forms;
 
 namespace AutoSwshRng.App.Tests;
 
@@ -1444,6 +1445,38 @@ public class MainFormTests
             Assert.That(messages.Single().Message, Does.Contain("Bark: 关闭"));
             Assert.That(messages.Single().Message, Does.Contain("自定义Webhook: 关闭"));
         });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConEspConfigButtonOpensOriginalFormByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        Form? espConfig = null;
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        try
+        {
+            InvokeClick(FindControl(form, "btnESPConfig"));
+            espConfig = Application.OpenForms
+                .Cast<Form>()
+                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "ESPConfig");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages, Is.Empty);
+                Assert.That(espConfig, Is.Not.Null);
+                Assert.That(espConfig!.Text, Is.EqualTo("手柄设置"));
+            });
+        }
+        finally
+        {
+            espConfig?.Close();
+        }
     }
 
     [Test]

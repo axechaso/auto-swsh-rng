@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AutoSwshRng.Core\AutoSwshRng.Core.csproj" />
     <ProjectReference Include="..\AutoSwshRng.Upstream\AutoSwshRng.Upstream.csproj" />
+    <ProjectReference Include="..\..\third_party\EasyCon\src\EasyCon2\EasyCon2.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
