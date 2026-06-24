@@ -1091,6 +1091,23 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConAutoRunAfterFlashSettingUpdatesOriginalConfigFlag()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var autoRun = FindControl(form, "chkAutoRunAfterFlash");
+        var states = new List<bool>();
+
+        SetField(easyCon, "setAutoRunAfterFlashEnabled", new Action<bool>(states.Add));
+
+        SetProperty(autoRun, "Checked", true);
+        SetProperty(autoRun, "Checked", false);
+
+        Assert.That(states, Is.EqualTo(new[] { true, false }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalRunAndDeviceControls()
     {
         using var form = new MainForm();

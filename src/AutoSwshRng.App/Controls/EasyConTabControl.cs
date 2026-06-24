@@ -43,6 +43,7 @@ public sealed class EasyConTabControl : UserControl
     private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
     private Action<bool> setDebugLogEnabled = null!;
     private Action<bool> setAutoSaveLogEnabled = null!;
+    private Action<bool> setAutoRunAfterFlashEnabled = null!;
     private Action startRecordDevice = null!;
     private Action pauseRecordDevice = null!;
     private Action stopRecordDevice = null!;
@@ -93,6 +94,7 @@ public sealed class EasyConTabControl : UserControl
         flashDevice = _ => false;
         setDebugLogEnabled = _ => { };
         setAutoSaveLogEnabled = _ => { };
+        setAutoRunAfterFlashEnabled = _ => { };
         startRecordDevice = () => { };
         pauseRecordDevice = () => { };
         stopRecordDevice = () => { };
@@ -197,6 +199,8 @@ public sealed class EasyConTabControl : UserControl
             setDebugLogEnabled(FindRequiredControl<CheckBox>("chkDebugLog").Checked);
         FindRequiredControl<CheckBox>("chkAutoSaveLog").CheckedChanged += (_, _) =>
             setAutoSaveLogEnabled(FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked);
+        FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").CheckedChanged += (_, _) =>
+            setAutoRunAfterFlashEnabled(FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked);
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
