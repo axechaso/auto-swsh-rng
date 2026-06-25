@@ -1042,6 +1042,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
+        if (!compileResult.HasErrors && compileResult.HasKeyAction && !remoteStopDevice())
+        {
+            showEasyConMessage(string.Empty, "需要先停止烧录脚本运行，请点击<远程停止>按钮");
+            return;
+        }
+
         var result = EasyConScriptAdapter.Evaluate(editor.Text, externalGetters);
 
         log.AppendText("-- 开始运行 --" + Environment.NewLine);
