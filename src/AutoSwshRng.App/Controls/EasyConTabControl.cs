@@ -1231,18 +1231,18 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private void FormatCurrentScript()
     {
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
-        var log = FindRequiredControl<TextBox>("logTxtBox");
         var externalGetters = buildCaptureExternalGetters();
         var result = EasyConScriptAdapter.Format(editor.Text, externalGetters.Keys.ToArray());
 
         if (result.HasErrors)
         {
-            log.AppendText(string.Join(Environment.NewLine, result.Diagnostics));
             ShowStatus("格式化失败");
+            showEasyConMessage("格式化出错", string.Join(Environment.NewLine, result.Diagnostics));
             return;
         }
 
         editor.Text = result.FormattedCode ?? string.Empty;
+        editor.Select(0, 0);
     }
 
     private void ShowStatus(string message)
