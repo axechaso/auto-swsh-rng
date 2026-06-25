@@ -82,7 +82,7 @@ public sealed class EasyConTabControl : UserControl
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = OpenOriginalEspConfigDialog;
         openDrawingBoard = OpenOriginalDrawingBoard;
-        openBluetoothSettingDialog = () => ShowPendingOriginalDialog("蓝牙设置");
+        openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
         openKeyMappingDialog = ShowKeyMappingDialog;
         openVirtualController = () => ShowPendingOriginalDialog("虚拟手柄");
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
@@ -412,6 +412,12 @@ public sealed class EasyConTabControl : UserControl
     private static void OpenOriginalDrawingBoard()
     {
         var form = new EasyCon2.Forms.DrawingBoard(null!);
+        form.Show();
+    }
+
+    private static void OpenOriginalBluetoothSettingDialog()
+    {
+        var form = new EasyCon2.Forms.win32.BTDeviceForm();
         form.Show();
     }
 

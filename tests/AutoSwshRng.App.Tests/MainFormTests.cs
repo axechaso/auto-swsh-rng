@@ -1513,6 +1513,38 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConBluetoothSettingButtonOpensOriginalFormByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var messages = new List<(string Title, string Message)>();
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        Form? bluetoothForm = null;
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        try
+        {
+            InvokeClick(FindControl(form, "btnBluetoothSetting"));
+            bluetoothForm = Application.OpenForms
+                .Cast<Form>()
+                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "BTDeviceForm");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages, Is.Empty);
+                Assert.That(bluetoothForm, Is.Not.Null);
+                Assert.That(bluetoothForm!.Text, Is.EqualTo("选择蓝牙设备"));
+            });
+        }
+        finally
+        {
+            bluetoothForm?.Close();
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConUnpairButtonShowsOriginalSuccessStatusWhenConnected()
     {
         using var form = new MainForm();
