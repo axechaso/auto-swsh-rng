@@ -1036,13 +1036,19 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         var log = FindRequiredControl<TextBox>("logTxtBox");
         var externalGetters = buildCaptureExternalGetters();
         var compileResult = EasyConScriptAdapter.Compile(editor.Text, externalGetters.Keys.ToArray());
-        if (!compileResult.HasErrors && compileResult.HasKeyAction && !isDeviceConnected())
+        if (compileResult.HasErrors)
+        {
+            showEasyConMessage("脚本编译出错", string.Join(Environment.NewLine, compileResult.Diagnostics));
+            return;
+        }
+
+        if (compileResult.HasKeyAction && !isDeviceConnected())
         {
             showEasyConMessage(string.Empty, "需要连接单片机才能运行脚本");
             return;
         }
 
-        if (!compileResult.HasErrors && compileResult.HasKeyAction && !remoteStopDevice())
+        if (compileResult.HasKeyAction && !remoteStopDevice())
         {
             showEasyConMessage(string.Empty, "需要先停止烧录脚本运行，请点击<远程停止>按钮");
             return;

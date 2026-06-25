@@ -652,11 +652,40 @@ public class MainFormTests
         var deactivateCalls = 0;
 
         SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((_, _) => { }));
         SetProperty(editor, "Text", "PRINT");
 
         InvokeClick(runButton);
 
         Assert.That(deactivateCalls, Is.EqualTo(0));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonShowsOriginalCompileFailureMessage()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var messages = new List<(string Title, string Message)>();
+        var deactivateCalls = 0;
+
+        SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        SetProperty(editor, "Text", "PRINT");
+        SetProperty(logText, "Text", string.Empty);
+
+        InvokeClick(FindControl(form, "runStopBtn"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Has.Count.EqualTo(1));
+            Assert.That(messages[0].Title, Is.EqualTo("脚本编译出错"));
+            Assert.That(messages[0].Message, Is.Not.Empty);
+            Assert.That(deactivateCalls, Is.EqualTo(0));
+            Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
+        });
     }
 
     [Test]
