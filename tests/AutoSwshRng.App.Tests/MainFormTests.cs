@@ -1076,6 +1076,42 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConDeviceDelegatesUseOriginalDeviceServiceByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var deviceService = GetField<object>(easyCon, "originalDeviceService");
+
+        var getPorts = GetField<Func<string[]>>(easyCon, "getSerialPortNames");
+        var autoConnect = GetField<Func<Task<(bool Success, string? Port)>>>(easyCon, "autoConnectDeviceAsync");
+        var manualConnect = GetField<Func<string, Task<bool>>>(easyCon, "manualConnectDeviceAsync");
+        var startRecord = GetField<Action>(easyCon, "startRecordDevice");
+        var pauseRecord = GetField<Action>(easyCon, "pauseRecordDevice");
+        var stopRecord = GetField<Action>(easyCon, "stopRecordDevice");
+        var setDebugLog = GetField<Action<bool>>(easyCon, "setDebugLogEnabled");
+
+        setDebugLog(true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(getPorts.Target, Is.SameAs(deviceService));
+            Assert.That(getPorts.Method.Name, Is.EqualTo("GetPortNames"));
+            Assert.That(autoConnect.Target, Is.SameAs(deviceService));
+            Assert.That(autoConnect.Method.Name, Is.EqualTo("AutoConnectAsync"));
+            Assert.That(manualConnect.Target, Is.SameAs(deviceService));
+            Assert.That(manualConnect.Method.Name, Is.EqualTo("ManualConnectAsync"));
+            Assert.That(startRecord.Target, Is.SameAs(deviceService));
+            Assert.That(startRecord.Method.Name, Is.EqualTo("StartRecord"));
+            Assert.That(pauseRecord.Target, Is.SameAs(deviceService));
+            Assert.That(pauseRecord.Method.Name, Is.EqualTo("PauseRecord"));
+            Assert.That(stopRecord.Target, Is.SameAs(deviceService));
+            Assert.That(stopRecord.Method.Name, Is.EqualTo("StopRecord"));
+            Assert.That(GetProperty<bool>(deviceService, "DebugLogEnabled"), Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConAutoSaveLogSettingUpdatesOriginalConfigFlag()
     {
         using var form = new MainForm();
@@ -1197,6 +1233,7 @@ public class MainFormTests
         var messages = new List<(string Title, string Message)>();
         using var shown = new ManualResetEventSlim();
 
+        SetField(easyCon, "autoConnectDeviceAsync", new Func<Task<(bool Success, string? Port)>>(() => Task.FromResult((false, (string?)null))));
         SetField(easyCon, "getSerialPortNames", new Func<string[]>(() => ["COM3", "COM9"]));
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) =>
         {
@@ -2414,6 +2451,19 @@ public class MainFormTests
         }
 
         field.SetValue(target, value);
+    }
+
+    private static T GetField<T>(object target, string fieldName)
+    {
+        var field = target.GetType().GetField(
+            fieldName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (field is null)
+        {
+            throw new InvalidOperationException($"Field '{fieldName}' was not found.");
+        }
+
+        return (T)field.GetValue(target)!;
     }
 
     private static void InvokeClick(object target)

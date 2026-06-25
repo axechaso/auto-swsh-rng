@@ -1,4 +1,5 @@
 using AutoSwshRng.Upstream;
+using EasyCon.Script.Assembly;
 using EasyCon2.Services;
 using EasyCon2.Views;
 using System.Reflection;
@@ -10,6 +11,7 @@ namespace AutoSwshRng.App.Controls;
 public sealed class EasyConTabControl : UserControl
 {
     private readonly ConfigService originalConfigService = new();
+    private readonly DeviceService originalDeviceService = new();
     private string? currentScriptPath;
     private bool currentScriptModified;
     private string selectedCaptureType = "ANY";
@@ -76,7 +78,7 @@ public sealed class EasyConTabControl : UserControl
         showEasyConMessage = ShowEasyConMessageBox;
         openExternalLink = OpenExternalLink;
         openFindReplacePanel = ShowFindReplacePanel;
-        getSerialPortNames = GetSerialPortNames;
+        getSerialPortNames = originalDeviceService.GetPortNames;
         getVideoSources = GetVideoSources;
         connectCaptureSource = _ => false;
         disconnectCaptureSource = () => { };
@@ -93,24 +95,27 @@ public sealed class EasyConTabControl : UserControl
             return false;
         };
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
-        autoConnectDeviceAsync = () => Task.FromResult((false, (string?)null));
-        manualConnectDeviceAsync = _ => Task.FromResult(false);
-        isDeviceConnected = () => false;
-        unpairDevice = () => false;
-        remoteStartDevice = () => false;
-        remoteStopDevice = () => false;
-        flashClearDevice = () => false;
-        getDeviceFirmwareVersion = () => 0;
+        autoConnectDeviceAsync = originalDeviceService.AutoConnectAsync;
+        manualConnectDeviceAsync = originalDeviceService.ManualConnectAsync;
+        isDeviceConnected = () => originalDeviceService.IsConnected;
+        unpairDevice = originalDeviceService.UnPair;
+        remoteStartDevice = originalDeviceService.RemoteStart;
+        remoteStopDevice = originalDeviceService.RemoteStop;
+        flashClearDevice = () => originalDeviceService.Flash(HexWriter.EmptyAsm);
+        getDeviceFirmwareVersion = originalDeviceService.GetVersion;
         assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
-        flashDevice = _ => false;
-        setDebugLogEnabled = _ => { };
+        flashDevice = bytes => originalDeviceService.Flash(bytes.ToArray());
+        setDebugLogEnabled = enabled => originalDeviceService.DebugLogEnabled = enabled;
         setAutoSaveLogEnabled = _ => { };
         setAutoRunAfterFlashEnabled = _ => { };
         setAutoCompletionEnabled = _ => { };
         setCodeFoldingEnabled = _ => { };
-        startRecordDevice = () => { };
-        pauseRecordDevice = () => { };
-        stopRecordDevice = () => { };
+        startRecordDevice = originalDeviceService.StartRecord;
+        pauseRecordDevice = originalDeviceService.PauseRecord;
+        stopRecordDevice = originalDeviceService.StopRecord;
+        originalDeviceService.ConnectionStateChanged += connected => PostToUi(() => UpdateDeviceStatus(connected));
+        originalDeviceService.StatusChanged += message => PostToUi(() => ShowStatus(message));
+        originalDeviceService.Log += message => PostToUi(() => AppendLogLine(message));
         originalConfigService.Load();
 
         var root = new TableLayoutPanel
@@ -880,6 +885,39 @@ public sealed class EasyConTabControl : UserControl
         captureSourceConnected = connected;
     }
 
+    private void UpdateDeviceStatus(bool connected)
+    {
+        var label = FindRequiredControl<StatusStrip>("easyConStatusStrip")
+            .Items
+            .OfType<ToolStripStatusLabel>()
+            .Single(item => item.Name == "labelSerialStatus");
+        label.Text = connected ? "单片机已连接" : "单片机未连接";
+        label.ForeColor = connected ? Color.FromArgb(31, 138, 101) : Color.FromArgb(140, 139, 132);
+    }
+
+    private void AppendLogLine(string message)
+    {
+        var log = FindRequiredControl<TextBox>("logTxtBox");
+        log.AppendText(message);
+        log.AppendText(Environment.NewLine);
+    }
+
+    private void PostToUi(Action action)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (IsHandleCreated && InvokeRequired)
+        {
+            BeginInvoke(action);
+            return;
+        }
+
+        action();
+    }
+
     private void RefreshSerialPorts()
     {
         var combo = FindRequiredControl<ComboBox>("comboComPort");
@@ -1078,11 +1116,6 @@ public sealed class EasyConTabControl : UserControl
     private static void OpenExternalLink(string url)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-    }
-
-    private static string[] GetSerialPortNames()
-    {
-        return [.. EasyDevice.ECDevice.GetPortNames()];
     }
 
     private static IReadOnlyList<(string Name, int Index)> GetVideoSources()
