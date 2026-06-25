@@ -40,6 +40,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Action openBluetoothSettingDialog = null!;
     private Action openKeyMappingDialog = null!;
     private Func<bool> openVirtualController = null!;
+    private Action deactivateVirtualController = null!;
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
     private Func<Task<(bool Success, string? Port)>> autoConnectDeviceAsync = null!;
     private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
@@ -98,6 +99,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
         openKeyMappingDialog = OpenOriginalKeyMappingDialog;
         openVirtualController = OpenOriginalVirtualController;
+        deactivateVirtualController = () => originalVPadService?.Deactivate();
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
         autoConnectDeviceAsync = originalDeviceService.AutoConnectAsync;
         manualConnectDeviceAsync = originalDeviceService.ManualConnectAsync;
@@ -980,6 +982,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             ShowStatus("运行出错");
             return;
         }
+
+        deactivateVirtualController();
 
         foreach (var line in result.Printed)
         {

@@ -599,6 +599,42 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonDeactivatesOriginalVirtualControllerForValidScript()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var runButton = FindControl(form, "runStopBtn");
+        var deactivateCalls = 0;
+
+        SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+
+        InvokeClick(runButton);
+
+        Assert.That(deactivateCalls, Is.EqualTo(1));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonKeepsOriginalVirtualControllerActiveWhenScriptHasErrors()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var runButton = FindControl(form, "runStopBtn");
+        var deactivateCalls = 0;
+
+        SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetProperty(editor, "Text", "PRINT");
+
+        InvokeClick(runButton);
+
+        Assert.That(deactivateCalls, Is.EqualTo(0));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConFormatButtonFormatsCurrentScript()
     {
         using var form = new MainForm();
