@@ -1,4 +1,6 @@
 using AutoSwshRng.Upstream;
+using EasyCon2.Services;
+using EasyCon2.Views;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +9,7 @@ namespace AutoSwshRng.App.Controls;
 
 public sealed class EasyConTabControl : UserControl
 {
+    private readonly ConfigService originalConfigService = new();
     private string? currentScriptPath;
     private bool currentScriptModified;
     private string selectedCaptureType = "ANY";
@@ -83,7 +86,7 @@ public sealed class EasyConTabControl : UserControl
         openEspConfigDialog = OpenOriginalEspConfigDialog;
         openDrawingBoard = OpenOriginalDrawingBoard;
         openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
-        openKeyMappingDialog = ShowKeyMappingDialog;
+        openKeyMappingDialog = OpenOriginalKeyMappingDialog;
         openVirtualController = () =>
         {
             ShowPendingOriginalDialog("虚拟手柄");
@@ -108,6 +111,7 @@ public sealed class EasyConTabControl : UserControl
         startRecordDevice = () => { };
         pauseRecordDevice = () => { };
         stopRecordDevice = () => { };
+        originalConfigService.Load();
 
         var root = new TableLayoutPanel
         {
@@ -496,18 +500,13 @@ public sealed class EasyConTabControl : UserControl
         ShowStatus("请先连接视频源");
     }
 
-    private void ShowKeyMappingDialog()
+    private void OpenOriginalKeyMappingDialog()
     {
-        var message = new StringBuilder();
-        foreach (var entry in EasyConScriptAdapter.GetDefaultKeyMapping())
+        using var dialog = new FormKeyMapping(originalConfigService.KeyMapping);
+        if (dialog.ShowDialog() == DialogResult.OK)
         {
-            message.Append(entry.ControlName);
-            message.Append(": ");
-            message.Append(KeyCodeToDisplayName(entry.KeyCode));
-            message.AppendLine();
+            originalConfigService.UpdateKeyMapping(dialog.KeyMapping);
         }
-
-        showEasyConMessage("按键映射", message.ToString().TrimEnd());
     }
 
     private void ShowAlertConfigDialog()
