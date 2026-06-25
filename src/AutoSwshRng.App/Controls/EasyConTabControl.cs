@@ -30,7 +30,7 @@ public sealed class EasyConTabControl : UserControl
     private Action openDrawingBoard = null!;
     private Action openBluetoothSettingDialog = null!;
     private Action openKeyMappingDialog = null!;
-    private Action openVirtualController = null!;
+    private Func<bool> openVirtualController = null!;
     private Func<Task<string?>> checkForUpdateMessageAsync = null!;
     private Func<Task<(bool Success, string? Port)>> autoConnectDeviceAsync = null!;
     private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
@@ -84,7 +84,11 @@ public sealed class EasyConTabControl : UserControl
         openDrawingBoard = OpenOriginalDrawingBoard;
         openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
         openKeyMappingDialog = ShowKeyMappingDialog;
-        openVirtualController = () => ShowPendingOriginalDialog("虚拟手柄");
+        openVirtualController = () =>
+        {
+            ShowPendingOriginalDialog("虚拟手柄");
+            return false;
+        };
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
         autoConnectDeviceAsync = () => Task.FromResult((false, (string?)null));
         manualConnectDeviceAsync = _ => Task.FromResult(false);
@@ -604,8 +608,7 @@ public sealed class EasyConTabControl : UserControl
             return;
         }
 
-        openVirtualController();
-        virtualControllerBound = true;
+        virtualControllerBound = openVirtualController();
     }
 
     private void ToggleScriptRecording()
@@ -624,7 +627,12 @@ public sealed class EasyConTabControl : UserControl
                 return;
             }
 
-            openVirtualController();
+            if (!openVirtualController())
+            {
+                showEasyConMessage(string.Empty, "请先绑定虚拟手柄");
+                return;
+            }
+
             recordState = EasyConRecordState.Started;
             FindRequiredControl<Button>("btnRecord").Text = "停止录制";
             FindRequiredControl<Button>("btnRecordPause").Enabled = true;
