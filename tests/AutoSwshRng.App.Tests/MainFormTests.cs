@@ -683,6 +683,38 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonRequiresSavingModifiedOpenedScriptLikeOriginal()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var messages = new List<(string Title, string Message)>();
+        var buildExternalGetterCalls = 0;
+
+        SetField(easyCon, "currentScriptPath", Path.Combine(TestContext.CurrentContext.WorkDirectory, "opened.ecs"));
+        SetField(easyCon, "currentScriptModified", true);
+        SetField(easyCon, "buildCaptureExternalGetters", new Func<IReadOnlyDictionary<string, Func<int>>>(() =>
+        {
+            buildExternalGetterCalls++;
+            return new Dictionary<string, Func<int>>();
+        }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetProperty(logText, "Text", string.Empty);
+
+        InvokeClick(FindControl(form, "runStopBtn"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "您还没有保存脚本，请先保存后再运行") }));
+            Assert.That(buildExternalGetterCalls, Is.EqualTo(0));
+            Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConFormatButtonFormatsCurrentScript()
     {
         using var form = new MainForm();

@@ -1026,6 +1026,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void RunCurrentScript()
     {
+        if (currentScriptPath is not null && currentScriptModified)
+        {
+            showEasyConMessage(string.Empty, "您还没有保存脚本，请先保存后再运行");
+            return;
+        }
+
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
         var log = FindRequiredControl<TextBox>("logTxtBox");
         var externalGetters = buildCaptureExternalGetters();
