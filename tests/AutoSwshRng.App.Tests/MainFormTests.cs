@@ -351,6 +351,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConCaptureTypeMenuPopulatesOriginalOpenCvApis()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { CaptureType = "ANY" });
         using var form = new MainForm();
         var menu = FindControl(form, "easyConOriginalMenu");
         var captureTypeMenu = FindToolStripItem(menu, "captureTypeMenu");
@@ -368,6 +369,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConCaptureTypeMenuSelectionSwitchesCheckedItem()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { CaptureType = "ANY" });
         using var form = new MainForm();
         var menu = FindControl(form, "easyConOriginalMenu");
         var captureTypeMenu = FindToolStripItem(menu, "captureTypeMenu");
@@ -380,6 +382,28 @@ public class MainFormTests
             Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_ANY"), "Checked"), Is.False);
             Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_MSMF"), "Checked"), Is.True);
         });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureTypeMenuInitializesAndPersistsOriginalConfigFlag()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { CaptureType = "DSHOW" });
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var captureTypeMenu = FindToolStripItem(menu, "captureTypeMenu");
+
+        InvokeDropDownOpening(captureTypeMenu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_DSHOW"), "Checked"), Is.True);
+            Assert.That(GetProperty<bool>(FindToolStripItem(captureTypeMenu, "captureType_ANY"), "Checked"), Is.False);
+        });
+
+        InvokeClick(FindToolStripItem(captureTypeMenu, "captureType_MSMF"));
+
+        Assert.That(ConfigManager.LoadConfig().CaptureType, Is.EqualTo("MSMF"));
     }
 
     [Test]

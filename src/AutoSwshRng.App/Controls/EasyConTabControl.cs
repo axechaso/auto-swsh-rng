@@ -139,6 +139,9 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         originalDeviceService.StatusChanged += message => PostToUi(() => ShowStatus(message));
         originalDeviceService.Log += message => PostToUi(() => AppendLogLine(message));
         originalConfigService.Load();
+        selectedCaptureType = string.IsNullOrWhiteSpace(originalConfigService.Config.CaptureType)
+            ? "ANY"
+            : originalConfigService.Config.CaptureType;
 
         var root = new TableLayoutPanel
         {
@@ -359,6 +362,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     {
         var selected = (ToolStripMenuItem)sender!;
         selectedCaptureType = selected.Text ?? "ANY";
+        originalConfigService.Config.CaptureType = selectedCaptureType;
+        originalConfigService.Save();
 
         var captureTypeMenu = FindRequiredMenuItem("captureTypeMenu");
         foreach (var item in captureTypeMenu.DropDownItems.OfType<ToolStripMenuItem>())
