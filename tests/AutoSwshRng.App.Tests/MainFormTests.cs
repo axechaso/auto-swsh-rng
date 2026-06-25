@@ -661,6 +661,28 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonUsesOriginalCaptureExternalGetters()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var runButton = FindControl(form, "runStopBtn");
+        var calls = 0;
+
+        SetField(easyCon, "buildCaptureExternalGetters", new Func<IReadOnlyDictionary<string, Func<int>>>(() =>
+        {
+            calls++;
+            return new Dictionary<string, Func<int>>();
+        }));
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+
+        InvokeClick(runButton);
+
+        Assert.That(calls, Is.EqualTo(1));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConFormatButtonFormatsCurrentScript()
     {
         using var form = new MainForm();
@@ -671,6 +693,28 @@ public class MainFormTests
         InvokeClick(formatButton);
 
         Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"hello\", \"world\""));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConFormatButtonUsesOriginalCaptureExternalGetters()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var formatButton = FindControl(form, "formatBtn");
+        var calls = 0;
+
+        SetField(easyCon, "buildCaptureExternalGetters", new Func<IReadOnlyDictionary<string, Func<int>>>(() =>
+        {
+            calls++;
+            return new Dictionary<string, Func<int>>();
+        }));
+        SetProperty(editor, "Text", "PRINT \"hello\",\"world\"");
+
+        InvokeClick(formatButton);
+
+        Assert.That(calls, Is.EqualTo(1));
     }
 
     [Test]

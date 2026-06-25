@@ -34,6 +34,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Func<int, bool> connectCaptureSource = null!;
     private Action disconnectCaptureSource = null!;
     private Action openCaptureConsole = null!;
+    private Func<IReadOnlyDictionary<string, Func<int>>> buildCaptureExternalGetters = null!;
     private Action openScriptSyntaxHelp = null!;
     private Action openAlertConfigDialog = null!;
     private Action openEspConfigDialog = null!;
@@ -93,6 +94,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         connectCaptureSource = ConnectOriginalCaptureSource;
         disconnectCaptureSource = originalCaptureService.Disconnect;
         openCaptureConsole = originalCaptureService.ShowCaptureConsole;
+        buildCaptureExternalGetters = () => originalCaptureService.BuildExternalGetters();
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = OpenOriginalEspConfigDialog;
@@ -110,7 +112,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         remoteStopDevice = originalDeviceService.RemoteStop;
         flashClearDevice = () => originalDeviceService.Flash(HexWriter.EmptyAsm);
         getDeviceFirmwareVersion = originalDeviceService.GetVersion;
-        assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
+        assembleFirmwareScript = scriptText => EasyConScriptAdapter.AssembleFirmwareScript(scriptText, buildCaptureExternalGetters());
         flashDevice = bytes => originalDeviceService.Flash(bytes.ToArray());
         setDebugLogEnabled = enabled => originalDeviceService.DebugLogEnabled = enabled;
         setAutoSaveLogEnabled = enabled =>
@@ -835,7 +837,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
 
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
-        var result = EasyConScriptAdapter.Format(editor.Text);
+        var externalGetters = buildCaptureExternalGetters();
+        var result = EasyConScriptAdapter.Format(editor.Text, externalGetters.Keys.ToArray());
         if (result.HasErrors)
         {
             showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
@@ -1025,7 +1028,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     {
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
         var log = FindRequiredControl<TextBox>("logTxtBox");
-        var result = EasyConScriptAdapter.Evaluate(editor.Text);
+        var externalGetters = buildCaptureExternalGetters();
+        var result = EasyConScriptAdapter.Evaluate(editor.Text, externalGetters);
 
         log.AppendText("-- 开始运行 --" + Environment.NewLine);
         ShowStatus("运行中");
@@ -1058,7 +1062,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
 
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
-        var result = EasyConScriptAdapter.Format(editor.Text);
+        var externalGetters = buildCaptureExternalGetters();
+        var result = EasyConScriptAdapter.Format(editor.Text, externalGetters.Keys.ToArray());
         if (result.HasErrors)
         {
             showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
@@ -1202,7 +1207,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     {
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
         var log = FindRequiredControl<TextBox>("logTxtBox");
-        var result = EasyConScriptAdapter.Format(editor.Text);
+        var externalGetters = buildCaptureExternalGetters();
+        var result = EasyConScriptAdapter.Format(editor.Text, externalGetters.Keys.ToArray());
 
         if (result.HasErrors)
         {

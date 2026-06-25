@@ -95,11 +95,15 @@ public static class EasyConScriptAdapter
         "RSRight",
     ];
 
-    public static EasyConScriptResult Evaluate(string scriptText)
+    public static EasyConScriptResult Evaluate(
+        string scriptText,
+        IReadOnlyDictionary<string, Func<int>>? externalGetters = null)
     {
         var output = new CapturingOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(scriptText));
-        var result = compilation.Evaluate(output, pad: null!, ImmutableDictionary<string, Func<int>>.Empty, CancellationToken.None);
+        var externalGetterMap = externalGetters?.ToImmutableDictionary(pair => pair.Key, pair => pair.Value)
+            ?? ImmutableDictionary<string, Func<int>>.Empty;
+        var result = compilation.Evaluate(output, pad: null!, externalGetterMap, CancellationToken.None);
 
         return new EasyConScriptResult(
             result.Diagnostics.HasErrors(),
@@ -108,10 +112,14 @@ public static class EasyConScriptAdapter
             output.Alerted);
     }
 
-    public static EasyConScriptFormatResult Format(string scriptText)
+    public static EasyConScriptFormatResult Format(
+        string scriptText,
+        IReadOnlyCollection<string>? externalGetterNames = null)
     {
         var compilation = Compilation.Create(SyntaxTree.Parse(scriptText));
-        var diagnostics = compilation.Compile(ImmutableHashSet<string>.Empty);
+        var externalNames = externalGetterNames?.ToImmutableHashSet()
+            ?? ImmutableHashSet<string>.Empty;
+        var diagnostics = compilation.Compile(externalNames);
         if (diagnostics.HasErrors())
         {
             return new EasyConScriptFormatResult(
@@ -131,8 +139,17 @@ public static class EasyConScriptAdapter
 
     public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(string scriptText)
     {
+        return AssembleFirmwareScript(scriptText, null);
+    }
+
+    public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(
+        string scriptText,
+        IReadOnlyDictionary<string, Func<int>>? externalGetters)
+    {
         var scripter = new Scripter();
-        var diagnostics = scripter.Parse(scriptText, null!, []);
+        var getterMap = externalGetters?.ToDictionary(pair => pair.Key, pair => pair.Value)
+            ?? [];
+        var diagnostics = scripter.Parse(scriptText, null!, getterMap);
         if (diagnostics.HasErrors())
         {
             return new EasyConFirmwareAssemblyResult(
