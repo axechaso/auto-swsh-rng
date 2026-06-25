@@ -1,5 +1,8 @@
 using AutoSwshRng.Upstream;
 using EasyCon.Script.Assembly;
+using EasyCon.WinInput;
+using EasyCon2.Avalonia.Core;
+using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Services;
 using EasyCon2.Views;
 using System.Reflection;
@@ -8,10 +11,11 @@ using System.Text.Json;
 
 namespace AutoSwshRng.App.Controls;
 
-public sealed class EasyConTabControl : UserControl
+public sealed class EasyConTabControl : UserControl, IControllerAdapter
 {
     private readonly ConfigService originalConfigService = new();
     private readonly DeviceService originalDeviceService = new();
+    private VPadService? originalVPadService;
     private string? currentScriptPath;
     private bool currentScriptModified;
     private string selectedCaptureType = "ANY";
@@ -56,6 +60,10 @@ public sealed class EasyConTabControl : UserControl
     private Action pauseRecordDevice = null!;
     private Action stopRecordDevice = null!;
 
+    Avalonia.Media.Color IControllerAdapter.CurrentLight => Avalonia.Media.Colors.White;
+
+    bool IControllerAdapter.IsRunning() => false;
+
     private static readonly string[] MenuItems =
     [
         "文件",
@@ -89,11 +97,7 @@ public sealed class EasyConTabControl : UserControl
         openDrawingBoard = OpenOriginalDrawingBoard;
         openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
         openKeyMappingDialog = OpenOriginalKeyMappingDialog;
-        openVirtualController = () =>
-        {
-            ShowPendingOriginalDialog("虚拟手柄");
-            return false;
-        };
+        openVirtualController = OpenOriginalVirtualController;
         checkForUpdateMessageAsync = GetOriginalUpdateMessageAsync;
         autoConnectDeviceAsync = originalDeviceService.AutoConnectAsync;
         manualConnectDeviceAsync = originalDeviceService.ManualConnectAsync;
@@ -511,7 +515,17 @@ public sealed class EasyConTabControl : UserControl
         if (dialog.ShowDialog() == DialogResult.OK)
         {
             originalConfigService.UpdateKeyMapping(dialog.KeyMapping);
+            originalVPadService?.UpdateKeyMapping(originalConfigService.KeyMapping);
         }
+    }
+
+    private bool OpenOriginalVirtualController()
+    {
+        AvaloniaRuntime.EnsureInitialized();
+        originalVPadService ??= new VPadService(originalDeviceService.Device, this);
+        originalVPadService.SwitchInput(new KeyboardInputBinder(originalDeviceService.Device, originalConfigService.KeyMapping));
+        originalVPadService.Show();
+        return true;
     }
 
     private void ShowAlertConfigDialog()

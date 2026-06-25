@@ -1,4 +1,5 @@
 using AutoSwshRng.App;
+using EasyCon2.Avalonia.Core.VPad;
 using System.Collections;
 using System.Drawing;
 using System.Windows.Forms;
@@ -2093,6 +2094,22 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConVirtualControllerUsesOriginalVPadServiceByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var openController = GetField<Func<bool>>(easyCon, "openVirtualController");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(openController.Target, Is.SameAs(easyCon));
+            Assert.That(openController.Method.Name, Is.EqualTo("OpenOriginalVirtualController"));
+            Assert.That(easyCon, Is.AssignableTo<IControllerAdapter>());
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRecordStartsWhenDeviceConnectedAndControllerBound()
     {
         using var form = new MainForm();
@@ -2157,7 +2174,7 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConRecordDoesNotTreatVirtualControllerPlaceholderAsBound()
+    public void EasyConRecordDoesNotTreatFailedVirtualControllerOpenAsBound()
     {
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
@@ -2167,6 +2184,11 @@ public class MainFormTests
         var messages = new List<(string Title, string Message)>();
 
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "openVirtualController", new Func<bool>(() =>
+        {
+            messages.Add(("虚拟手柄", "虚拟手柄打开失败"));
+            return false;
+        }));
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
         InvokeClick(FindControl(form, "btnShowController"));
@@ -2178,7 +2200,7 @@ public class MainFormTests
                 messages,
                 Is.EqualTo(new[]
                 {
-                    ("虚拟手柄", "虚拟手柄窗口正在接入原版实现。"),
+                    ("虚拟手柄", "虚拟手柄打开失败"),
                     (string.Empty, "请先绑定虚拟手柄"),
                 }));
             Assert.That(GetProperty<string>(record, "Text"), Is.EqualTo("录制脚本"));
