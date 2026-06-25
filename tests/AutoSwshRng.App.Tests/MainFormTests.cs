@@ -715,6 +715,33 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonRequiresConnectedDeviceForKeyActionScriptLikeOriginal()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var messages = new List<(string Title, string Message)>();
+        var deactivateCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => false));
+        SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        SetProperty(editor, "Text", "A");
+        SetProperty(logText, "Text", string.Empty);
+
+        InvokeClick(FindControl(form, "runStopBtn"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "需要连接单片机才能运行脚本") }));
+            Assert.That(deactivateCalls, Is.EqualTo(0));
+            Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConFormatButtonFormatsCurrentScript()
     {
         using var form = new MainForm();

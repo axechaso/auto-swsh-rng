@@ -137,6 +137,22 @@ public static class EasyConScriptAdapter
             Diagnostics: []);
     }
 
+    public static EasyConScriptCompileResult Compile(
+        string scriptText,
+        IReadOnlyCollection<string>? externalGetterNames = null)
+    {
+        var compilation = Compilation.Create(SyntaxTree.Parse(scriptText));
+        var externalNames = externalGetterNames?.ToImmutableHashSet()
+            ?? ImmutableHashSet<string>.Empty;
+        var diagnostics = compilation.Compile(externalNames);
+
+        return new EasyConScriptCompileResult(
+            diagnostics.HasErrors(),
+            diagnostics.Select(diagnostic => diagnostic.Message).ToArray(),
+            compilation.KeyAction,
+            compilation.NeedIL);
+    }
+
     public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(string scriptText)
     {
         return AssembleFirmwareScript(scriptText, null);
@@ -361,6 +377,12 @@ public sealed record EasyConScriptFormatResult(
     bool HasErrors,
     string? FormattedCode,
     IReadOnlyList<string> Diagnostics);
+
+public sealed record EasyConScriptCompileResult(
+    bool HasErrors,
+    IReadOnlyList<string> Diagnostics,
+    bool HasKeyAction,
+    bool NeedsImageLabels);
 
 public sealed record EasyConFirmwareAssemblyResult(
     bool Success,

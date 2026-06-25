@@ -1035,6 +1035,13 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
         var log = FindRequiredControl<TextBox>("logTxtBox");
         var externalGetters = buildCaptureExternalGetters();
+        var compileResult = EasyConScriptAdapter.Compile(editor.Text, externalGetters.Keys.ToArray());
+        if (!compileResult.HasErrors && compileResult.HasKeyAction && !isDeviceConnected())
+        {
+            showEasyConMessage(string.Empty, "需要连接单片机才能运行脚本");
+            return;
+        }
+
         var result = EasyConScriptAdapter.Evaluate(editor.Text, externalGetters);
 
         log.AppendText("-- 开始运行 --" + Environment.NewLine);

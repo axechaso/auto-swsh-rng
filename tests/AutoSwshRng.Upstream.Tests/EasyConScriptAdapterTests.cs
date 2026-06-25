@@ -29,6 +29,20 @@ public class EasyConScriptAdapterTests
     }
 
     [Test]
+    public void CompileReportsOriginalKeyActionRequirement()
+    {
+        var result = EasyConScriptAdapter.Compile("A");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.HasErrors, Is.False);
+            Assert.That(result.Diagnostics, Is.Empty);
+            Assert.That(result.HasKeyAction, Is.True);
+            Assert.That(result.NeedsImageLabels, Is.False);
+        });
+    }
+
+    [Test]
     public void FirmwareAssemblyReportsOriginalUnsupportedCompilerMessage()
     {
         var result = EasyConScriptAdapter.AssembleFirmwareScript("PRINT \"hello\"");
