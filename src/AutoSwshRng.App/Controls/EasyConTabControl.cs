@@ -112,10 +112,26 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         assembleFirmwareScript = EasyConScriptAdapter.AssembleFirmwareScript;
         flashDevice = bytes => originalDeviceService.Flash(bytes.ToArray());
         setDebugLogEnabled = enabled => originalDeviceService.DebugLogEnabled = enabled;
-        setAutoSaveLogEnabled = _ => { };
-        setAutoRunAfterFlashEnabled = _ => { };
-        setAutoCompletionEnabled = _ => { };
-        setCodeFoldingEnabled = _ => { };
+        setAutoSaveLogEnabled = enabled =>
+        {
+            originalConfigService.Config.AutoSaveLog = enabled;
+            originalConfigService.Save();
+        };
+        setAutoRunAfterFlashEnabled = enabled =>
+        {
+            originalConfigService.Config.AutoRunAfterFlash = enabled;
+            originalConfigService.Save();
+        };
+        setAutoCompletionEnabled = enabled =>
+        {
+            originalConfigService.Config.EnableAutoCompletion = enabled;
+            originalConfigService.Save();
+        };
+        setCodeFoldingEnabled = enabled =>
+        {
+            originalConfigService.Config.ShowControllerHelp = enabled;
+            originalConfigService.Save();
+        };
         startRecordDevice = originalDeviceService.StartRecord;
         pauseRecordDevice = originalDeviceService.PauseRecord;
         stopRecordDevice = originalDeviceService.StopRecord;
@@ -958,7 +974,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
 
         FindRequiredControl<Label>("lblVersion").Text = $"版本: {version}";
-        FindRequiredControl<CheckBox>("chkFolding").Checked = true;
+        FindRequiredControl<CheckBox>("chkAutoCompletion").Checked = originalConfigService.Config.EnableAutoCompletion;
+        FindRequiredControl<CheckBox>("chkFolding").Checked = originalConfigService.Config.ShowControllerHelp;
+        FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked = originalConfigService.Config.AutoRunAfterFlash;
+        FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked = originalConfigService.Config.AutoSaveLog;
+        FindRequiredControl<CheckBox>("chkDebugLog").Checked = originalDeviceService.DebugLogEnabled;
 
         var log = FindRequiredControl<TextBox>("logTxtBox");
         log.Text = "正在初始化伊机控..." + Environment.NewLine +

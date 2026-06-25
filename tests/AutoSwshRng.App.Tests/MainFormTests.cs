@@ -1,4 +1,5 @@
 using AutoSwshRng.App;
+using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.VPad;
 using System.Collections;
 using System.Drawing;
@@ -1068,18 +1069,13 @@ public class MainFormTests
         {
             Assert.That(GetProperty<string>(FindControl(form, "lblEditorSettings"), "Text"), Is.EqualTo("编辑器设置"));
             Assert.That(GetProperty<string>(FindControl(form, "chkAutoCompletion"), "Text"), Is.EqualTo("代码自动补全"));
-            Assert.That(GetProperty<bool>(FindControl(form, "chkAutoCompletion"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "chkFolding"), "Text"), Is.EqualTo("显示代码折叠"));
-            Assert.That(GetProperty<bool>(FindControl(form, "chkFolding"), "Checked"), Is.True);
             Assert.That(GetProperty<string>(FindControl(form, "chkDebugLog"), "Text"), Is.EqualTo("显示调试信息"));
-            Assert.That(GetProperty<bool>(FindControl(form, "chkDebugLog"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblRunSettings"), "Text"), Is.EqualTo("运行设置"));
             Assert.That(GetProperty<string>(FindControl(form, "chkAutoRunAfterFlash"), "Text"), Is.EqualTo("烧录后自动运行"));
-            Assert.That(GetProperty<bool>(FindControl(form, "chkAutoRunAfterFlash"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblNotifySettings"), "Text"), Is.EqualTo("通知设置"));
             Assert.That(GetProperty<string>(FindControl(form, "btnAlertConfig"), "Text"), Is.EqualTo("推送配置"));
             Assert.That(GetProperty<string>(FindControl(form, "chkAutoSaveLog"), "Text"), Is.EqualTo("自动保存日志"));
-            Assert.That(GetProperty<bool>(FindControl(form, "chkAutoSaveLog"), "Checked"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblToolSettings"), "Text"), Is.EqualTo("工具"));
             Assert.That(GetProperty<string>(FindControl(form, "btnESPConfig"), "Text"), Is.EqualTo("ESP32设置"));
             Assert.That(GetProperty<string>(FindControl(form, "btnUnpair"), "Text"), Is.EqualTo("取消蓝牙配对"));
@@ -1091,6 +1087,48 @@ public class MainFormTests
             Assert.That(GetProperty<string>(FindControl(form, "lblVersion"), "Text"), Does.Not.Contain("--"));
             Assert.That(GetProperty<string>(FindControl(form, "btnCheckUpdate"), "Text"), Is.EqualTo("检查更新"));
             Assert.That(GetProperty<string>(FindControl(form, "btnSource"), "Text"), Is.EqualTo("项目源码"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConSettingsInitializeAndPersistThroughOriginalConfigService()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState
+        {
+            EnableAutoCompletion = true,
+            ShowControllerHelp = false,
+            AutoRunAfterFlash = true,
+            AutoSaveLog = true,
+        });
+        using var form = new MainForm();
+
+        var autoCompletion = FindControl(form, "chkAutoCompletion");
+        var folding = FindControl(form, "chkFolding");
+        var autoRun = FindControl(form, "chkAutoRunAfterFlash");
+        var autoSaveLog = FindControl(form, "chkAutoSaveLog");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(autoCompletion, "Checked"), Is.True);
+            Assert.That(GetProperty<bool>(folding, "Checked"), Is.False);
+            Assert.That(GetProperty<bool>(autoRun, "Checked"), Is.True);
+            Assert.That(GetProperty<bool>(autoSaveLog, "Checked"), Is.True);
+        });
+
+        SetProperty(autoCompletion, "Checked", false);
+        SetProperty(folding, "Checked", true);
+        SetProperty(autoRun, "Checked", false);
+        SetProperty(autoSaveLog, "Checked", false);
+
+        var savedConfig = ConfigManager.LoadConfig();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(savedConfig.EnableAutoCompletion, Is.False);
+            Assert.That(savedConfig.ShowControllerHelp, Is.True);
+            Assert.That(savedConfig.AutoRunAfterFlash, Is.False);
+            Assert.That(savedConfig.AutoSaveLog, Is.False);
         });
     }
 
@@ -1151,6 +1189,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConAutoSaveLogSettingUpdatesOriginalConfigFlag()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { AutoSaveLog = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var autoSaveLog = FindControl(form, "chkAutoSaveLog");
@@ -1168,6 +1207,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConAutoRunAfterFlashSettingUpdatesOriginalConfigFlag()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { AutoRunAfterFlash = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var autoRun = FindControl(form, "chkAutoRunAfterFlash");
@@ -1185,6 +1225,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConAutoCompletionSettingUpdatesOriginalEditorConfig()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { EnableAutoCompletion = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var autoCompletion = FindControl(form, "chkAutoCompletion");
@@ -1202,6 +1243,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConCodeFoldingSettingUpdatesOriginalEditorConfig()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = true });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var folding = FindControl(form, "chkFolding");
@@ -1921,6 +1963,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConFlashShowsOriginalSuccessStatusWhenConnected()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { AutoRunAfterFlash = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var editor = FindControl(form, "easyConScriptEditor");
@@ -2309,6 +2352,25 @@ public class MainFormTests
         Assert.That(GetProperty<string>(placeholder, "Text"), Does.Contain("自动化流程"));
     }
 
+    private static IDisposable PreserveEasyConConfig(ConfigState config)
+    {
+        var configPath = AppPaths.ConfigFile;
+        var previousConfig = File.Exists(configPath) ? File.ReadAllText(configPath) : null;
+        ConfigManager.SaveConfig(config);
+
+        return new RestoreAction(() =>
+        {
+            if (previousConfig is null)
+            {
+                File.Delete(configPath);
+            }
+            else
+            {
+                File.WriteAllText(configPath, previousConfig);
+            }
+        });
+    }
+
     private static object FindControl(object root, string name)
     {
         var match = FindControlOrDefault(root, name);
@@ -2545,5 +2607,13 @@ public class MainFormTests
     {
         target.GetType().GetMethod("OnDropDown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .Invoke(target, [EventArgs.Empty]);
+    }
+
+    private sealed class RestoreAction(Action restore) : IDisposable
+    {
+        public void Dispose()
+        {
+            restore();
+        }
     }
 }
