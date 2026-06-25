@@ -15,6 +15,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 {
     private readonly ConfigService originalConfigService = new();
     private readonly DeviceService originalDeviceService = new();
+    private readonly CaptureService originalCaptureService = new();
     private VPadService? originalVPadService;
     private string? currentScriptPath;
     private bool currentScriptModified;
@@ -88,10 +89,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         openExternalLink = OpenExternalLink;
         openFindReplacePanel = ShowFindReplacePanel;
         getSerialPortNames = originalDeviceService.GetPortNames;
-        getVideoSources = GetVideoSources;
-        connectCaptureSource = _ => false;
-        disconnectCaptureSource = () => { };
-        openCaptureConsole = ShowCaptureConsoleDisconnectedStatus;
+        getVideoSources = GetOriginalVideoSources;
+        connectCaptureSource = ConnectOriginalCaptureSource;
+        disconnectCaptureSource = originalCaptureService.Disconnect;
+        openCaptureConsole = originalCaptureService.ShowCaptureConsole;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = OpenOriginalEspConfigDialog;
@@ -138,6 +139,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         originalDeviceService.ConnectionStateChanged += connected => PostToUi(() => UpdateDeviceStatus(connected));
         originalDeviceService.StatusChanged += message => PostToUi(() => ShowStatus(message));
         originalDeviceService.Log += message => PostToUi(() => AppendLogLine(message));
+        originalCaptureService.ConnectionStateChanged += connected => PostToUi(() => UpdateCaptureStatus(connected));
+        originalCaptureService.StatusChanged += message => PostToUi(() => ShowStatus(message));
         originalConfigService.Load();
         selectedCaptureType = string.IsNullOrWhiteSpace(originalConfigService.Config.CaptureType)
             ? "ANY"
@@ -530,6 +533,33 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private void ShowCaptureConsoleDisconnectedStatus()
     {
         ShowStatus("请先连接视频源");
+    }
+
+    private bool ConnectOriginalCaptureSource(int sourceIndex)
+    {
+        var imageLabelPath = currentScriptPath is not null
+            ? Path.Combine(Path.GetDirectoryName(currentScriptPath)!, "ImgLabel")
+            : string.Empty;
+
+        return originalCaptureService.Connect(sourceIndex, GetSelectedCaptureTypeValue(), imageLabelPath);
+    }
+
+    private int GetSelectedCaptureTypeValue()
+    {
+        if (string.Equals(selectedCaptureType, "ANY", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        foreach (var captureType in EasyConScriptAdapter.GetCaptureTypes())
+        {
+            if (captureType.Name == selectedCaptureType)
+            {
+                return captureType.Value;
+            }
+        }
+
+        return 0;
     }
 
     private void OpenOriginalKeyMappingDialog()
@@ -1161,9 +1191,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
     }
 
-    private static IReadOnlyList<(string Name, int Index)> GetVideoSources()
+    private IReadOnlyList<(string Name, int Index)> GetOriginalVideoSources()
     {
-        return [];
+        return CaptureService.GetVideoSources()
+            .Select(source => (source.name, source.index))
+            .ToArray();
     }
 
     private void FormatCurrentScript()

@@ -1,6 +1,7 @@
 using AutoSwshRng.App;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.VPad;
+using EasyCon2.Services;
 using System.Collections;
 using System.Drawing;
 using System.Windows.Forms;
@@ -1453,6 +1454,32 @@ public class MainFormTests
         InvokeDropDown(combo);
 
         Assert.That(GetComboBoxItemTexts(combo), Is.EqualTo(new[] { "OBS Virtual Camera", "Capture Card" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConCaptureDelegatesUseOriginalCaptureServiceByDefault()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var captureService = GetField<CaptureService>(easyCon, "originalCaptureService");
+
+        var getSources = GetField<Func<IReadOnlyList<(string Name, int Index)>>>(easyCon, "getVideoSources");
+        var connect = GetField<Func<int, bool>>(easyCon, "connectCaptureSource");
+        var disconnect = GetField<Action>(easyCon, "disconnectCaptureSource");
+        var openConsole = GetField<Action>(easyCon, "openCaptureConsole");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(getSources.Target, Is.SameAs(easyCon));
+            Assert.That(getSources.Method.Name, Is.EqualTo("GetOriginalVideoSources"));
+            Assert.That(connect.Target, Is.SameAs(easyCon));
+            Assert.That(connect.Method.Name, Is.EqualTo("ConnectOriginalCaptureSource"));
+            Assert.That(disconnect.Target, Is.SameAs(captureService));
+            Assert.That(disconnect.Method.Name, Is.EqualTo("Disconnect"));
+            Assert.That(openConsole.Target, Is.SameAs(captureService));
+            Assert.That(openConsole.Method.Name, Is.EqualTo("ShowCaptureConsole"));
+        });
     }
 
     [Test]
