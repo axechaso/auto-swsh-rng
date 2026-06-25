@@ -1095,7 +1095,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
-        var assembly = EasyConScriptAdapter.AssembleFirmwareScript(editor.Text);
+        var assembly = assembleFirmwareScript(editor.Text);
         if (!assembly.Success)
         {
             showEasyConMessage(string.Empty, $"生成固件失败：{assembly.ErrorMessage}");
