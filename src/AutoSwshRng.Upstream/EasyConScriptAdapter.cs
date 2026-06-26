@@ -162,6 +162,14 @@ public static class EasyConScriptAdapter
         string scriptText,
         IReadOnlyDictionary<string, Func<int>>? externalGetters)
     {
+        return AssembleFirmwareScript(scriptText, externalGetters, autoRun: true);
+    }
+
+    public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(
+        string scriptText,
+        IReadOnlyDictionary<string, Func<int>>? externalGetters,
+        bool autoRun)
+    {
         var scripter = new Scripter();
         var getterMap = externalGetters?.ToDictionary(pair => pair.Key, pair => pair.Value)
             ?? [];
@@ -178,7 +186,7 @@ public static class EasyConScriptAdapter
         {
             return new EasyConFirmwareAssemblyResult(
                 Success: true,
-                Bytes: scripter.Assemble(auto: true),
+                Bytes: scripter.Assemble(autoRun),
                 ErrorMessage: null);
         }
         catch (NotImplementedException)

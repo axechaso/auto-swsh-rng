@@ -1312,6 +1312,35 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConGenerateFirmwareUsesOriginalFirmwareAutoRunMenuState()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var messages = new List<(string Title, string Message)>();
+        var autoRunValues = new List<bool>();
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetProperty(FindToolStripItem(menu, "autoRunAfterFlashMenuItem"), "Checked", false);
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, bool, Upstream.EasyConFirmwareAssemblyResult>((_, autoRun) =>
+        {
+            autoRunValues.Add(autoRun);
+            return new Upstream.EasyConFirmwareAssemblyResult(false, [], "此版本暂不支持编译");
+        }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnGenFirmware"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(autoRunValues, Is.EqualTo(new[] { false }));
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "生成固件失败：此版本暂不支持编译") }));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalSettingsPanelControls()
     {
         using var form = new MainForm();
@@ -1470,6 +1499,32 @@ public class MainFormTests
         SetProperty(autoRun, "Checked", false);
 
         Assert.That(states, Is.EqualTo(new[] { true, false }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConAutoRunFirmwareMenuMatchesOriginalDefaultAndDoesNotPersistConfig()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { AutoRunAfterFlash = false });
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var firmwareAutoRun = FindToolStripItem(menu, "autoRunAfterFlashMenuItem");
+        var afterFlashAutoRun = FindControl(form, "chkAutoRunAfterFlash");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(firmwareAutoRun, "Checked"), Is.True);
+            Assert.That(GetProperty<bool>(afterFlashAutoRun, "Checked"), Is.False);
+        });
+
+        InvokeClick(firmwareAutoRun);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(firmwareAutoRun, "Checked"), Is.False);
+            Assert.That(GetProperty<bool>(afterFlashAutoRun, "Checked"), Is.False);
+            Assert.That(ConfigManager.LoadConfig().AutoRunAfterFlash, Is.False);
+        });
     }
 
     [Test]
@@ -2227,7 +2282,7 @@ public class MainFormTests
         SetProperty(boardType, "SelectedIndex", 4);
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
         SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
-        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, bool, Upstream.EasyConFirmwareAssemblyResult>((_, _) =>
             new Upstream.EasyConFirmwareAssemblyResult(true, Enumerable.Repeat<byte>(0x01, 413).ToArray(), null)));
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
@@ -2250,7 +2305,7 @@ public class MainFormTests
         SetProperty(editor, "Text", "PRINT \"hello\"");
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
         SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
-        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, bool, Upstream.EasyConFirmwareAssemblyResult>((_, _) =>
             new Upstream.EasyConFirmwareAssemblyResult(true, [0x01, 0x02], null)));
         SetField(easyCon, "flashDevice", new Func<IReadOnlyList<byte>, bool>(bytes =>
         {
@@ -2279,7 +2334,7 @@ public class MainFormTests
         SetProperty(editor, "Text", "PRINT \"hello\"");
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
         SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
-        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, bool, Upstream.EasyConFirmwareAssemblyResult>((_, _) =>
             new Upstream.EasyConFirmwareAssemblyResult(true, [0x01, 0x02], null)));
         SetField(easyCon, "flashDevice", new Func<IReadOnlyList<byte>, bool>(_ => false));
 
@@ -2303,7 +2358,7 @@ public class MainFormTests
         SetProperty(autoRun, "Checked", true);
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
         SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
-        SetField(easyCon, "assembleFirmwareScript", new Func<string, Upstream.EasyConFirmwareAssemblyResult>(_ =>
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, bool, Upstream.EasyConFirmwareAssemblyResult>((_, _) =>
             new Upstream.EasyConFirmwareAssemblyResult(true, [0x01, 0x02], null)));
         SetField(easyCon, "flashDevice", new Func<IReadOnlyList<byte>, bool>(_ => true));
         SetField(easyCon, "remoteStartDevice", new Func<bool>(() =>

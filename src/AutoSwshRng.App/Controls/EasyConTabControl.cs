@@ -53,7 +53,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Func<bool> remoteStopDevice = null!;
     private Func<bool> flashClearDevice = null!;
     private Func<int> getDeviceFirmwareVersion = null!;
-    private Func<string, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
+    private Func<string, bool, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
     private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
     private Action<bool> setDebugLogEnabled = null!;
     private Action<bool> setAutoSaveLogEnabled = null!;
@@ -115,7 +115,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         remoteStopDevice = originalDeviceService.RemoteStop;
         flashClearDevice = () => originalDeviceService.Flash(HexWriter.EmptyAsm);
         getDeviceFirmwareVersion = originalDeviceService.GetVersion;
-        assembleFirmwareScript = scriptText => EasyConScriptAdapter.AssembleFirmwareScript(scriptText, buildCaptureExternalGetters());
+        assembleFirmwareScript = (scriptText, autoRun) => EasyConScriptAdapter.AssembleFirmwareScript(scriptText, buildCaptureExternalGetters(), autoRun);
         flashDevice = bytes => originalDeviceService.Flash(bytes.ToArray());
         setDebugLogEnabled = enabled => originalDeviceService.DebugLogEnabled = enabled;
         setAutoSaveLogEnabled = enabled =>
@@ -272,7 +272,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
         FindRequiredMenuItem("alertConfigMenuItem").Click += (_, _) => openAlertConfigDialog();
         FindRequiredMenuItem("debugLogMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkDebugLog");
-        FindRequiredMenuItem("autoRunAfterFlashMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoRunAfterFlash");
+        FindRequiredMenuItem("autoRunAfterFlashMenuItem").Click += (_, _) => ToggleMenuItem("autoRunAfterFlashMenuItem");
         FindRequiredMenuItem("foldingMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkFolding");
         FindRequiredMenuItem("autoCompletionMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoCompletion");
         FindRequiredMenuItem("darkModeMenuItem").Click += (_, _) => ToggleDarkModeMenuItem();
@@ -298,11 +298,22 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         checkBox.Checked = !checkBox.Checked;
     }
 
+    private void ToggleMenuItem(string menuItemName)
+    {
+        var menuItem = FindRequiredMenuItem(menuItemName);
+        menuItem.Checked = !menuItem.Checked;
+    }
+
     private void ToggleDarkModeMenuItem()
     {
         var menuItem = FindRequiredMenuItem("darkModeMenuItem");
         menuItem.Checked = !menuItem.Checked;
         setDarkModeEnabled(menuItem.Checked);
+    }
+
+    private bool IsFirmwareAutoRunEnabled()
+    {
+        return FindRequiredMenuItem("autoRunAfterFlashMenuItem").Checked;
     }
 
     private void WireDeviceListActions()
@@ -892,7 +903,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
-        var assembly = assembleFirmwareScript(editor.Text);
+        var assembly = assembleFirmwareScript(editor.Text, IsFirmwareAutoRunEnabled());
         if (!assembly.Success || assembly.Bytes.Count == 0)
         {
             showEasyConMessage(string.Empty, "编译结果为空，无法烧录");
@@ -1066,7 +1077,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<CheckBox>("chkDebugLog").Checked = originalDeviceService.DebugLogEnabled;
         FindRequiredMenuItem("autoCompletionMenuItem").Checked = originalConfigService.Config.EnableAutoCompletion;
         FindRequiredMenuItem("foldingMenuItem").Checked = originalConfigService.Config.ShowControllerHelp;
-        FindRequiredMenuItem("autoRunAfterFlashMenuItem").Checked = originalConfigService.Config.AutoRunAfterFlash;
         FindRequiredMenuItem("debugLogMenuItem").Checked = originalDeviceService.DebugLogEnabled;
         FindRequiredMenuItem("darkModeMenuItem").Checked = originalConfigService.Config.DarkMode;
 
@@ -1147,7 +1157,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
-        var assembly = assembleFirmwareScript(editor.Text);
+        var assembly = assembleFirmwareScript(editor.Text, IsFirmwareAutoRunEnabled());
         if (!assembly.Success)
         {
             showEasyConMessage(string.Empty, $"生成固件失败：{assembly.ErrorMessage}");
@@ -1408,10 +1418,13 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             CreateMenuItem("captureTypeMenu", "采集卡类型"),
             CreateMenuItem("setEnvVarMenuItem", "设置环境变量"),
             CreateMenuItem("captureHelpMenuItem", "搜图说明")));
+        var firmwareAutoRunItem = CreateMenuItem("autoRunAfterFlashMenuItem", "烧录自动运行");
+        firmwareAutoRunItem.Checked = true;
+        firmwareAutoRunItem.CheckState = CheckState.Checked;
         menu.Items.Add(CreateMenuItem("settingsMenu", "设置",
             CreateMenuItem("alertConfigMenuItem", "推送设置"),
             CreateMenuItem("debugLogMenuItem", "显示调试信息"),
-            CreateMenuItem("autoRunAfterFlashMenuItem", "烧录自动运行"),
+            firmwareAutoRunItem,
             CreateMenuItem("foldingMenuItem", "显示折叠"),
             CreateMenuItem("autoCompletionMenuItem", "代码自动补全"),
             CreateMenuItem("darkModeMenuItem", "深色模式")));
