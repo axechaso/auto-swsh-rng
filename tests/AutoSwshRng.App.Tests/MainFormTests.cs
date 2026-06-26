@@ -218,7 +218,7 @@ public class MainFormTests
         Assert.Multiple(() =>
         {
             Assert.That(menu.GetType().Name, Is.EqualTo("MenuStrip"));
-            Assert.That(GetToolStripItemTexts(menu), Is.SupersetOf(new[] { "文件", "编辑", "脚本", "搜图", "帮助" }));
+            Assert.That(GetToolStripItemTexts(menu), Is.EqualTo(new[] { "文件", "编辑", "脚本", "搜图", "设置", "蓝牙", "ESP32", "画图", "帮助" }));
             Assert.That(FindControl(form, "easyConScriptEditor"), Is.Not.Null);
             Assert.That(FindControl(form, "logTxtBox"), Is.Not.Null);
             Assert.That(FindControl(form, "easyConSerialPanel"), Is.Not.Null);
@@ -246,7 +246,11 @@ public class MainFormTests
             Assert.That(GetProperty<bool>(FindToolStripItem(menu, "scriptMenu"), "Visible"), Is.False);
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "scriptMenu")), Is.EqualTo(new[] { "格式化", "运行" }));
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "captureMenu")), Is.EqualTo(new[] { "采集卡类型", "设置环境变量", "搜图说明" }));
-            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "helpMenu")), Is.EqualTo(new[] { "固件模式", "联机模式", "烧录模式", "脚本语法", "关于" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "settingsMenu")), Is.EqualTo(new[] { "推送设置", "显示调试信息", "烧录自动运行", "显示折叠", "代码自动补全", "深色模式" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "bluetoothMenu")), Is.EqualTo(new[] { "蓝牙设备驱动配置" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "esp32Menu")), Is.EqualTo(new[] { "手柄设置", "取消配对" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "drawingMenu")), Is.EqualTo(new[] { "喷射", "自由画板鼠标代替摇杆" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "helpMenu")), Is.EqualTo(new[] { "固件模式", "联机模式", "烧录模式", "脚本语法", "检查更新", "项目源码", "关于" }));
         });
     }
 
@@ -264,6 +268,37 @@ public class MainFormTests
         InvokeClick(FindToolStripItem(menu, "menuItemFindReplace"));
 
         Assert.That(opened, Is.EqualTo(1));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConOriginalUtilityMenusUseExistingActions()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var actions = new List<string>();
+
+        SetField(easyCon, "openAlertConfigDialog", new Action(() => actions.Add("alert")));
+        SetField(easyCon, "openBluetoothSettingDialog", new Action(() => actions.Add("bluetooth")));
+        SetField(easyCon, "openEspConfigDialog", new Action(() => actions.Add("esp")));
+        SetField(easyCon, "openDrawingBoard", new Action(() => actions.Add("drawing")));
+        SetField(easyCon, "openExternalLink", new Action<string>(url => actions.Add(url)));
+
+        InvokeClick(FindToolStripItem(menu, "alertConfigMenuItem"));
+        InvokeClick(FindToolStripItem(menu, "bluetoothSettingMenuItem"));
+        InvokeClick(FindToolStripItem(menu, "espConfigMenuItem"));
+        InvokeClick(FindToolStripItem(menu, "drawingBoardMenuItem"));
+        InvokeClick(FindToolStripItem(menu, "sourceMenuItem"));
+
+        Assert.That(actions, Is.EqualTo(new[]
+        {
+            "alert",
+            "bluetooth",
+            "esp",
+            "drawing",
+            "https://github.com/EasyConNS/EasyCon",
+        }));
     }
 
     [Test]

@@ -39,6 +39,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Action openAlertConfigDialog = null!;
     private Action openEspConfigDialog = null!;
     private Action openDrawingBoard = null!;
+    private Action openMouseJoystickDialog = null!;
     private Action openBluetoothSettingDialog = null!;
     private Action openKeyMappingDialog = null!;
     private Func<bool> openVirtualController = null!;
@@ -59,6 +60,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Action<bool> setAutoRunAfterFlashEnabled = null!;
     private Action<bool> setAutoCompletionEnabled = null!;
     private Action<bool> setCodeFoldingEnabled = null!;
+    private Action<bool> setDarkModeEnabled = null!;
     private Action startRecordDevice = null!;
     private Action pauseRecordDevice = null!;
     private Action stopRecordDevice = null!;
@@ -99,6 +101,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = OpenOriginalEspConfigDialog;
         openDrawingBoard = OpenOriginalDrawingBoard;
+        openMouseJoystickDialog = OpenOriginalMouseJoystickDialog;
         openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
         openKeyMappingDialog = OpenOriginalKeyMappingDialog;
         openVirtualController = OpenOriginalVirtualController;
@@ -133,6 +136,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         setCodeFoldingEnabled = enabled =>
         {
             originalConfigService.Config.ShowControllerHelp = enabled;
+            originalConfigService.Save();
+        };
+        setDarkModeEnabled = enabled =>
+        {
+            originalConfigService.Config.DarkMode = enabled;
             originalConfigService.Save();
         };
         startRecordDevice = originalDeviceService.StartRecord;
@@ -245,15 +253,15 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private void WireSettingsActions()
     {
         FindRequiredControl<CheckBox>("chkDebugLog").CheckedChanged += (_, _) =>
-            setDebugLogEnabled(FindRequiredControl<CheckBox>("chkDebugLog").Checked);
+            UpdateLinkedSetting("chkDebugLog", "debugLogMenuItem", setDebugLogEnabled);
         FindRequiredControl<CheckBox>("chkAutoSaveLog").CheckedChanged += (_, _) =>
             setAutoSaveLogEnabled(FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked);
         FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").CheckedChanged += (_, _) =>
-            setAutoRunAfterFlashEnabled(FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked);
+            UpdateLinkedSetting("chkAutoRunAfterFlash", "autoRunAfterFlashMenuItem", setAutoRunAfterFlashEnabled);
         FindRequiredControl<CheckBox>("chkAutoCompletion").CheckedChanged += (_, _) =>
-            setAutoCompletionEnabled(FindRequiredControl<CheckBox>("chkAutoCompletion").Checked);
+            UpdateLinkedSetting("chkAutoCompletion", "autoCompletionMenuItem", setAutoCompletionEnabled);
         FindRequiredControl<CheckBox>("chkFolding").CheckedChanged += (_, _) =>
-            setCodeFoldingEnabled(FindRequiredControl<CheckBox>("chkFolding").Checked);
+            UpdateLinkedSetting("chkFolding", "foldingMenuItem", setCodeFoldingEnabled);
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
         FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
@@ -262,6 +270,39 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<Button>("btnUnpair").Click += (_, _) => UnpairDevice();
         FindRequiredControl<Button>("btnCheckUpdate").Click += (_, _) => _ = CheckForUpdatesAsync();
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
+        FindRequiredMenuItem("alertConfigMenuItem").Click += (_, _) => openAlertConfigDialog();
+        FindRequiredMenuItem("debugLogMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkDebugLog");
+        FindRequiredMenuItem("autoRunAfterFlashMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoRunAfterFlash");
+        FindRequiredMenuItem("foldingMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkFolding");
+        FindRequiredMenuItem("autoCompletionMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoCompletion");
+        FindRequiredMenuItem("darkModeMenuItem").Click += (_, _) => ToggleDarkModeMenuItem();
+        FindRequiredMenuItem("bluetoothSettingMenuItem").Click += (_, _) => openBluetoothSettingDialog();
+        FindRequiredMenuItem("espConfigMenuItem").Click += (_, _) => openEspConfigDialog();
+        FindRequiredMenuItem("unpairMenuItem").Click += (_, _) => UnpairDevice();
+        FindRequiredMenuItem("drawingBoardMenuItem").Click += (_, _) => openDrawingBoard();
+        FindRequiredMenuItem("mouseJoystickMenuItem").Click += (_, _) => openMouseJoystickDialog();
+        FindRequiredMenuItem("checkUpdateMenuItem").Click += (_, _) => _ = CheckForUpdatesAsync();
+        FindRequiredMenuItem("sourceMenuItem").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
+    }
+
+    private void UpdateLinkedSetting(string checkBoxName, string menuItemName, Action<bool> update)
+    {
+        var enabled = FindRequiredControl<CheckBox>(checkBoxName).Checked;
+        update(enabled);
+        FindRequiredMenuItem(menuItemName).Checked = enabled;
+    }
+
+    private void ToggleLinkedCheckBox(string checkBoxName)
+    {
+        var checkBox = FindRequiredControl<CheckBox>(checkBoxName);
+        checkBox.Checked = !checkBox.Checked;
+    }
+
+    private void ToggleDarkModeMenuItem()
+    {
+        var menuItem = FindRequiredMenuItem("darkModeMenuItem");
+        menuItem.Checked = !menuItem.Checked;
+        setDarkModeEnabled(menuItem.Checked);
     }
 
     private void WireDeviceListActions()
@@ -457,6 +498,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private static void OpenOriginalDrawingBoard()
     {
         var form = new EasyCon2.Forms.DrawingBoard(null!);
+        form.Show();
+    }
+
+    private static void OpenOriginalMouseJoystickDialog()
+    {
+        var form = new EasyCon2.Forms.Mouse(null!);
         form.Show();
     }
 
@@ -1017,6 +1064,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked = originalConfigService.Config.AutoRunAfterFlash;
         FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked = originalConfigService.Config.AutoSaveLog;
         FindRequiredControl<CheckBox>("chkDebugLog").Checked = originalDeviceService.DebugLogEnabled;
+        FindRequiredMenuItem("autoCompletionMenuItem").Checked = originalConfigService.Config.EnableAutoCompletion;
+        FindRequiredMenuItem("foldingMenuItem").Checked = originalConfigService.Config.ShowControllerHelp;
+        FindRequiredMenuItem("autoRunAfterFlashMenuItem").Checked = originalConfigService.Config.AutoRunAfterFlash;
+        FindRequiredMenuItem("debugLogMenuItem").Checked = originalDeviceService.DebugLogEnabled;
+        FindRequiredMenuItem("darkModeMenuItem").Checked = originalConfigService.Config.DarkMode;
 
         var log = FindRequiredControl<TextBox>("logTxtBox");
         log.Text = "正在初始化伊机控..." + Environment.NewLine +
@@ -1356,12 +1408,29 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             CreateMenuItem("captureTypeMenu", "采集卡类型"),
             CreateMenuItem("setEnvVarMenuItem", "设置环境变量"),
             CreateMenuItem("captureHelpMenuItem", "搜图说明")));
+        menu.Items.Add(CreateMenuItem("settingsMenu", "设置",
+            CreateMenuItem("alertConfigMenuItem", "推送设置"),
+            CreateMenuItem("debugLogMenuItem", "显示调试信息"),
+            CreateMenuItem("autoRunAfterFlashMenuItem", "烧录自动运行"),
+            CreateMenuItem("foldingMenuItem", "显示折叠"),
+            CreateMenuItem("autoCompletionMenuItem", "代码自动补全"),
+            CreateMenuItem("darkModeMenuItem", "深色模式")));
+        menu.Items.Add(CreateMenuItem("bluetoothMenu", "蓝牙",
+            CreateMenuItem("bluetoothSettingMenuItem", "蓝牙设备驱动配置")));
+        menu.Items.Add(CreateMenuItem("esp32Menu", "ESP32",
+            CreateMenuItem("espConfigMenuItem", "手柄设置"),
+            CreateMenuItem("unpairMenuItem", "取消配对")));
+        menu.Items.Add(CreateMenuItem("drawingMenu", "画图",
+            CreateMenuItem("drawingBoardMenuItem", "喷射"),
+            CreateMenuItem("mouseJoystickMenuItem", "自由画板鼠标代替摇杆")));
         menu.Items.Add(CreateMenuItem("helpMenu", "帮助",
             CreateMenuItem("menuItemFirmwareMode", "固件模式"),
             CreateMenuItem("menuItemOnlineMode", "联机模式"),
             CreateMenuItem("menuItemFlashMode", "烧录模式"),
             CreateMenuItem("menuItemScriptSyntax", "脚本语法"),
             new ToolStripSeparator { Name = "toolStripSeparator2" },
+            CreateMenuItem("checkUpdateMenuItem", "检查更新"),
+            CreateMenuItem("sourceMenuItem", "项目源码"),
             CreateMenuItem("menuItemAbout", "关于")));
 
         return menu;
