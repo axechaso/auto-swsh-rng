@@ -273,7 +273,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredMenuItem("alertConfigMenuItem").Click += (_, _) => openAlertConfigDialog();
         FindRequiredMenuItem("debugLogMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkDebugLog");
         FindRequiredMenuItem("autoRunAfterFlashMenuItem").Click += (_, _) => ToggleMenuItem("autoRunAfterFlashMenuItem");
-        FindRequiredMenuItem("foldingMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkFolding");
+        FindRequiredMenuItem("foldingMenuItem").Click += (_, _) => ToggleMenuItem("foldingMenuItem");
         FindRequiredMenuItem("autoCompletionMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoCompletion");
         FindRequiredMenuItem("darkModeMenuItem").Click += (_, _) => ToggleDarkModeMenuItem();
         FindRequiredMenuItem("bluetoothSettingMenuItem").Click += (_, _) => openBluetoothSettingDialog();
@@ -1076,7 +1076,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked = originalConfigService.Config.AutoSaveLog;
         FindRequiredControl<CheckBox>("chkDebugLog").Checked = originalDeviceService.DebugLogEnabled;
         FindRequiredMenuItem("autoCompletionMenuItem").Checked = originalConfigService.Config.EnableAutoCompletion;
-        FindRequiredMenuItem("foldingMenuItem").Checked = originalConfigService.Config.ShowControllerHelp;
         FindRequiredMenuItem("debugLogMenuItem").Checked = originalDeviceService.DebugLogEnabled;
         FindRequiredMenuItem("darkModeMenuItem").Checked = originalConfigService.Config.DarkMode;
 
@@ -1421,11 +1420,14 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         var firmwareAutoRunItem = CreateMenuItem("autoRunAfterFlashMenuItem", "烧录自动运行");
         firmwareAutoRunItem.Checked = true;
         firmwareAutoRunItem.CheckState = CheckState.Checked;
+        var foldingItem = CreateMenuItem("foldingMenuItem", "显示折叠");
+        foldingItem.Checked = true;
+        foldingItem.CheckState = CheckState.Checked;
         menu.Items.Add(CreateMenuItem("settingsMenu", "设置",
             CreateMenuItem("alertConfigMenuItem", "推送设置"),
             CreateMenuItem("debugLogMenuItem", "显示调试信息"),
             firmwareAutoRunItem,
-            CreateMenuItem("foldingMenuItem", "显示折叠"),
+            foldingItem,
             CreateMenuItem("autoCompletionMenuItem", "代码自动补全"),
             CreateMenuItem("darkModeMenuItem", "深色模式")));
         menu.Items.Add(CreateMenuItem("bluetoothMenu", "蓝牙",

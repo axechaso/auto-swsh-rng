@@ -1529,6 +1529,32 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConFoldingMenuMatchesOriginalDefaultAndDoesNotPersistConfig()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var foldingMenu = FindToolStripItem(menu, "foldingMenuItem");
+        var foldingSetting = FindControl(form, "chkFolding");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(foldingMenu, "Checked"), Is.True);
+            Assert.That(GetProperty<bool>(foldingSetting, "Checked"), Is.False);
+        });
+
+        InvokeClick(foldingMenu);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<bool>(foldingMenu, "Checked"), Is.False);
+            Assert.That(GetProperty<bool>(foldingSetting, "Checked"), Is.False);
+            Assert.That(ConfigManager.LoadConfig().ShowControllerHelp, Is.False);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConAutoCompletionSettingUpdatesOriginalEditorConfig()
     {
         using var configRestore = PreserveEasyConConfig(new ConfigState { EnableAutoCompletion = false });
