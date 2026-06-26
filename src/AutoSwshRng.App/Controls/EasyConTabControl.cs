@@ -3,6 +3,7 @@ using EasyCon.Script.Assembly;
 using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core;
 using EasyCon2.Avalonia.Core.VPad;
+using EasyCon2.Forms;
 using EasyCon2.Services;
 using EasyCon2.Theme;
 using EasyCon2.Views;
@@ -590,7 +591,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void ShowScriptSyntaxHelp()
     {
-        showEasyConMessage("脚本语法", EasyConScriptAdapter.GetScriptSyntaxHelp());
+        new HelpTxtDialog(EasyConScriptAdapter.GetScriptSyntaxHelp()).Show();
     }
 
     private void ShowCaptureConsoleDisconnectedStatus()

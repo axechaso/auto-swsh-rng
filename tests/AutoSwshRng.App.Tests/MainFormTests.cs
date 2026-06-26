@@ -2100,23 +2100,38 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConScriptSyntaxMenuShowsOriginalHelpDocument()
+    public void EasyConScriptSyntaxMenuOpensOriginalHelpDialog()
     {
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var menu = FindControl(form, "easyConOriginalMenu");
         var messages = new List<(string Title, string Message)>();
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        Form? helpDialog = null;
 
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
-        InvokeClick(FindToolStripItem(menu, "menuItemScriptSyntax"));
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(messages.Single().Title, Is.EqualTo("脚本语法"));
-            Assert.That(messages.Single().Message, Does.Contain("所有代码不区分大小写"));
-            Assert.That(messages.Single().Message, Does.Contain("语法：PRINT 输出内容"));
-        });
+            InvokeClick(FindToolStripItem(menu, "menuItemScriptSyntax"));
+            helpDialog = Application.OpenForms
+                .Cast<Form>()
+                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "HelpTxtDialog");
+            var helpText = helpDialog is null ? null : FindControl(helpDialog, "textBox1");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages, Is.Empty);
+                Assert.That(helpDialog, Is.Not.Null);
+                Assert.That(helpDialog!.Text, Is.EqualTo("帮助说明"));
+                Assert.That(GetProperty<string>(helpText!, "Text"), Does.Contain("所有代码不区分大小写"));
+                Assert.That(GetProperty<string>(helpText!, "Text"), Does.Contain("语法：PRINT 输出内容"));
+            });
+        }
+        finally
+        {
+            helpDialog?.Close();
+        }
     }
 
     [Test]
