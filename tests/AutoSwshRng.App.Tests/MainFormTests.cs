@@ -2,6 +2,7 @@ using AutoSwshRng.App;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Services;
+using EasyCon2.Theme;
 using System.Collections;
 using System.Drawing;
 using System.Windows.Forms;
@@ -1587,6 +1588,45 @@ public class MainFormTests
         SetProperty(folding, "Checked", true);
 
         Assert.That(states, Is.EqualTo(new[] { false, true }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConDarkModeMenuInitializesOriginalThemeAndBroadcastsChanges()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { DarkMode = true });
+        ThemeManager.Init(false);
+        var themeChanges = new List<bool>();
+        void OnThemeChanged(bool isDark) => themeChanges.Add(isDark);
+
+        ThemeManager.ThemeChanged += OnThemeChanged;
+        try
+        {
+            using var form = new MainForm();
+            var menu = FindControl(form, "easyConOriginalMenu");
+            var darkMode = FindToolStripItem(menu, "darkModeMenuItem");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetProperty<bool>(darkMode, "Checked"), Is.True);
+                Assert.That(ThemeManager.IsDark, Is.True);
+            });
+
+            InvokeClick(darkMode);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetProperty<bool>(darkMode, "Checked"), Is.False);
+                Assert.That(ConfigManager.LoadConfig().DarkMode, Is.False);
+                Assert.That(ThemeManager.IsDark, Is.False);
+                Assert.That(themeChanges, Is.EqualTo(new[] { false }));
+            });
+        }
+        finally
+        {
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+            ThemeManager.Init(false);
+        }
     }
 
     [Test]

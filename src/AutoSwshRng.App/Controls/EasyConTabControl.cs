@@ -4,6 +4,7 @@ using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Services;
+using EasyCon2.Theme;
 using EasyCon2.Views;
 using System.Reflection;
 using System.Text;
@@ -142,6 +143,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         {
             originalConfigService.Config.DarkMode = enabled;
             originalConfigService.Save();
+            ThemeManager.Toggle(enabled);
         };
         startRecordDevice = originalDeviceService.StartRecord;
         pauseRecordDevice = originalDeviceService.PauseRecord;
@@ -152,6 +154,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         originalCaptureService.ConnectionStateChanged += connected => PostToUi(() => UpdateCaptureStatus(connected));
         originalCaptureService.StatusChanged += message => PostToUi(() => ShowStatus(message));
         originalConfigService.Load();
+        ThemeManager.Init(originalConfigService.Config.DarkMode);
         selectedCaptureType = string.IsNullOrWhiteSpace(originalConfigService.Config.CaptureType)
             ? "ANY"
             : originalConfigService.Config.CaptureType;
