@@ -836,6 +836,7 @@ public class MainFormTests
         var deactivateCalls = 0;
 
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x45));
         SetField(easyCon, "remoteStopDevice", new Func<bool>(() =>
         {
             remoteStopCalls++;
@@ -852,6 +853,43 @@ public class MainFormTests
         {
             Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "需要先停止烧录脚本运行，请点击<远程停止>按钮") }));
             Assert.That(remoteStopCalls, Is.EqualTo(1));
+            Assert.That(deactivateCalls, Is.EqualTo(0));
+            Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonRequiresOriginalFirmwareVersionForKeyActionScript()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var status = FindControl(form, "easyConStatusStrip");
+        var messages = new List<(string Title, string Message)>();
+        var remoteStopCalls = 0;
+        var deactivateCalls = 0;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "getDeviceFirmwareVersion", new Func<int>(() => 0x44));
+        SetField(easyCon, "remoteStopDevice", new Func<bool>(() =>
+        {
+            remoteStopCalls++;
+            return true;
+        }));
+        SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        SetProperty(editor, "Text", "A");
+        SetProperty(logText, "Text", string.Empty);
+
+        InvokeClick(FindControl(form, "runStopBtn"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "固件版本不符，请重新刷入Firmware\\") }));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("需要更新固件"));
+            Assert.That(remoteStopCalls, Is.EqualTo(0));
             Assert.That(deactivateCalls, Is.EqualTo(0));
             Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
         });

@@ -16,6 +16,8 @@ namespace AutoSwshRng.App.Controls;
 
 public sealed class EasyConTabControl : UserControl, IControllerAdapter
 {
+    private const int RequiredFirmwareVersion = 0x45;
+    private const string FirmwarePath = @"Firmware\";
     private readonly ConfigService originalConfigService = new();
     private readonly DeviceService originalDeviceService = new();
     private readonly CaptureService originalCaptureService = new();
@@ -899,7 +901,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
-        if (getDeviceFirmwareVersion() != 0x45)
+        if (getDeviceFirmwareVersion() != RequiredFirmwareVersion)
         {
             showEasyConMessage(string.Empty, "单片机固件版本不匹配，请先更新固件");
             return;
@@ -1137,6 +1139,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
+        if (compileResult.HasKeyAction && !CheckOriginalFirmwareVersion())
+        {
+            return;
+        }
+
         if (compileResult.HasKeyAction && !remoteStopDevice())
         {
             showEasyConMessage(string.Empty, "需要先停止烧录脚本运行，请点击<远程停止>按钮");
@@ -1170,6 +1177,18 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
         log.AppendText("-- 运行结束 --" + Environment.NewLine);
         ShowStatus("运行结束");
+    }
+
+    private bool CheckOriginalFirmwareVersion()
+    {
+        if (getDeviceFirmwareVersion() >= RequiredFirmwareVersion)
+        {
+            return true;
+        }
+
+        ShowStatus("需要更新固件");
+        showEasyConMessage(string.Empty, "固件版本不符，请重新刷入" + FirmwarePath);
+        return false;
     }
 
     private void GenerateFirmware()
