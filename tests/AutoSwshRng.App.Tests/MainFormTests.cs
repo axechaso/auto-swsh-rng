@@ -661,6 +661,24 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonDispatchesOriginalAlertOutput()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var runButton = FindControl(form, "runStopBtn");
+        var alerts = new List<string>();
+
+        SetField(easyCon, "dispatchAlert", new Action<string>(alerts.Add));
+        SetProperty(editor, "Text", "ALERT \"done\"");
+
+        InvokeClick(runButton);
+
+        Assert.That(alerts, Is.EqualTo(new[] { "done" }));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConRunButtonDeactivatesOriginalVirtualControllerForValidScript()
     {
         using var form = new MainForm();

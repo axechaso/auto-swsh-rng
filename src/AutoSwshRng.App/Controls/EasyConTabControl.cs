@@ -1,4 +1,5 @@
 using AutoSwshRng.Upstream;
+using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
 using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core;
@@ -29,6 +30,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Func<string?> chooseSaveScriptPath = null!;
     private Func<DialogResult> confirmSaveModifiedScript = null!;
     private Action<string, string> showEasyConMessage = null!;
+    private Action<string> dispatchAlert = null!;
     private Action<string> openExternalLink = null!;
     private Action openFindReplacePanel = null!;
     private Func<string[]> getSerialPortNames = null!;
@@ -91,6 +93,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         chooseSaveScriptPath = ShowSaveScriptDialog;
         confirmSaveModifiedScript = ShowSaveModifiedDialog;
         showEasyConMessage = ShowEasyConMessageBox;
+        dispatchAlert = DispatchOriginalAlert;
         openExternalLink = OpenExternalLink;
         openFindReplacePanel = ShowFindReplacePanel;
         getSerialPortNames = originalDeviceService.GetPortNames;
@@ -1038,6 +1041,23 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         log.AppendText(Environment.NewLine);
     }
 
+    private void DispatchOriginalAlert(string message)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                var dispatcher = new AlertDispatcher(ConfigManager.LoadAlert());
+                dispatcher.OnResult += (_, result) => PostToUi(() => AppendLogLine(result));
+                await dispatcher.DispatchAsync(message);
+            }
+            catch (Exception exception)
+            {
+                PostToUi(() => AppendLogLine($"推送失败:{exception.Message}"));
+            }
+        });
+    }
+
     private void PostToUi(Action action)
     {
         if (IsDisposed)
@@ -1141,6 +1161,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         foreach (var line in result.Printed)
         {
             log.AppendText(line);
+        }
+
+        foreach (var alert in result.Alerted)
+        {
+            dispatchAlert(alert);
         }
 
         log.AppendText("-- 运行结束 --" + Environment.NewLine);
