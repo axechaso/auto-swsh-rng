@@ -1941,24 +1941,55 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConAlertConfigButtonShowsOriginalDefaultProviders()
+    public void EasyConAlertConfigButtonOpensOriginalFormByDefault()
     {
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var messages = new List<(string Title, string Message)>();
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        string? openedFormName = null;
+        string? openedFormText = null;
 
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
-        InvokeClick(FindControl(form, "btnAlertConfig"));
-
-        Assert.Multiple(() =>
+        using var closeDialogTimer = new System.Windows.Forms.Timer { Interval = 25 };
+        closeDialogTimer.Tick += (_, _) =>
         {
-            Assert.That(messages.Single().Title, Is.EqualTo("推送配置"));
-            Assert.That(messages.Single().Message, Does.Contain("超时: 10 秒"));
-            Assert.That(messages.Single().Message, Does.Contain("PushPlus: 关闭"));
-            Assert.That(messages.Single().Message, Does.Contain("Bark: 关闭"));
-            Assert.That(messages.Single().Message, Does.Contain("自定义Webhook: 关闭"));
-        });
+            foreach (var candidate in Application.OpenForms.Cast<Form>().Where(openForm => !existingForms.Contains(openForm)).ToArray())
+            {
+                if (candidate.Name != "AlertConfigForm")
+                {
+                    continue;
+                }
+
+                openedFormName = candidate.Name;
+                openedFormText = candidate.Text;
+                candidate.DialogResult = DialogResult.Cancel;
+                candidate.Close();
+            }
+        };
+
+        try
+        {
+            closeDialogTimer.Start();
+            InvokeClick(FindControl(form, "btnAlertConfig"));
+            closeDialogTimer.Stop();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages, Is.Empty);
+                Assert.That(openedFormName, Is.EqualTo("AlertConfigForm"));
+                Assert.That(openedFormText, Is.EqualTo("推送配置"));
+            });
+        }
+        finally
+        {
+            closeDialogTimer.Stop();
+            foreach (var candidate in Application.OpenForms.Cast<Form>().Where(openForm => !existingForms.Contains(openForm)).ToArray())
+            {
+                candidate.Close();
+            }
+        }
     }
 
     [Test]

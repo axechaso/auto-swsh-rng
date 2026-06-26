@@ -9,7 +9,6 @@ using EasyCon2.Theme;
 using EasyCon2.Views;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 
 namespace AutoSwshRng.App.Controls;
@@ -648,20 +647,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void ShowAlertConfigDialog()
     {
-        var config = EasyConScriptAdapter.GetDefaultAlertConfig();
-        var message = new StringBuilder();
-        message.Append("超时: ");
-        message.Append(config.TimeoutSeconds);
-        message.AppendLine(" 秒");
-
-        foreach (var provider in config.Providers)
-        {
-            message.Append(provider.Name);
-            message.Append(": ");
-            message.AppendLine(provider.Enabled ? "开启" : "关闭");
-        }
-
-        showEasyConMessage("推送配置", message.ToString().TrimEnd());
+        using var form = new AlertConfigForm();
+        form.ShowDialog(this);
     }
 
     private static string KeyCodeToDisplayName(int keyCode)
