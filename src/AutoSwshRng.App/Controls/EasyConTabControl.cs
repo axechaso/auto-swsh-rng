@@ -511,15 +511,15 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         form.ShowDialog();
     }
 
-    private static void OpenOriginalDrawingBoard()
+    private void OpenOriginalDrawingBoard()
     {
-        var form = new EasyCon2.Forms.DrawingBoard(null!);
+        var form = new DrawingBoard(originalDeviceService.Device);
         form.Show();
     }
 
-    private static void OpenOriginalMouseJoystickDialog()
+    private void OpenOriginalMouseJoystickDialog()
     {
-        var form = new EasyCon2.Forms.Mouse(null!);
+        var form = new Mouse(originalDeviceService.Device);
         form.Show();
     }
 

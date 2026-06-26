@@ -2020,6 +2020,8 @@ public class MainFormTests
     {
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
+        var deviceService = GetField<DeviceService>(easyCon, "originalDeviceService");
+        var expectedDevice = GetProperty<object>(deviceService, "Device");
         var messages = new List<(string Title, string Message)>();
         var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
         Form? drawingBoard = null;
@@ -2038,11 +2040,48 @@ public class MainFormTests
                 Assert.That(messages, Is.Empty);
                 Assert.That(drawingBoard, Is.Not.Null);
                 Assert.That(drawingBoard!.Text, Is.EqualTo("画板"));
+                Assert.That(GetField<object>(drawingBoard, "NS"), Is.SameAs(expectedDevice));
             });
         }
         finally
         {
             drawingBoard?.Close();
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConMouseJoystickMenuOpensOriginalFormWithDevice()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var deviceService = GetField<DeviceService>(easyCon, "originalDeviceService");
+        var expectedDevice = GetProperty<object>(deviceService, "Device");
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var messages = new List<(string Title, string Message)>();
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        Form? mouseForm = null;
+
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        try
+        {
+            InvokeClick(FindToolStripItem(menu, "mouseJoystickMenuItem"));
+            mouseForm = Application.OpenForms
+                .Cast<Form>()
+                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "Mouse");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages, Is.Empty);
+                Assert.That(mouseForm, Is.Not.Null);
+                Assert.That(mouseForm!.Text, Is.EqualTo("Mouse"));
+                Assert.That(GetField<object>(mouseForm, "NS"), Is.SameAs(expectedDevice));
+            });
+        }
+        finally
+        {
+            mouseForm?.Close();
         }
     }
 
