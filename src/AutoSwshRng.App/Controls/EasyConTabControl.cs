@@ -10,6 +10,7 @@ using EasyCon2.Theme;
 using EasyCon2.Views;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 
 namespace AutoSwshRng.App.Controls;
@@ -41,6 +42,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Action disconnectCaptureSource = null!;
     private Action openCaptureConsole = null!;
     private Func<IReadOnlyDictionary<string, Func<int>>> buildCaptureExternalGetters = null!;
+    private Func<EasyConBoardDefinition, IReadOnlyList<byte>, string> generateFirmwareFile = null!;
     private Action openScriptSyntaxHelp = null!;
     private Action openAlertConfigDialog = null!;
     private Action openEspConfigDialog = null!;
@@ -104,6 +106,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         disconnectCaptureSource = originalCaptureService.Disconnect;
         openCaptureConsole = originalCaptureService.ShowCaptureConsole;
         buildCaptureExternalGetters = () => originalCaptureService.BuildExternalGetters();
+        generateFirmwareFile = GenerateOriginalFirmwareFile;
         openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
         openEspConfigDialog = OpenOriginalEspConfigDialog;
@@ -1193,7 +1196,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void GenerateFirmware()
     {
-        if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is null)
+        if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is not EasyConBoardDefinition board)
         {
             showEasyConMessage(string.Empty, "请先选择板型");
             return;
@@ -1212,7 +1215,66 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         if (!assembly.Success)
         {
             showEasyConMessage(string.Empty, $"生成固件失败：{assembly.ErrorMessage}");
+            return;
         }
+
+        try
+        {
+            ShowStatus("开始生成固件...");
+            var fileName = generateFirmwareFile(board, assembly.Bytes);
+            ShowStatus("固件生成完毕");
+            showEasyConMessage(string.Empty, "固件生成完毕！已保存为" + Path.GetFileName(fileName));
+        }
+        catch (Exception exception)
+        {
+            ShowStatus("固件生成失败");
+            showEasyConMessage(string.Empty, "固件生成失败！" + exception.Message);
+        }
+    }
+
+    private static string GenerateOriginalFirmwareFile(EasyConBoardDefinition board, IReadOnlyList<byte> bytes)
+    {
+        File.WriteAllBytes("temp.bin", bytes.ToArray());
+        var fileName = GetOriginalFirmwareName(board.CoreName);
+        if (fileName is null)
+        {
+            throw new InvalidOperationException("未找到固件！请确认程序Firmware目录下是否有对应固件文件！");
+        }
+
+        var hex = File.ReadAllText(Path.Combine(FirmwarePath, fileName));
+        hex = HexWriter.WriteHex(hex, bytes.ToArray(), board.DataSize, RequiredFirmwareVersion);
+        var outputFileName = fileName.Replace(".", "+Script.", StringComparison.Ordinal);
+        File.WriteAllText(outputFileName, hex);
+        return outputFileName;
+    }
+
+    private static string? GetOriginalFirmwareName(string coreName)
+    {
+        var directory = new DirectoryInfo(FirmwarePath);
+        if (!directory.Exists)
+        {
+            return null;
+        }
+
+        var maxVersion = 0;
+        string? fileName = null;
+        foreach (var file in directory.GetFiles())
+        {
+            var match = Regex.Match(file.Name, $@"^{Regex.Escape(coreName)} v(\d+)\.hex$", RegexOptions.IgnoreCase);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            var version = int.Parse(match.Groups[1].Value);
+            if (version > maxVersion)
+            {
+                maxVersion = version;
+                fileName = file.Name;
+            }
+        }
+
+        return fileName;
     }
 
     private void NewCurrentScript()

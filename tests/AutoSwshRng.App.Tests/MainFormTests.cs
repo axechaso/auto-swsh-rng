@@ -1398,6 +1398,39 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConGenerateFirmwareWritesOriginalFirmwareFileOnSuccess()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var status = FindControl(form, "easyConStatusStrip");
+        var messages = new List<(string Title, string Message)>();
+        var generated = new List<(string Board, IReadOnlyList<byte> Bytes)>();
+
+        SetProperty(editor, "Text", "PRINT \"hello\"");
+        SetField(easyCon, "assembleFirmwareScript", new Func<string, bool, Upstream.EasyConFirmwareAssemblyResult>((_, _) =>
+            new Upstream.EasyConFirmwareAssemblyResult(true, [1, 2, 3], null)));
+        SetField(easyCon, "generateFirmwareFile", new Func<Upstream.EasyConBoardDefinition, IReadOnlyList<byte>, string>((board, bytes) =>
+        {
+            generated.Add((board.CoreName, bytes.ToArray()));
+            return "Leonardo v45+Script.hex";
+        }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnGenFirmware"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(generated, Has.Count.EqualTo(1));
+            Assert.That(generated[0].Board, Is.EqualTo("Leonardo"));
+            Assert.That(generated[0].Bytes, Is.EqualTo(new byte[] { 1, 2, 3 }));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("固件生成完毕"));
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "固件生成完毕！已保存为Leonardo v45+Script.hex") }));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalSettingsPanelControls()
     {
         using var form = new MainForm();
