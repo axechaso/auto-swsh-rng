@@ -2161,6 +2161,35 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConCheckUpdateFailureKeepsOriginalSilentUiBehavior()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var status = FindControl(form, "easyConStatusStrip");
+        var statusText = FindToolStripItem(status, "toolStripStatusLabel1");
+        var initialStatus = GetProperty<string>(statusText, "Text");
+        var messages = new List<(string Title, string Message)>();
+        using var attempted = new ManualResetEventSlim();
+
+        SetField(easyCon, "checkForUpdateMessageAsync", new Func<Task<string?>>(() =>
+        {
+            attempted.Set();
+            throw new InvalidOperationException("network unavailable");
+        }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+
+        InvokeClick(FindControl(form, "btnCheckUpdate"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(attempted.Wait(TimeSpan.FromSeconds(2)), Is.True);
+            Assert.That(messages, Is.Empty);
+            Assert.That(GetProperty<string>(statusText, "Text"), Is.EqualTo(initialStatus));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConKeyMappingButtonOpensOriginalFormByDefault()
     {
         using var form = new MainForm();

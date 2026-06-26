@@ -7,6 +7,7 @@ using EasyCon2.Forms;
 using EasyCon2.Services;
 using EasyCon2.Theme;
 using EasyCon2.Views;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -680,9 +681,9 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
                 showEasyConMessage(string.Empty, message);
             }
         }
-        catch
+        catch (Exception exception)
         {
-            ShowStatus("检查更新失败");
+            Debug.WriteLine($"update failed:{exception.Message}");
         }
     }
 
