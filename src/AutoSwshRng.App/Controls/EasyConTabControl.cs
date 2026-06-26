@@ -736,6 +736,16 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         showEasyConMessage(string.Empty, "请先连接设备");
     }
 
+    private static void ShowControllerHelp()
+    {
+        new HelpTxtDialog(
+            "鼠标左键：启用/禁用" + Environment.NewLine +
+            "鼠标右键：拖动移动位置，右键点击重置初始位置" + Environment.NewLine +
+            "鼠标中键：禁用并隐藏" + Environment.NewLine + Environment.NewLine +
+            "（注意：在有脚本远程运行的情况下无法使用）",
+            "关于虚拟手柄").Show();
+    }
+
     private void ShowVirtualController()
     {
         if (!isDeviceConnected())
@@ -745,6 +755,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
 
         virtualControllerBound = openVirtualController();
+        if (virtualControllerBound && originalConfigService.Config.ShowControllerHelp)
+        {
+            ShowControllerHelp();
+            originalConfigService.Config.ShowControllerHelp = false;
+            originalConfigService.Save();
+        }
     }
 
     private void ToggleScriptRecording()

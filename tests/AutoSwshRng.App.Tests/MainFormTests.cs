@@ -2672,6 +2672,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConShowControllerOpensOriginalControllerWhenConnected()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var messages = new List<(string Title, string Message)>();
@@ -2696,6 +2697,41 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConShowControllerShowsOriginalOneTimeHelp()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = true });
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
+        Form? helpDialog = null;
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "openVirtualController", new Func<bool>(() => true));
+
+        try
+        {
+            InvokeClick(FindControl(form, "btnShowController"));
+            helpDialog = Application.OpenForms
+                .Cast<Form>()
+                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "HelpTxtDialog");
+            var helpText = helpDialog is null ? null : FindControl(helpDialog, "textBox1");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(helpDialog, Is.Not.Null);
+                Assert.That(helpDialog!.Text, Is.EqualTo("关于虚拟手柄"));
+                Assert.That(GetProperty<string>(helpText!, "Text"), Does.Contain("鼠标左键：启用/禁用"));
+                Assert.That(ConfigManager.LoadConfig().ShowControllerHelp, Is.False);
+            });
+        }
+        finally
+        {
+            helpDialog?.Close();
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConVirtualControllerUsesOriginalVPadServiceByDefault()
     {
         using var form = new MainForm();
@@ -2714,6 +2750,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConRecordStartsWhenDeviceConnectedAndControllerBound()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var status = FindControl(form, "easyConStatusStrip");
@@ -2743,6 +2780,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConRecordLifecycleInvokesOriginalRecordActions()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var record = FindControl(form, "btnRecord");
@@ -2778,6 +2816,7 @@ public class MainFormTests
     [Apartment(ApartmentState.STA)]
     public void EasyConRecordDoesNotTreatFailedVirtualControllerOpenAsBound()
     {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var record = FindControl(form, "btnRecord");
