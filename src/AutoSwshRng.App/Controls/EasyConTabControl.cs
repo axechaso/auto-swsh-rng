@@ -934,7 +934,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
         if (flashDevice(assembly.Bytes))
         {
-            ShowStatus("烧录成功");
+            ShowStatus("烧录完毕");
+            showEasyConMessage(string.Empty, $"烧录完毕！已使用存储空间({assembly.Bytes.Count}/{board.DataSize})");
             if (FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked)
             {
                 remoteStartDevice();

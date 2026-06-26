@@ -2611,6 +2611,7 @@ public class MainFormTests
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var editor = FindControl(form, "easyConScriptEditor");
         var status = FindControl(form, "easyConStatusStrip");
+        var messages = new List<(string Title, string Message)>();
         var flashed = new List<byte[]>();
 
         SetProperty(editor, "Text", "PRINT \"hello\"");
@@ -2623,13 +2624,15 @@ public class MainFormTests
             flashed.Add(bytes.ToArray());
             return true;
         }));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
         InvokeClick(FindControl(form, "btnFlash"));
 
         Assert.Multiple(() =>
         {
             Assert.That(flashed.Single(), Is.EqualTo(new byte[] { 0x01, 0x02 }));
-            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("烧录成功"));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("烧录完毕"));
+            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "烧录完毕！已使用存储空间(2/924)") }));
         });
     }
 
