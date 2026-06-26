@@ -505,10 +505,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
     }
 
-    private static void OpenOriginalEspConfigDialog()
+    private void OpenOriginalEspConfigDialog()
     {
-        var form = new EasyCon2.Forms.ESPConfig(null!);
-        form.Show();
+        using var form = new ESPConfig(originalDeviceService.Device);
+        form.ShowDialog();
     }
 
     private static void OpenOriginalDrawingBoard()
@@ -525,8 +525,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private static void OpenOriginalBluetoothSettingDialog()
     {
-        var form = new EasyCon2.Forms.win32.BTDeviceForm();
-        form.Show();
+        using var form = new EasyCon2.Forms.win32.BTDeviceForm();
+        form.ShowDialog();
     }
 
     private void ShowFindReplacePanel()

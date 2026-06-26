@@ -1969,27 +1969,48 @@ public class MainFormTests
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var messages = new List<(string Title, string Message)>();
         var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
-        Form? espConfig = null;
+        string? openedFormName = null;
+        string? openedFormText = null;
 
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
+        using var closeDialogTimer = new System.Windows.Forms.Timer { Interval = 25 };
+        closeDialogTimer.Tick += (_, _) =>
+        {
+            foreach (var candidate in Application.OpenForms.Cast<Form>().Where(openForm => !existingForms.Contains(openForm)).ToArray())
+            {
+                if (candidate.Name != "ESPConfig")
+                {
+                    continue;
+                }
+
+                openedFormName = candidate.Name;
+                openedFormText = candidate.Text;
+                candidate.DialogResult = DialogResult.Cancel;
+                candidate.Close();
+            }
+        };
+
         try
         {
+            closeDialogTimer.Start();
             InvokeClick(FindControl(form, "btnESPConfig"));
-            espConfig = Application.OpenForms
-                .Cast<Form>()
-                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "ESPConfig");
+            closeDialogTimer.Stop();
 
             Assert.Multiple(() =>
             {
                 Assert.That(messages, Is.Empty);
-                Assert.That(espConfig, Is.Not.Null);
-                Assert.That(espConfig!.Text, Is.EqualTo("手柄设置"));
+                Assert.That(openedFormName, Is.EqualTo("ESPConfig"));
+                Assert.That(openedFormText, Is.EqualTo("手柄设置"));
             });
         }
         finally
         {
-            espConfig?.Close();
+            closeDialogTimer.Stop();
+            foreach (var candidate in Application.OpenForms.Cast<Form>().Where(openForm => !existingForms.Contains(openForm)).ToArray())
+            {
+                candidate.Close();
+            }
         }
     }
 
@@ -2033,27 +2054,48 @@ public class MainFormTests
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var messages = new List<(string Title, string Message)>();
         var existingForms = Application.OpenForms.Cast<Form>().ToHashSet();
-        Form? bluetoothForm = null;
+        string? openedFormName = null;
+        string? openedFormText = null;
 
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
 
+        using var closeDialogTimer = new System.Windows.Forms.Timer { Interval = 25 };
+        closeDialogTimer.Tick += (_, _) =>
+        {
+            foreach (var candidate in Application.OpenForms.Cast<Form>().Where(openForm => !existingForms.Contains(openForm)).ToArray())
+            {
+                if (candidate.Name != "BTDeviceForm")
+                {
+                    continue;
+                }
+
+                openedFormName = candidate.Name;
+                openedFormText = candidate.Text;
+                candidate.DialogResult = DialogResult.Cancel;
+                candidate.Close();
+            }
+        };
+
         try
         {
+            closeDialogTimer.Start();
             InvokeClick(FindControl(form, "btnBluetoothSetting"));
-            bluetoothForm = Application.OpenForms
-                .Cast<Form>()
-                .SingleOrDefault(openForm => !existingForms.Contains(openForm) && openForm.Name == "BTDeviceForm");
+            closeDialogTimer.Stop();
 
             Assert.Multiple(() =>
             {
                 Assert.That(messages, Is.Empty);
-                Assert.That(bluetoothForm, Is.Not.Null);
-                Assert.That(bluetoothForm!.Text, Is.EqualTo("选择蓝牙设备"));
+                Assert.That(openedFormName, Is.EqualTo("BTDeviceForm"));
+                Assert.That(openedFormText, Is.EqualTo("选择蓝牙设备"));
             });
         }
         finally
         {
-            bluetoothForm?.Close();
+            closeDialogTimer.Stop();
+            foreach (var candidate in Application.OpenForms.Cast<Form>().Where(openForm => !existingForms.Contains(openForm)).ToArray())
+            {
+                candidate.Close();
+            }
         }
     }
 
