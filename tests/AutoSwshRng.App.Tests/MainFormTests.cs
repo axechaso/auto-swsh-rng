@@ -24,6 +24,29 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void MainFormShowsIntegratedShellStatusForSelectedTopLevelTab()
+    {
+        using var form = new MainForm();
+        form.Show();
+        var mainTabs = FindControl(form, "autoSwshMainTabs");
+        var status = FindControl(form, "autoSwshStatusStrip");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "autoSwshProjectStatusLabel"), "Text"), Is.EqualTo("auto-swsh-rng"));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "autoSwshDescriptionStatusLabel"), "Text"), Is.EqualTo("尝试剑盾乱数自动化"));
+            Assert.That(GetProperty<string>(FindToolStripItem(status, "autoSwshCurrentModuleStatusLabel"), "Text"), Is.EqualTo("当前：owoow"));
+        });
+
+        SetProperty(mainTabs, "SelectedIndex", 1);
+
+        Assert.That(
+            GetProperty<string>(FindToolStripItem(status, "autoSwshCurrentModuleStatusLabel"), "Text"),
+            Is.EqualTo("当前：伊机控"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void OwoowTabUsesVerticalOriginalToolMenu()
     {
         using var form = new MainForm();
