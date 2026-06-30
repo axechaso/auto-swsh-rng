@@ -22,11 +22,11 @@
 - Create: `src/AutoSwshRng.Core/SpreadFinder/ISpreadFinderService.cs`
 - Create: `tests/AutoSwshRng.Core.Tests/SpreadFinder/SpreadSearchRequestTests.cs`
 
-- [ ] **Step 1: Write failing domain tests**
+- [x] **Step 1: Write failing domain tests**
 
 Add tests that construct a six-stat request and assert that invalid IV ranges, an IV count other than six, invalid guaranteed-IV counts, empty explicit seed sets, reversed ranges, and invalid partition counts throw `ArgumentOutOfRangeException` or `ArgumentException`. Also assert that mutating source arrays after construction does not mutate a request or seed scope.
 
-- [ ] **Step 2: Run the Core tests and verify RED**
+- [x] **Step 2: Run the Core tests and verify RED**
 
 Run:
 
@@ -36,7 +36,7 @@ dotnet test .\tests\AutoSwshRng.Core.Tests\AutoSwshRng.Core.Tests.csproj --filte
 
 Expected: compilation fails because `AutoSwshRng.Core.SpreadFinder` contracts do not exist.
 
-- [ ] **Step 3: Implement the domain contracts**
+- [x] **Step 3: Implement the domain contracts**
 
 Use these public shapes:
 
@@ -180,7 +180,7 @@ public interface ISpreadFinderService
 
 `SpreadSearchRequest` validates exactly six IV filters, IV values in `0..31`, `Minimum <= Maximum`, guaranteed IVs in `0..6`, and a non-null scope. Scope constructors validate their own seed/range/partition invariants and copy seed collections so callers cannot mutate an active request.
 
-- [ ] **Step 4: Run Core tests and verify GREEN**
+- [x] **Step 4: Run Core tests and verify GREEN**
 
 Run:
 
@@ -190,7 +190,7 @@ dotnet test .\tests\AutoSwshRng.Core.Tests\AutoSwshRng.Core.Tests.csproj
 
 Expected: all Core tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\AutoSwshRng.Core\SpreadFinder tests\AutoSwshRng.Core.Tests\SpreadFinder
@@ -203,11 +203,11 @@ git commit -m "feat:定义个体帧搜索领域模型"
 - Create: `src/AutoSwshRng.Upstream/OwoowSpreadFinderService.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/OwoowSpreadFinderServiceTests.cs`
 
-- [ ] **Step 1: Write a failing explicit-seed integration test**
+- [x] **Step 1: Write a failing explicit-seed integration test**
 
 Search the known owoow `FixedSeed.Hex0` seed `0x17033091` with all six IV filters fixed at zero. Assert one project-owned result with seed `0x17033091`, six zero IVs, a parsed hexadecimal encryption constant, and a height/scale matching the original owoow frame.
 
-- [ ] **Step 2: Run the test and verify RED**
+- [x] **Step 2: Run the test and verify RED**
 
 Run:
 
@@ -217,7 +217,7 @@ dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj
 
 Expected: compilation fails because `OwoowSpreadFinderService` does not exist.
 
-- [ ] **Step 3: Implement explicit seed mapping**
+- [x] **Step 3: Implement explicit seed mapping**
 
 Map project filters to a fresh owoow `GeneratorConfig`:
 
@@ -235,7 +235,7 @@ new GeneratorConfig
 
 For `SpreadSearchScope.Seeds`, call owoow's list overload and map every `SpreadFinderFrame` into `SpreadSearchResult`. Parse `Seed` and `EC` as invariant hexadecimal values. Parse the numeric height from owoow's final parenthesized value, derive the project-owned `SpreadScale`, sort by numeric seed and descending IVs, and check cancellation before and after the upstream call.
 
-- [ ] **Step 4: Run Upstream tests and verify GREEN**
+- [x] **Step 4: Run Upstream tests and verify GREEN**
 
 Run:
 
@@ -245,7 +245,7 @@ dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj
 
 Expected: the explicit-seed test passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\AutoSwshRng.Upstream\OwoowSpreadFinderService.cs tests\AutoSwshRng.Upstream.Tests\OwoowSpreadFinderServiceTests.cs
@@ -258,11 +258,11 @@ git commit -m "feat:适配owoow个体帧搜索"
 - Modify: `src/AutoSwshRng.Upstream/OwoowSpreadFinderService.cs`
 - Modify: `tests/AutoSwshRng.Upstream.Tests/OwoowSpreadFinderServiceTests.cs`
 
-- [ ] **Step 1: Write failing range and sorting tests**
+- [x] **Step 1: Write failing range and sorting tests**
 
 Assert that a range containing `0x17033091` yields the same result as an explicit seed search, that multiple partitions do not duplicate or omit boundary seeds, and that results are sorted by numeric seed followed by descending IVs.
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run:
 
@@ -272,11 +272,11 @@ dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj
 
 Expected: range tests fail because only explicit seed scopes are supported.
 
-- [ ] **Step 3: Implement range partitioning**
+- [x] **Step 3: Implement range partitioning**
 
 Split inclusive ranges using `ulong` arithmetic so `uint.MaxValue` does not overflow. Call owoow's range overload once per partition, await `Task.WhenAll`, flatten, map, and sort results. `EntireSpace` delegates to range `0..uint.MaxValue`; its explicit partition count makes the CPU cost visible instead of hiding a full-space scan behind a default.
 
-- [ ] **Step 4: Run Upstream tests and verify GREEN**
+- [x] **Step 4: Run Upstream tests and verify GREEN**
 
 Run:
 
@@ -286,7 +286,7 @@ dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj
 
 Expected: all Upstream tests pass with the existing `System.Drawing.Common` warning only.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\AutoSwshRng.Upstream\OwoowSpreadFinderService.cs tests\AutoSwshRng.Upstream.Tests\OwoowSpreadFinderServiceTests.cs
@@ -297,25 +297,28 @@ git commit -m "feat:支持个体帧范围搜索"
 
 **Files:**
 - Modify: `src/AutoSwshRng.Cli/Program.cs`
-- Modify: `tests/AutoSwshRng.Upstream.Tests/OwoowSpreadFinderServiceTests.cs`
+- Create: `src/AutoSwshRng.Cli/SpreadFinderCliCommand.cs`
+- Create: `tests/AutoSwshRng.Cli.Tests/AutoSwshRng.Cli.Tests.csproj`
+- Create: `tests/AutoSwshRng.Cli.Tests/SpreadFinderCliCommandTests.cs`
+- Modify: `AutoSwshRng.slnx`
 - Modify: `README.md`
 - Modify: `docs/architecture.md`
 
-- [ ] **Step 1: Assert the service is UI-independent**
+- [x] **Step 1: Write failing CLI tests**
 
-In `OwoowSpreadFinderServiceTests`, build the explicit-seed request through an `ISpreadFinderService` reference and project-owned models, run it without creating any WinForms control, and assert that the zero-IV fixture returns seed, EC, IV spread, height, and scale.
+Test a real explicit-seed search through `ISpreadFinderService` without creating any WinForms control. Assert seed, EC, IV spread, height, and scale output, plus usage errors for invalid commands.
 
-- [ ] **Step 2: Run the headless integration test**
+- [x] **Step 2: Run the CLI tests and verify RED**
 
 Run:
 
 ```powershell
-dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj --filter OwoowSpreadFinderServiceTests
+dotnet test .\tests\AutoSwshRng.Cli.Tests\AutoSwshRng.Cli.Tests.csproj
 ```
 
-Expected: all service integration tests pass without constructing a `Form` or any other UI type.
+Expected: compilation fails because `SpreadFinderCliCommand` does not exist.
 
-- [ ] **Step 3: Implement the CLI command**
+- [x] **Step 3: Implement the CLI command**
 
 Support:
 
@@ -325,26 +328,27 @@ dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- spread 1703
 
 The second argument is an eight-digit hexadecimal fixed seed and the third is the guaranteed-IV count. The command searches that seed with IV ranges `0..31` and prints project-owned result fields. Invalid command arguments return a non-zero exit code and a concise usage line. The existing no-argument smoke output remains unchanged.
 
-- [ ] **Step 4: Document the functional boundary**
+- [x] **Step 4: Document the functional boundary**
 
 README and architecture documentation state that Spread Finder now works headlessly through `ISpreadFinderService`, that owoow is confined to the Upstream adapter, and that UI binding remains intentionally deferred.
 
-- [ ] **Step 5: Verify the headless closure**
+- [x] **Step 5: Verify the headless closure**
 
 Run:
 
 ```powershell
 dotnet test .\tests\AutoSwshRng.Core.Tests\AutoSwshRng.Core.Tests.csproj
 dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj
+dotnet test .\tests\AutoSwshRng.Cli.Tests\AutoSwshRng.Cli.Tests.csproj
 dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- spread 17033091 0
 git diff --check
 ```
 
 Expected: tests pass and CLI prints one result for seed `17033091`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
-git add src\AutoSwshRng.Cli tests\AutoSwshRng.Upstream.Tests\OwoowSpreadFinderServiceTests.cs README.md docs\architecture.md
+git add AutoSwshRng.slnx src\AutoSwshRng.Cli tests\AutoSwshRng.Cli.Tests README.md docs\architecture.md docs\superpowers\plans\2026-06-30-owoow-spread-finder-service.md
 git commit -m "feat:增加无界面个体帧搜索入口"
 ```

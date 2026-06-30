@@ -27,6 +27,15 @@ Current upstream references:
 
 Current smoke adapters call `owoow.Core.RNG.Util` for deterministic RNG helper values and `EasyCon.Script` for in-process script evaluation without a serial device. This proves both upstreams can be used through small project-owned APIs before the final automation workflow exists.
 
+Spread Finder now has a functional project-owned boundary:
+
+- `AutoSwshRng.Core.SpreadFinder` defines IV ranges, seed scopes, search requests/results, scale values, and `ISpreadFinderService`.
+- `OwoowSpreadFinderService` maps those contracts to owoow's `GeneratorConfig` and `RNG.Generators.Misc.SpreadFinder`.
+- Explicit seed sets, bounded inclusive ranges, partitioned ranges, and the complete 32-bit seed space use the same service contract.
+- Results cross the boundary as numeric project-owned values rather than owoow frame objects or WinForms binding rows.
+
+The adapter reuses owoow's original RNG generator. AutoSwshRng owns orchestration, validation, range partitioning, cancellation boundaries, deterministic sorting, and conversion into stable application models.
+
 `UpstreamSmokeReport` is the current app-facing facade for these checks. CLI and WinForms consume that report instead of formatting raw upstream calls themselves, which keeps later diagnostics and UI status panels on one project-owned contract.
 
 ## UI direction
@@ -41,7 +50,7 @@ The `owoow` tab keeps the original dense tool surface but moves the original hor
 
 The `伊机控` tab intentionally avoids AutoSwshRng linkage panels for now. It restores the original EasyCon shape: horizontal EasyCon menu, script editor, log output, right-side serial/capture/record/controller/firmware panels, and bottom status text.
 
-The `自动化流程` tab is currently a named placeholder. Its detailed workflow UI should be designed after the `owoow` and `伊机控` pages are stable enough to provide real inputs.
+The `自动化流程` tab is currently a named placeholder. Spread Finder remains intentionally disconnected from WinForms while its functional contract stabilizes; UI binding and cross-tool automation come after the headless service layer.
 
 The app does not embed the original `owoow` or EasyCon windows directly. Direct embedding would couple lifecycle, config files, menus, message loops, and global state too early. Instead, the current implementation reconstructs original-aligned WinForms surfaces in project-owned controls.
 
@@ -60,4 +69,13 @@ dotnet build .\AutoSwshRng.slnx
 dotnet test .\AutoSwshRng.slnx
 dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj
 git diff --check
+```
+
+The headless Spread Finder path can also be verified directly:
+
+```powershell
+dotnet test .\tests\AutoSwshRng.Core.Tests\AutoSwshRng.Core.Tests.csproj
+dotnet test .\tests\AutoSwshRng.Upstream.Tests\AutoSwshRng.Upstream.Tests.csproj
+dotnet test .\tests\AutoSwshRng.Cli.Tests\AutoSwshRng.Cli.Tests.csproj
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- spread 17033091 0
 ```
