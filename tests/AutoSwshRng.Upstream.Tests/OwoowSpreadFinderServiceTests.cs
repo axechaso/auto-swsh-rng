@@ -49,6 +49,36 @@ public class OwoowSpreadFinderServiceTests
             await service.SearchAsync(request, cancellation.Token));
     }
 
+    [Test]
+    public async Task SearchesInclusiveRangesAcrossPartitionsInNumericOrder()
+    {
+        ISpreadFinderService service = new OwoowSpreadFinderService();
+        var request = CreateRequest(
+            new SpreadSearchScope.Range(ZeroIvSeed - 1, ZeroIvSeed + 1, partitionCount: 2),
+            Enumerable.Repeat(IndividualValueRange.Any, 6));
+
+        var results = await service.SearchAsync(request);
+
+        Assert.That(
+            results.Select(result => result.Seed),
+            Is.EqualTo(new[] { ZeroIvSeed - 1, ZeroIvSeed, ZeroIvSeed + 1 }));
+    }
+
+    [Test]
+    public async Task PartitionsRangesAtUIntMaximumWithoutOverflow()
+    {
+        ISpreadFinderService service = new OwoowSpreadFinderService();
+        var request = CreateRequest(
+            new SpreadSearchScope.Range(uint.MaxValue - 1, uint.MaxValue, partitionCount: 2),
+            Enumerable.Repeat(IndividualValueRange.Any, 6));
+
+        var results = await service.SearchAsync(request);
+
+        Assert.That(
+            results.Select(result => result.Seed),
+            Is.EqualTo(new[] { uint.MaxValue - 1, uint.MaxValue }));
+    }
+
     private static SpreadSearchRequest CreateRequest(
         SpreadSearchScope scope,
         IEnumerable<IndividualValueRange> ranges)

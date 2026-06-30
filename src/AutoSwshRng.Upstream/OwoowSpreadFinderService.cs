@@ -1,6 +1,5 @@
 using System.Globalization;
 using AutoSwshRng.Core.SpreadFinder;
-using owoow.Core.Enums;
 using owoow.Core.Interfaces;
 using owoow.Core.RNG;
 using OwoowSpreadFinder = owoow.Core.RNG.Generators.Misc.SpreadFinder;
@@ -23,11 +22,54 @@ public sealed class OwoowSpreadFinderService : ISpreadFinderService
             SpreadSearchScope.Seeds seeds => await OwoowSpreadFinder
                 .Generate(seeds.Values.ToList(), config)
                 .ConfigureAwait(false),
-            _ => throw new NotSupportedException($"Search scope '{request.Scope.GetType().Name}' is not supported yet."),
+            SpreadSearchScope.Range range => await GenerateRangeAsync(
+                    range.Start,
+                    range.End,
+                    range.PartitionCount,
+                    config,
+                    cancellationToken)
+                .ConfigureAwait(false),
+            SpreadSearchScope.EntireSpace entireSpace => await GenerateRangeAsync(
+                    0,
+                    uint.MaxValue,
+                    entireSpace.PartitionCount,
+                    config,
+                    cancellationToken)
+                .ConfigureAwait(false),
+            _ => throw new ArgumentOutOfRangeException(nameof(request), "Unknown spread search scope."),
         };
 
         cancellationToken.ThrowIfCancellationRequested();
         return SortResults(frames.Select(MapResult));
+    }
+
+    private static async Task<List<SpreadFinderFrame>> GenerateRangeAsync(
+        uint start,
+        uint end,
+        int requestedPartitionCount,
+        GeneratorConfig config,
+        CancellationToken cancellationToken)
+    {
+        var totalSeedCount = (ulong)end - start + 1;
+        var partitionCount = (int)Math.Min((ulong)requestedPartitionCount, totalSeedCount);
+        var basePartitionSize = totalSeedCount / (ulong)partitionCount;
+        var extraSeedCount = totalSeedCount % (ulong)partitionCount;
+        var nextStart = (ulong)start;
+        var tasks = new List<Task<List<SpreadFinderFrame>>>(partitionCount);
+
+        for (var index = 0; index < partitionCount; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var partitionSize = basePartitionSize + ((ulong)index < extraSeedCount ? 1UL : 0UL);
+            var partitionEnd = nextStart + partitionSize - 1;
+            tasks.Add(OwoowSpreadFinder.Generate((uint)nextStart, (uint)partitionEnd, config));
+            nextStart = partitionEnd + 1;
+        }
+
+        var partitions = await Task.WhenAll(tasks).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return partitions.SelectMany(partition => partition).ToList();
     }
 
     private static GeneratorConfig CreateGeneratorConfig(SpreadSearchRequest request)
