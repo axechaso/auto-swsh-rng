@@ -31,9 +31,9 @@ dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj
 dotnet run --project .\src\AutoSwshRng.App\AutoSwshRng.App.csproj
 ```
 
-## 无界面个体帧搜索
+## 无界面上游能力
 
-`AutoSwshRng.Core` 已提供项目自有的个体值筛选、搜索范围、搜索请求、搜索结果与 `ISpreadFinderService` 接口。`AutoSwshRng.Upstream.OwoowSpreadFinderService` 负责把这些模型映射到 owoow 原版算法，支持显式种子、分片范围和完整 32 位种子空间。
+`AutoSwshRng.Core` 定义全部项目自有模型与接口；`AutoSwshRng.Upstream` 是唯一直接引用 owoow、EasyCon、PKHeX、OpenCV 和 UI 兼容类型的边界。配置、目录、四类野外遭遇、筛选、Seed/Retail/校准、Spread Finder、特殊工具、实机内存、串口输入、动作序列、采集识别和通知均可脱离 UI 调用。
 
 可以在不创建任何 WinForms 控件的情况下搜索单个固定种子：
 
@@ -41,8 +41,15 @@ dotnet run --project .\src\AutoSwshRng.App\AutoSwshRng.App.csproj
 dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- spread 17033091 0
 ```
 
-参数分别是 8 位十六进制固定种子和保底 31 个体值数量。当前 CLI 使用 `0..31` 的六项个体值范围，并输出 Seed、EC、六项个体值、身高数值与体型。UI 绑定将在功能接口稳定后进行。
+参数分别是 8 位十六进制固定种子和保底 31 个体值数量。统一 CLI 还支持：
 
-CLI 当前会输出上游烟测状态；桌面壳当前优先对齐原版界面：`owoow` 标签页使用左侧竖向工具菜单承载原版功能，`伊机控` 标签页先按 EasyCon 原版脚本/设备控制布局还原，`自动化流程` 暂留稳定占位等待后续 UI 需求。
+```powershell
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- audit
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- catalog Sword Symbol
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- rng next 1234 5678 1
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- calibrate menu 1234 5678 0 false Normal
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- tool wailord 1234 5678 0 1
+dotnet run --project .\src\AutoSwshRng.Cli\AutoSwshRng.Cli.csproj -- sequence-dry-run A:50 wait:10
+```
 
-当前架构说明见 `docs/architecture.md`。
+完整能力清单见 `docs/upstream-capability-matrix.md`，架构说明见 `docs/architecture.md`。

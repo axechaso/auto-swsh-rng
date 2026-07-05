@@ -23,7 +23,7 @@
 - Create: `tests/AutoSwshRng.Core.Tests/Profiles/ProfileContractsTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/OwoowEncounterCatalogServiceTests.cs`
 
-- [ ] **Step 1: Write failing boundary and contract tests**
+- [x] **Step 1: Write failing boundary and contract tests**
 
 ```csharp
 [Test]
@@ -44,21 +44,21 @@ public async Task CatalogMatchesOriginalAreaList()
 }
 ```
 
-- [ ] **Step 2: Run tests and verify missing-type failures**
+- [x] **Step 2: Run tests and verify missing-type failures**
 
 Run: `dotnet test tests\AutoSwshRng.Core.Tests\AutoSwshRng.Core.Tests.csproj --filter "CoreBoundaryTests|ProfileContractsTests"` and the matching Upstream filter.  
 Expected: compile failure because the new contracts/services do not exist.
 
-- [ ] **Step 3: Implement immutable contracts, JSON profile store, and catalog mapping**
+- [x] **Step 3: Implement immutable contracts, JSON profile store, and catalog mapping**
 
 `RngProfile` validates non-empty name and 0..65535 IDs. `IEncounterCatalogService` exposes sorted areas, weather, species, encounter slots, personal details, Dex recommendations, and lookup results; the adapter maps `Encounters`/`EncounterTable` without returning upstream interfaces.
 
-- [ ] **Step 4: Run Core and Upstream tests**
+- [x] **Step 4: Run Core and Upstream tests**
 
 Run both project test commands.  
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 `git commit -m "feat:抽象配置档与遭遇目录服务"`
 
@@ -73,7 +73,7 @@ Expected: all tests pass.
 - Create: `tests/AutoSwshRng.Core.Tests/Rng/RngContractsTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/OwoowRngServicesTests.cs`
 
-- [ ] **Step 1: Write failing tests for validation and original parity**
+- [x] **Step 1: Write failing tests for validation and original parity**
 
 ```csharp
 [Test]
@@ -92,16 +92,16 @@ public async Task MenuCloseMatchesOriginal()
 }
 ```
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run filtered Core and Upstream tests.  
 Expected: compile failure for missing contracts/services.
 
-- [ ] **Step 3: Implement services by calling `Util`, `Fixed`, `SeedFinder`, `MenuClose`, and `Environment`**
+- [x] **Step 3: Implement services by calling `Util`, `Fixed`, `SeedFinder`, `MenuClose`, and `Environment`**
 
 Support Next, Previous, NextInt, FindInitial, state distance, EC/PID/IV/height, exact and ranged Retail seed search, animation generation/re-identification, NPC/menu close, rain, memory roll, area load, and combined fly calibration. Long Retail ranges check cancellation between bounded advance windows.
 
-- [ ] **Step 4: Verify green and commit**
+- [x] **Step 4: Verify green and commit**
 
 Run Core and Upstream tests, then commit:
 
@@ -115,7 +115,7 @@ Run Core and Upstream tests, then commit:
 - Create: `tests/AutoSwshRng.Core.Tests/Encounters/OverworldSearchRequestTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/OwoowOverworldEncounterServiceTests.cs`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Tests cover six IV constraints, ID ranges, advance ranges, hidden max step, static species requirement, cancellation, and one fixed-input parity case for Static, Symbol, Hidden, and Fishing.
 
@@ -125,15 +125,15 @@ Assert.That(actual.Select(ResultProjection), Is.EqualTo(
         .Select(FrameProjection)));
 ```
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run filtered tests and confirm missing types.
 
-- [ ] **Step 3: Implement request mapping and result conversion**
+- [x] **Step 3: Implement request mapping and result conversion**
 
 Map every `GeneratorConfig` field from explicit Core models. Split inclusive ranges into chunks no larger than 25,000 advances; check cancellation and report progress between chunks. Apply project-owned ability/nature/gender post-filters after original generation where owoow lacks pre-filter fields.
 
-- [ ] **Step 4: Verify all four parity cases, cancellation, and commit**
+- [x] **Step 4: Verify all four parity cases, cancellation, and commit**
 
 `git commit -m "feat:抽象四类野外遭遇搜索服务"`
 
@@ -147,19 +147,19 @@ Map every `GeneratorConfig` field from explicit Core models. Split inclusive ran
 - Create: `tests/AutoSwshRng.Core.Tests/Rng/SpecialToolContractsTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/OwoowSpecialRngToolServiceTests.cs`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add prompt-cancellation coverage for Spread Finder and fixed-state parity tests for Loto-ID, Cram-o-matic, Watt Trader, Digging Pa, Digging Bro, and Wailord Respawn.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run filtered tests; cancellation test must fail against the existing large-partition behavior and special-tool tests must not compile.
 
-- [ ] **Step 3: Implement bounded chunks and special-tool mappings**
+- [x] **Step 3: Implement bounded chunks and special-tool mappings**
 
 Use one stable `SpecialToolSearchRequest` discriminated by `SpecialToolKind`; validate kind-specific fields and map every upstream frame property, including Digging Bro reward counts.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 `git commit -m "feat:抽象特殊乱数工具并强化搜索取消"`
 
@@ -171,19 +171,19 @@ Use one stable `SpecialToolSearchRequest` discriminated by `SpecialToolKind`; va
 - Create: `tests/AutoSwshRng.Core.Tests/Connection/OwoowConnectionContractsTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/OwoowConnectionServiceTests.cs`
 
-- [ ] **Step 1: Write failing contract and bridge tests**
+- [x] **Step 1: Write failing contract and bridge tests**
 
 Use an internal test bridge to exercise connect/disconnect status, RNG read/write conversion, trainer/dex/wild/field-object mapping, cancellation, and exception conversion without Switch hardware.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run filtered tests and observe missing contracts.
 
-- [ ] **Step 3: Implement `ConnectionWrapperAsync` adapter and internal bridge**
+- [x] **Step 3: Implement `ConnectionWrapperAsync` adapter and internal bridge**
 
 Expose Wi-Fi/USB settings as Core models; convert PK8/FieldObject into project records; implement `WatchRngStateAsync` with cancellable polling delay instead of the upstream UI busy loop; include date/time primitives needed by automation.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 `git commit -m "feat:抽象实机连接与内存读取服务"`
 
@@ -197,19 +197,19 @@ Expose Wi-Fi/USB settings as Core models; convert PK8/FieldObject into project r
 - Create: `tests/AutoSwshRng.Core.Tests/Automation/InputSequenceContractsTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/EasyConControllerServicesTests.cs`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Compare adapter port discovery to `ECDevice.GetPortNames`, verify every button/D-pad/stick mapping through a recording bridge, verify status/error conversion, and verify cancellation/failure always sends reset.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run filtered tests; missing contracts/services must fail compilation.
 
-- [ ] **Step 3: Implement device/input/sequence services**
+- [x] **Step 3: Implement device/input/sequence services**
 
 Wrap only `TryConnect`, `Disconnect`, status, Down/Up/Reset, and recording APIs. Execute strong-typed actions serially with `Task.Delay(..., token)` and progress/log events; do not expose Flash, RemoteStart, RemoteStop, firmware, or UI hooks.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 `git commit -m "feat:抽象手柄设备与可取消动作序列"`
 
@@ -225,19 +225,19 @@ Wrap only `TryConnect`, `Disconnect`, status, Down/Up/Reset, and recording APIs.
 - Create: `tests/AutoSwshRng.Core.Tests/Capture/CaptureContractsTests.cs`
 - Create: `tests/AutoSwshRng.Upstream.Tests/EasyConCaptureServicesTests.cs`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Test rectangle/template validation; compare source/backend discovery with ECCapture; compare byte-based template match with direct ECSearch on generated in-memory PNGs; verify invalid image and cancellation errors; test notification request conversion with an in-memory HTTP handler.
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run filtered tests; missing Capture reference/types must fail.
 
-- [ ] **Step 3: Add only `EasyCon.Capture` and implement byte-boundary services**
+- [x] **Step 3: Add only `EasyCon.Capture` and implement byte-boundary services**
 
 Convert image bytes to Mat inside `using`, return encoded bytes and project points only, dispose capture/native resources deterministically, and map OCR text/match confidence. Notification accepts cancellation and returns provider results.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 `git commit -m "feat:抽象采集识别与自动化通知服务"`
 
@@ -252,7 +252,7 @@ Convert image bytes to Mat inside `using`, return encoded bytes and project poin
 - Create: `tests/AutoSwshRng.Cli.Tests/HeadlessCliCommandTests.cs`
 - Create: `tests/AutoSwshRng.Core.Tests/Architecture/ProjectReferenceBoundaryTests.cs`
 
-- [ ] **Step 1: Write failing architecture and CLI tests**
+- [x] **Step 1: Write failing architecture and CLI tests**
 
 ```csharp
 [Test]
@@ -276,19 +276,19 @@ public async Task HeadlessCommandsRunWithoutUi(string command)
 }
 ```
 
-- [ ] **Step 2: Verify red**
+- [x] **Step 2: Verify red**
 
 Run architecture and CLI tests; App reference test and commands must fail.
 
-- [ ] **Step 3: Replace direct EasyCon UI dependencies with project contracts**
+- [x] **Step 3: Replace direct EasyCon UI dependencies with project contracts**
 
 Preserve the existing tab shell without extending UI behavior, remove all EasyCon/Avalonia compile-time types from App, and route in-scope device/capture/actions through project services. Explicitly disable legacy excluded controls instead of adding new abstraction work.
 
-- [ ] **Step 4: Implement CLI dispatcher and commands**
+- [x] **Step 4: Implement CLI dispatcher and commands**
 
 Use injected Core interfaces for tests and concrete Upstream services in `Program`. Output stable text/JSON-friendly rows; never instantiate Form/UserControl/Window.
 
-- [ ] **Step 5: Run App, CLI, and architecture tests; commit**
+- [x] **Step 5: Run App, CLI, and architecture tests; commit**
 
 `git commit -m "refactor:移除界面对上游类型的直接依赖"`
 
@@ -302,19 +302,19 @@ Use injected Core interfaces for tests and concrete Upstream services in `Progra
 - Modify: `task_plan.md`
 - Modify: `progress.md`
 
-- [ ] **Step 1: Write final audit test**
+- [x] **Step 1: Write final audit test**
 
 Reflect over every Core service interface, instantiate each concrete Upstream service, and assert no loaded type derives from Form/UserControl/Avalonia Window. Assert every matrix in-scope row is `完成`.
 
-- [ ] **Step 2: Verify the audit test fails while statuses are incomplete**
+- [x] **Step 2: Verify the audit test fails while statuses are incomplete**
 
 Run the filtered audit test and confirm expected failure.
 
-- [ ] **Step 3: Update architecture, matrix, README, and working logs**
+- [x] **Step 3: Update architecture, matrix, README, and working logs**
 
 Document source entry, dependency, project interface, adapter, parity test, CLI/test proof, exclusions, and known hardware-only test limitations for every row.
 
-- [ ] **Step 4: Run fresh final gates**
+- [x] **Step 4: Run fresh final gates**
 
 ```powershell
 dotnet test .\tests\AutoSwshRng.Core.Tests\AutoSwshRng.Core.Tests.csproj
