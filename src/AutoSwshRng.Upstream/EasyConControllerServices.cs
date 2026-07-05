@@ -136,11 +136,24 @@ public sealed class EasyConControllerDeviceService : IControllerDeviceService
     public Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        bridge.Disconnect();
-        status = new ControllerStatus(
-            ControllerConnectionState.Disconnected,
-            "Disconnected.");
-        return Task.CompletedTask;
+        try
+        {
+            bridge.Disconnect();
+            status = new ControllerStatus(
+                ControllerConnectionState.Disconnected,
+                "Disconnected.");
+            return Task.CompletedTask;
+        }
+        catch (Exception exception)
+        {
+            status = new ControllerStatus(
+                ControllerConnectionState.Faulted,
+                exception.Message);
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.ConnectionFailed,
+                "Unable to disconnect the EasyCon controller.",
+                exception);
+        }
     }
 
     public async Task ApplyAsync(
@@ -149,44 +162,69 @@ public sealed class EasyConControllerDeviceService : IControllerDeviceService
     {
         ArgumentNullException.ThrowIfNull(action);
         cancellationToken.ThrowIfCancellationRequested();
-        if (!bridge.IsConnected)
+        try
+        {
+            if (!bridge.IsConnected)
+            {
+                throw new UpstreamOperationException(
+                    UpstreamErrorCode.NotConnected,
+                    "No EasyCon controller is connected.");
+            }
+
+            switch (action)
+            {
+                case ButtonInputAction button:
+                    Apply(Map(button.Button), button.Pressed);
+                    break;
+                case DpadInputAction dpad:
+                    Apply(ECKeyUtil.HAT(Map(dpad.Direction)), dpad.Pressed);
+                    break;
+                case StickInputAction stick:
+                    var key = stick.Stick == ControllerStick.Left
+                        ? ECKeyUtil.LStick(stick.X, stick.Y)
+                        : ECKeyUtil.RStick(stick.X, stick.Y);
+                    Apply(key, stick.Pressed);
+                    break;
+                case WaitInputAction wait:
+                    await Task.Delay(wait.Duration, cancellationToken).ConfigureAwait(false);
+                    break;
+                case ResetInputAction:
+                    bridge.Reset();
+                    break;
+                default:
+                    throw new UpstreamOperationException(
+                        UpstreamErrorCode.Unsupported,
+                        $"Unsupported controller action {action.GetType().Name}.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (UpstreamOperationException)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             throw new UpstreamOperationException(
-                UpstreamErrorCode.NotConnected,
-                "No EasyCon controller is connected.");
-        }
-
-        switch (action)
-        {
-            case ButtonInputAction button:
-                Apply(Map(button.Button), button.Pressed);
-                break;
-            case DpadInputAction dpad:
-                Apply(ECKeyUtil.HAT(Map(dpad.Direction)), dpad.Pressed);
-                break;
-            case StickInputAction stick:
-                var key = stick.Stick == ControllerStick.Left
-                    ? ECKeyUtil.LStick(stick.X, stick.Y)
-                    : ECKeyUtil.RStick(stick.X, stick.Y);
-                Apply(key, stick.Pressed);
-                break;
-            case WaitInputAction wait:
-                await Task.Delay(wait.Duration, cancellationToken).ConfigureAwait(false);
-                break;
-            case ResetInputAction:
-                bridge.Reset();
-                break;
-            default:
-                throw new UpstreamOperationException(
-                    UpstreamErrorCode.Unsupported,
-                    $"Unsupported controller action {action.GetType().Name}.");
+                UpstreamErrorCode.UpstreamFailure,
+                "Unable to apply the EasyCon controller action.",
+                exception);
         }
     }
 
-    public void StartRecording() => bridge.StartRecording();
-    public void PauseRecording() => bridge.PauseRecording();
-    public void StopRecording() => bridge.StopRecording();
-    public string GetRecording() => bridge.GetRecording();
+    public void StartRecording() =>
+        ExecuteBridge(bridge.StartRecording, "Unable to start EasyCon recording.");
+
+    public void PauseRecording() =>
+        ExecuteBridge(bridge.PauseRecording, "Unable to pause EasyCon recording.");
+
+    public void StopRecording() =>
+        ExecuteBridge(bridge.StopRecording, "Unable to stop EasyCon recording.");
+
+    public string GetRecording() =>
+        ExecuteBridge(bridge.GetRecording, "Unable to read the EasyCon recording.");
 
     private void Apply(ECKey key, bool pressed)
     {
@@ -197,6 +235,36 @@ public sealed class EasyConControllerDeviceService : IControllerDeviceService
         else
         {
             bridge.Up(key);
+        }
+    }
+
+    private static void ExecuteBridge(Action action, string message)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.UpstreamFailure,
+                message,
+                exception);
+        }
+    }
+
+    private static T ExecuteBridge<T>(Func<T> action, string message)
+    {
+        try
+        {
+            return action();
+        }
+        catch (Exception exception)
+        {
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.UpstreamFailure,
+                message,
+                exception);
         }
     }
 

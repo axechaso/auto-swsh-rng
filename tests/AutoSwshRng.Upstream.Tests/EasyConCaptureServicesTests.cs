@@ -1,5 +1,6 @@
 using System.Net;
 using AutoSwshRng.Core.Capture;
+using AutoSwshRng.Core.Common;
 using AutoSwshRng.Core.Notifications;
 using EasyCon.Capture;
 using OpenCvSharp;
@@ -68,6 +69,25 @@ public class EasyConCaptureServicesTests
         Assert.That(
             error!.Code,
             Is.EqualTo(AutoSwshRng.Core.Common.UpstreamErrorCode.InvalidData));
+    }
+
+    [Test]
+    public void OverflowingRecognitionRegionIsRejectedAsProjectValidationError()
+    {
+        using var source = new Mat(10, 10, MatType.CV_8UC3, Scalar.Black);
+        using var template = new Mat(1, 1, MatType.CV_8UC3, Scalar.White);
+        Cv2.ImEncode(".png", source, out var sourceBytes);
+        Cv2.ImEncode(".png", template, out var templateBytes);
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await new EasyConImageRecognitionService().MatchTemplateAsync(
+                new TemplateMatchRequest(
+                    sourceBytes,
+                    templateBytes,
+                    ImageMatchMethod.CorrelationCoefficientNormalized,
+                    new ImageRegion(int.MaxValue, 0, 1, 1))));
+
+        Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.Validation));
     }
 
     [Test]

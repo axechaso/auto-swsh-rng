@@ -99,6 +99,11 @@ public sealed class TemplateMatchRequest
             throw new ArgumentException("Source and template images are required.");
         }
 
+        if (!Enum.IsDefined(method))
+        {
+            throw new ArgumentOutOfRangeException(nameof(method));
+        }
+
         Method = method;
         Region = region;
     }

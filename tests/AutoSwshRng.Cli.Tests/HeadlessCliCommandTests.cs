@@ -28,4 +28,23 @@ public class HeadlessCliCommandTests
             Assert.That(output.ToString(), Is.Not.Empty);
         });
     }
+
+    [Test]
+    public async Task UnknownCommandReportsAnActionableError()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = await HeadlessCliCommand.RunAsync(
+            ["unknown"],
+            output,
+            error,
+            HeadlessCliServices.CreateDefaults());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exitCode, Is.EqualTo(2));
+            Assert.That(error.ToString(), Does.Contain("Unknown command"));
+        });
+    }
 }

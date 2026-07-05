@@ -63,7 +63,8 @@ public static class HeadlessCliCommand
                         services.SpreadFinder,
                         cancellationToken)
                     .ConfigureAwait(false),
-                _ => 2,
+                _ => await UnknownCommandAsync(arguments[0], error)
+                    .ConfigureAwait(false),
             };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -78,6 +79,14 @@ public static class HeadlessCliCommand
         await output.WriteLineAsync(UpstreamSmokeReport.Create().ToDisplayText())
             .ConfigureAwait(false);
         return 0;
+    }
+
+    private static async Task<int> UnknownCommandAsync(
+        string command,
+        TextWriter error)
+    {
+        await error.WriteLineAsync($"Unknown command '{command}'.").ConfigureAwait(false);
+        return 2;
     }
 
     private static async Task<int> CatalogAsync(

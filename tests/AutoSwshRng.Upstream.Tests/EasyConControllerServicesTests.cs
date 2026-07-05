@@ -119,6 +119,48 @@ public class EasyConControllerServicesTests
         });
     }
 
+    [Test]
+    public async Task ConvertsControllerActionFailure()
+    {
+        var bridge = new RecordingControllerBridge
+        {
+            ActionException = new InvalidOperationException("write failed"),
+        };
+        var service = new EasyConControllerDeviceService(bridge);
+        await service.ConnectAsync(new ControllerConnectionRequest("COM7"));
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await service.ApplyAsync(
+                new ButtonInputAction(ControllerButton.A, true)));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.UpstreamFailure));
+            Assert.That(error.InnerException, Is.SameAs(bridge.ActionException));
+        });
+    }
+
+    [Test]
+    public async Task ConvertsDisconnectFailureAndFaultsStatus()
+    {
+        var bridge = new RecordingControllerBridge();
+        var service = new EasyConControllerDeviceService(bridge);
+        await service.ConnectAsync(new ControllerConnectionRequest("COM7"));
+        bridge.DisconnectException = new InvalidOperationException("close failed");
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await service.DisconnectAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.ConnectionFailed));
+            Assert.That(error.InnerException, Is.SameAs(bridge.DisconnectException));
+            Assert.That(
+                service.Status.State,
+                Is.EqualTo(ControllerConnectionState.Faulted));
+        });
+    }
+
     private sealed class RecordingControllerBridge : IEasyConControllerBridge
     {
         public IReadOnlyList<string> Ports { get; set; } = [];
@@ -126,6 +168,8 @@ public class EasyConControllerServicesTests
         public bool IsConnected { get; private set; }
         public Exception? DiscoveryException { get; set; }
         public Exception? ConnectionException { get; set; }
+        public Exception? DisconnectException { get; set; }
+        public Exception? ActionException { get; set; }
 
         public IReadOnlyList<string> GetPortNames() =>
             DiscoveryException is null ? Ports : throw DiscoveryException;
@@ -139,8 +183,24 @@ public class EasyConControllerServicesTests
             IsConnected = true;
             return NintendoSwitch.ConnectResult.Success;
         }
-        public void Disconnect() => IsConnected = false;
-        public void Down(ECKey key) => Commands.Add($"Down:{key.Name}");
+        public void Disconnect()
+        {
+            if (DisconnectException is not null)
+            {
+                throw DisconnectException;
+            }
+
+            IsConnected = false;
+        }
+        public void Down(ECKey key)
+        {
+            if (ActionException is not null)
+            {
+                throw ActionException;
+            }
+
+            Commands.Add($"Down:{key.Name}");
+        }
         public void Up(ECKey key) => Commands.Add($"Up:{key.Name}");
         public void Reset() => Commands.Add("Reset");
         public void StartRecording() { }

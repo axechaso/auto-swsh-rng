@@ -22,6 +22,15 @@ public class CaptureContractsTests
     }
 
     [Test]
+    public void TemplateRequestRejectsUnknownMatchMethod()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new TemplateMatchRequest(
+            [1],
+            [2],
+            (ImageMatchMethod)999));
+    }
+
+    [Test]
     public void NotificationEndpointRequiresAbsoluteUrl()
     {
         Assert.Throws<ArgumentException>(() => new NotificationEndpoint(

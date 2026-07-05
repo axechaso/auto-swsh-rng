@@ -117,8 +117,8 @@ public sealed class EasyConImageRecognitionService : IImageRecognitionService
         {
             if (request.Region is { } region)
             {
-                if (region.X + region.Width > source.Width
-                    || region.Y + region.Height > source.Height)
+                if ((long)region.X + region.Width > source.Width
+                    || (long)region.Y + region.Height > source.Height)
                 {
                     throw new UpstreamOperationException(
                         UpstreamErrorCode.Validation,
