@@ -328,7 +328,7 @@ git diff --check
 
 Expected: every command exits 0; tests report zero failures; CLI audit reports all included capabilities complete.
 
-- [ ] **Step 5: Commit and push**
+- [x] **Step 5: Commit and push**
 
 ```powershell
 git commit -m "docs:完成上游去界面化能力审计"
