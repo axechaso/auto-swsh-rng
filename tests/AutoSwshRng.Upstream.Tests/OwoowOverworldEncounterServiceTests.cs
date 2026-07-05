@@ -1,4 +1,5 @@
 using AutoSwshRng.Core.Encounters;
+using AutoSwshRng.Core.Common;
 using AutoSwshRng.Core.Profiles;
 using AutoSwshRng.Core.Rng;
 using owoow.Core.EncounterTable;
@@ -65,11 +66,41 @@ public class OwoowOverworldEncounterServiceTests
     {
         using var source = new CancellationTokenSource();
         source.Cancel();
+        var progress = new RecordingProgress();
 
         Assert.ThrowsAsync<OperationCanceledException>(
             async () => await new OwoowOverworldEncounterService().SearchAsync(
                 CreateRequest(EncounterKind.Fishing),
+                progress,
                 cancellationToken: source.Token));
+
+        Assert.That(progress.Values.Last().State, Is.EqualTo(OperationState.Cancelled));
+    }
+
+    [Test]
+    public void SearchConvertsInvalidFilterAndReportsFailure()
+    {
+        var baseline = CreateRequest(EncounterKind.Symbol);
+        var request = new OverworldSearchRequest(
+            baseline.InitialState,
+            baseline.StartAdvance,
+            baseline.EndAdvance,
+            baseline.Context,
+            baseline.Profile,
+            new EncounterFilter(targetNature: "not-a-nature"),
+            baseline.Environment);
+        var progress = new RecordingProgress();
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await new OwoowOverworldEncounterService().SearchAsync(
+                request,
+                progress));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.Validation));
+            Assert.That(progress.Values.Last().State, Is.EqualTo(OperationState.Failed));
+        });
     }
 
     private static OverworldSearchRequest CreateRequest(EncounterKind kind)
@@ -200,4 +231,11 @@ public class OwoowOverworldEncounterServiceTests
         EggMove = frame.EggMove,
         State = new RngState(Convert.ToUInt64(frame.Seed0, 16), Convert.ToUInt64(frame.Seed1, 16)),
     };
+
+    private sealed class RecordingProgress : IProgress<OperationProgress>
+    {
+        public List<OperationProgress> Values { get; } = [];
+
+        public void Report(OperationProgress value) => Values.Add(value);
+    }
 }

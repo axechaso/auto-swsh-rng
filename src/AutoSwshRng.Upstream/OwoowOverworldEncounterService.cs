@@ -33,54 +33,113 @@ public sealed class OwoowOverworldEncounterService : IOverworldEncounterService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var table = new EncounterTable(
-            Map(request.Context.Game),
-            Map(request.Context.Kind),
-            request.Context.Area,
-            request.Context.Weather,
-            request.Context.LeadAbility);
-        var config = CreateConfig(request);
         var total = request.EndAdvance - request.StartAdvance + 1;
+        ulong completed = 0;
         var results = new List<OverworldEncounterResult>();
         progress?.Report(new OperationProgress(OperationState.Running, 0, total, "Searching overworld encounters."));
 
-        for (var start = request.StartAdvance; start <= request.EndAdvance;)
+        try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var remaining = request.EndAdvance - start + 1;
-            var count = Math.Min(ChunkSize, remaining);
-            var end = start + count - 1;
-            var state = owoow.Core.RNG.Util.XoroshiroJump(
-                request.InitialState.Seed0,
-                request.InitialState.Seed1,
-                start);
-            var frames = await GenerateAsync(
-                    request.Context.Kind,
-                    state.s0,
-                    state.s1,
-                    table,
-                    start,
-                    end,
-                    config)
-                .ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            results.AddRange(frames.Select(MapResult).Where(result => PassPostFilters(result, request.Filter)));
+            var table = new EncounterTable(
+                Map(request.Context.Game),
+                Map(request.Context.Kind),
+                request.Context.Area,
+                request.Context.Weather,
+                request.Context.LeadAbility);
+            var config = CreateConfig(request);
 
-            var completed = end - request.StartAdvance + 1;
-            progress?.Report(
-                new OperationProgress(
-                    OperationState.Running,
-                    completed,
-                    total,
-                    "Searching overworld encounters."));
-            if (end == ulong.MaxValue)
+            for (var start = request.StartAdvance; start <= request.EndAdvance;)
             {
-                break;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                var remaining = request.EndAdvance - start + 1;
+                var count = Math.Min(ChunkSize, remaining);
+                var end = start + count - 1;
+                var state = owoow.Core.RNG.Util.XoroshiroJump(
+                    request.InitialState.Seed0,
+                    request.InitialState.Seed1,
+                    start);
+                var frames = await GenerateAsync(
+                        request.Context.Kind,
+                        state.s0,
+                        state.s1,
+                        table,
+                        start,
+                        end,
+                        config)
+                    .ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                results.AddRange(frames.Select(MapResult).Where(
+                    result => PassPostFilters(result, request.Filter)));
 
-            start = end + 1;
+                completed = end - request.StartAdvance + 1;
+                progress?.Report(
+                    new OperationProgress(
+                        OperationState.Running,
+                        completed,
+                        total,
+                        "Searching overworld encounters."));
+                if (end == ulong.MaxValue)
+                {
+                    break;
+                }
+
+                start = end + 1;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            progress?.Report(new OperationProgress(
+                OperationState.Cancelled,
+                completed,
+                total,
+                "Overworld search cancelled."));
+            throw;
+        }
+        catch (UpstreamOperationException)
+        {
+            progress?.Report(new OperationProgress(
+                OperationState.Failed,
+                completed,
+                total,
+                "Overworld search failed."));
+            throw;
+        }
+        catch (ArgumentException exception)
+        {
+            progress?.Report(new OperationProgress(
+                OperationState.Failed,
+                completed,
+                total,
+                "Overworld search failed validation."));
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.Validation,
+                "Invalid overworld search input.",
+                exception);
+        }
+        catch (FormatException exception)
+        {
+            progress?.Report(new OperationProgress(
+                OperationState.Failed,
+                completed,
+                total,
+                "Overworld search returned invalid data."));
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.InvalidData,
+                "owoow returned invalid overworld encounter data.",
+                exception);
+        }
+        catch (Exception exception)
+        {
+            progress?.Report(new OperationProgress(
+                OperationState.Failed,
+                completed,
+                total,
+                "Overworld search failed."));
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.UpstreamFailure,
+                "owoow overworld search failed.",
+                exception);
         }
 
         progress?.Report(new OperationProgress(OperationState.Completed, total, total, "Overworld search complete."));

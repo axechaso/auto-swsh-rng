@@ -118,6 +118,33 @@ public class EasyConCaptureServicesTests
         });
     }
 
+    [Test]
+    public async Task NotificationTimeoutReturnsProviderFailure()
+    {
+        var service = new EasyConNotificationService(
+            new HttpClient(new NeverCompletingHttpHandler()));
+        var endpoint = new NotificationEndpoint(
+            "slow",
+            true,
+            NotificationHttpMethod.Get,
+            "https://example.test",
+            null,
+            null,
+            null);
+
+        var result = await service.SendAsync(new NotificationRequest(
+            "content",
+            "title",
+            [endpoint],
+            TimeSpan.FromMilliseconds(20)));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Results.Single().Succeeded, Is.False);
+            Assert.That(result.Results.Single().Message, Does.Contain("timed out"));
+        });
+    }
+
     private sealed class RecordingHttpHandler : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
@@ -135,6 +162,17 @@ public class EasyConCaptureServicesTests
             {
                 Content = new StringContent("ok"),
             };
+        }
+    }
+
+    private sealed class NeverCompletingHttpHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("Unreachable.");
         }
     }
 }

@@ -216,14 +216,16 @@ public sealed class EasyConNotificationService : INotificationService
             .Select(endpoint => SendEndpointAsync(
                 endpoint,
                 request,
-                timeout.Token));
+                timeout.Token,
+                cancellationToken));
         return new NotificationResult(await Task.WhenAll(tasks).ConfigureAwait(false));
     }
 
     private async Task<NotificationProviderResult> SendEndpointAsync(
         NotificationEndpoint endpoint,
         NotificationRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken callerCancellationToken)
     {
         try
         {
@@ -268,6 +270,14 @@ public sealed class EasyConNotificationService : INotificationService
                 response.IsSuccessStatusCode,
                 (int)response.StatusCode,
                 body);
+        }
+        catch (OperationCanceledException) when (!callerCancellationToken.IsCancellationRequested)
+        {
+            return new NotificationProviderResult(
+                endpoint.Name,
+                false,
+                null,
+                "Notification request timed out.");
         }
         catch (OperationCanceledException)
         {
