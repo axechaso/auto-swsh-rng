@@ -1,4 +1,5 @@
 using AutoSwshRng.Core.Encounters;
+using AutoSwshRng.Core.Common;
 using AutoSwshRng.Core.Profiles;
 using owoow.Core.EncounterTable;
 using owoow.Core.Interfaces;
@@ -56,9 +57,30 @@ public sealed class OwoowEncounterCatalogService : IEncounterCatalogService
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
+        var game = Map(request.Game);
+        var kind = Map(request.Kind);
+        var areas = OwoowEncounters.GetAreaList(game, kind);
+        if (!areas.Contains(request.Area, StringComparer.Ordinal))
+        {
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.Validation,
+                $"Unknown encounter area '{request.Area}'.");
+        }
+
+        var weather = OwoowEncounters.GetWeatherList(
+            game,
+            kind,
+            request.Area);
+        if (!weather.Contains(request.Weather, StringComparer.Ordinal))
+        {
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.Validation,
+                $"Unknown encounter weather '{request.Weather}' for area '{request.Area}'.");
+        }
+
         var table = new EncounterTable(
-            Map(request.Game),
-            Map(request.Kind),
+            game,
+            kind,
             request.Area,
             request.Weather,
             request.LeadAbility);

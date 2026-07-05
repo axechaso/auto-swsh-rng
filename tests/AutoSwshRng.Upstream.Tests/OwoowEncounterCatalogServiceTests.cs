@@ -1,4 +1,5 @@
 using AutoSwshRng.Core.Encounters;
+using AutoSwshRng.Core.Common;
 using AutoSwshRng.Core.Profiles;
 using owoow.Core.Enums;
 using OwoowEncounters = owoow.Core.Encounters;
@@ -7,6 +8,21 @@ namespace AutoSwshRng.Upstream.Tests;
 
 public class OwoowEncounterCatalogServiceTests
 {
+    [Test]
+    public void InvalidCatalogSelectionUsesProjectError()
+    {
+        var service = new OwoowEncounterCatalogService();
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await service.GetTableAsync(new EncounterCatalogRequest(
+                GameVersion.Sword,
+                EncounterKind.Symbol,
+                "not-an-area",
+                "not-weather")));
+
+        Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.Validation));
+    }
+
     [Test]
     public async Task AreasMatchOriginalCatalog()
     {
