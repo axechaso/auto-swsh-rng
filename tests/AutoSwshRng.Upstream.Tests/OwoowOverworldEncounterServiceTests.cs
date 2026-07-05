@@ -35,13 +35,20 @@ public class OwoowOverworldEncounterServiceTests
         var all = await service.SearchAsync(baseline);
         Assert.That(all, Is.Not.Empty);
         var target = all[0];
-        var filtered = baseline with
-        {
-            Filter = new EncounterFilter(
+        var filtered = new OverworldSearchRequest(
+            baseline.InitialState,
+            baseline.StartAdvance,
+            baseline.EndAdvance,
+            baseline.Context,
+            baseline.Profile,
+            new EncounterFilter(
                 targetAbility: target.Ability,
                 targetNature: target.Nature,
                 targetGender: target.Gender),
-        };
+            baseline.Environment,
+            baseline.AuraKnockouts,
+            baseline.HiddenMaximumStep,
+            baseline.DexRecommendationSlots);
 
         var actual = await service.SearchAsync(filtered);
 

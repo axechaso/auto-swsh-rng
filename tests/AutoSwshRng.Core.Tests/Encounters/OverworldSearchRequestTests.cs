@@ -28,6 +28,35 @@ public class OverworldSearchRequestTests
     }
 
     [Test]
+    public void RequestRejectsAdvanceRangeWhoseInclusiveLengthOverflows()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new OverworldSearchRequest(
+                new RngState(1, 2),
+                0,
+                ulong.MaxValue,
+                new EncounterCatalogRequest(
+                    GameVersion.Sword,
+                    EncounterKind.Symbol,
+                    "area",
+                    "weather"),
+                Profile,
+                EncounterFilter.Any,
+                OverworldEnvironmentSettings.None));
+    }
+
+    [Test]
+    public void RequestPropertiesCannotBypassConstructorValidation()
+    {
+        var mutableProperties = typeof(OverworldSearchRequest)
+            .GetProperties()
+            .Where(property => property.SetMethod is not null)
+            .Select(property => property.Name);
+
+        Assert.That(mutableProperties, Is.Empty);
+    }
+
+    [Test]
     public void StaticRequestRequiresTargetSpecies()
     {
         Assert.Throws<ArgumentException>(

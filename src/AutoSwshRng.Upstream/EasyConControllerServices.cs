@@ -58,8 +58,18 @@ public sealed class EasyConControllerDeviceService : IControllerDeviceService
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult<IReadOnlyList<string>>(
-            bridge.GetPortNames().Order(StringComparer.OrdinalIgnoreCase).ToArray());
+        try
+        {
+            return Task.FromResult<IReadOnlyList<string>>(
+                bridge.GetPortNames().Order(StringComparer.OrdinalIgnoreCase).ToArray());
+        }
+        catch (Exception exception)
+        {
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.UpstreamFailure,
+                "Unable to discover EasyCon serial devices.",
+                exception);
+        }
     }
 
     public async Task<ControllerStatus> ConnectAsync(
@@ -71,10 +81,31 @@ public sealed class EasyConControllerDeviceService : IControllerDeviceService
         status = new ControllerStatus(
             ControllerConnectionState.Connecting,
             $"Connecting to {request.Port}.");
-        var result = await Task.Run(
-                () => bridge.Connect(request.Port),
-                cancellationToken)
-            .ConfigureAwait(false);
+        NintendoSwitch.ConnectResult result;
+        try
+        {
+            result = await Task.Run(
+                    () => bridge.Connect(request.Port),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            status = new ControllerStatus(
+                ControllerConnectionState.Disconnected,
+                "Connection cancelled.");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            status = new ControllerStatus(
+                ControllerConnectionState.Faulted,
+                exception.Message);
+            throw new UpstreamOperationException(
+                UpstreamErrorCode.ConnectionFailed,
+                "EasyCon serial connection failed.",
+                exception);
+        }
         status = result switch
         {
             NintendoSwitch.ConnectResult.Success => new ControllerStatus(

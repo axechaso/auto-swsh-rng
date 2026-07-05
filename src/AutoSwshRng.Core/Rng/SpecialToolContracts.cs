@@ -122,6 +122,13 @@ public sealed class SpecialToolSearchRequest
                 "End advance cannot be less than start advance.");
         }
 
+        if (startAdvance == 0 && endAdvance == ulong.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(endAdvance),
+                "The inclusive advance range is too large.");
+        }
+
         if (!Enum.IsDefined(kind))
         {
             throw new ArgumentOutOfRangeException(nameof(kind));

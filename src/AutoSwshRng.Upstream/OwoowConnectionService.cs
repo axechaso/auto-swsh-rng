@@ -214,7 +214,7 @@ public sealed class OwoowConnectionService : IOwoowConnectionService
         {
             bridge = bridgeFactory.Create(
                 settings,
-                message => SetStatus(ConnectionState.Connecting, message));
+                message => SetStatus(status.State, message));
             var (success, error) = await bridge.ConnectAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (!success)
@@ -303,16 +303,19 @@ public sealed class OwoowConnectionService : IOwoowConnectionService
             value => value.WriteRngStateAsync(state, cancellationToken),
             "Unable to write the RNG state.");
 
-    public Task<TrainerSnapshot> ReadTrainerAsync(
+    public async Task<TrainerSnapshot> ReadTrainerAsync(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var value = GetConnectedBridge().ReadTrainer();
-        return Task.FromResult(new TrainerSnapshot(
+        var value = await ExecuteConnectedAsync(
+                bridge => Task.FromResult(bridge.ReadTrainer()),
+                "Unable to read trainer data.")
+            .ConfigureAwait(false);
+        return new TrainerSnapshot(
             value.TrainerId,
             value.SecretId,
             value.HasShinyCharm,
-            value.HasMarkCharm));
+            value.HasMarkCharm);
     }
 
     public async Task<DexRecommendationSnapshot> ReadDexRecommendationAsync(

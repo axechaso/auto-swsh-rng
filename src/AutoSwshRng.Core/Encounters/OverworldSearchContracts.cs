@@ -193,6 +193,13 @@ public sealed record OverworldSearchRequest
                 "End advance cannot be less than start advance.");
         }
 
+        if (startAdvance == 0 && endAdvance == ulong.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(endAdvance),
+                "The inclusive advance range is too large.");
+        }
+
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(filter);
@@ -223,15 +230,15 @@ public sealed record OverworldSearchRequest
         HiddenMaximumStep = hiddenMaximumStep;
     }
 
-    public RngState InitialState { get; init; }
-    public ulong StartAdvance { get; init; }
-    public ulong EndAdvance { get; init; }
-    public EncounterCatalogRequest Context { get; init; }
-    public RngProfile Profile { get; init; }
-    public EncounterFilter Filter { get; init; }
-    public OverworldEnvironmentSettings Environment { get; init; }
-    public int AuraKnockouts { get; init; }
-    public int HiddenMaximumStep { get; init; }
+    public RngState InitialState { get; }
+    public ulong StartAdvance { get; }
+    public ulong EndAdvance { get; }
+    public EncounterCatalogRequest Context { get; }
+    public RngProfile Profile { get; }
+    public EncounterFilter Filter { get; }
+    public OverworldEnvironmentSettings Environment { get; }
+    public int AuraKnockouts { get; }
+    public int HiddenMaximumStep { get; }
     public IReadOnlyList<short> DexRecommendationSlots => dexRecommendationSlots;
 }
 

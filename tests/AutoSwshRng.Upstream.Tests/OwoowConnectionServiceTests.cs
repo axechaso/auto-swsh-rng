@@ -130,6 +130,57 @@ public class OwoowConnectionServiceTests
         Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.ConnectionFailed));
     }
 
+    [Test]
+    public async Task DisconnectStatusCallbackDoesNotRegressToConnecting()
+    {
+        var bridge = new RecordingConnectionBridge
+        {
+            EmitDisconnectStatus = true,
+        };
+        var service = new OwoowConnectionService(new SingleBridgeFactory(bridge));
+        var observed = new List<ConnectionState>();
+        service.StatusChanged += (_, args) => observed.Add(args.Status.State);
+        await service.ConnectAsync(new OwoowConnectionSettings(
+            ConnectionProtocol.Usb,
+            null,
+            0));
+        observed.Clear();
+
+        await service.DisconnectAsync();
+
+        Assert.That(
+            observed,
+            Is.EqualTo(new[]
+            {
+                ConnectionState.Disconnecting,
+                ConnectionState.Disconnecting,
+                ConnectionState.Disconnected,
+            }));
+    }
+
+    [Test]
+    public async Task ConvertsSynchronousTrainerReadFailure()
+    {
+        var bridge = new RecordingConnectionBridge
+        {
+            TrainerException = new InvalidOperationException("invalid trainer data"),
+        };
+        var service = new OwoowConnectionService(new SingleBridgeFactory(bridge));
+        await service.ConnectAsync(new OwoowConnectionSettings(
+            ConnectionProtocol.Usb,
+            null,
+            0));
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await service.ReadTrainerAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.UpstreamFailure));
+            Assert.That(error.InnerException, Is.SameAs(bridge.TrainerException));
+        });
+    }
+
     private static PK8 CreatePokemon()
     {
         return new PK8
@@ -176,6 +227,8 @@ public class OwoowConnectionServiceTests
         public bool Connected { get; private set; }
         public Action<string> StatusUpdate { get; set; } = _ => { };
         public (bool, string) ConnectResult { get; set; } = (true, string.Empty);
+        public bool EmitDisconnectStatus { get; set; }
+        public Exception? TrainerException { get; set; }
         public OwoowTrainerData Trainer { get; set; } = new(1, 2, false, false);
         public OwoowDexRecommendationData Dex { get; set; } = new([0, 0, 0, 0], null, null);
         public PK8 Wild { get; set; } = CreatePokemon();
@@ -198,6 +251,11 @@ public class OwoowConnectionServiceTests
 
         public Task<(bool Success, string Error)> DisconnectAsync(CancellationToken token)
         {
+            if (EmitDisconnectStatus)
+            {
+                StatusUpdate("Disconnecting upstream...");
+            }
+
             Connected = false;
             return Task.FromResult((true, string.Empty));
         }
@@ -211,7 +269,8 @@ public class OwoowConnectionServiceTests
             return Task.CompletedTask;
         }
 
-        public OwoowTrainerData ReadTrainer() => Trainer;
+        public OwoowTrainerData ReadTrainer() =>
+            TrainerException is null ? Trainer : throw TrainerException;
         public Task<OwoowDexRecommendationData> ReadDexRecommendationAsync(
             bool full,
             CancellationToken token) => Task.FromResult(Dex);

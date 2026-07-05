@@ -1,4 +1,5 @@
 using AutoSwshRng.Core.Automation;
+using AutoSwshRng.Core.Common;
 using EasyDevice;
 
 namespace AutoSwshRng.Upstream.Tests;
@@ -76,15 +77,65 @@ public class EasyConControllerServicesTests
         });
     }
 
+    [Test]
+    public void ConvertsSynchronousDiscoveryFailure()
+    {
+        var bridge = new RecordingControllerBridge
+        {
+            DiscoveryException = new InvalidOperationException("serial unavailable"),
+        };
+        var service = new EasyConControllerDeviceService(bridge);
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await service.DiscoverAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.UpstreamFailure));
+            Assert.That(error.InnerException, Is.SameAs(bridge.DiscoveryException));
+        });
+    }
+
+    [Test]
+    public void ConvertsSynchronousConnectionFailureAndFaultsStatus()
+    {
+        var bridge = new RecordingControllerBridge
+        {
+            ConnectionException = new InvalidOperationException("port failed"),
+        };
+        var service = new EasyConControllerDeviceService(bridge);
+
+        var error = Assert.ThrowsAsync<UpstreamOperationException>(
+            async () => await service.ConnectAsync(
+                new ControllerConnectionRequest("COM7")));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(error!.Code, Is.EqualTo(UpstreamErrorCode.ConnectionFailed));
+            Assert.That(error.InnerException, Is.SameAs(bridge.ConnectionException));
+            Assert.That(
+                service.Status.State,
+                Is.EqualTo(ControllerConnectionState.Faulted));
+        });
+    }
+
     private sealed class RecordingControllerBridge : IEasyConControllerBridge
     {
         public IReadOnlyList<string> Ports { get; set; } = [];
         public List<string> Commands { get; } = [];
         public bool IsConnected { get; private set; }
+        public Exception? DiscoveryException { get; set; }
+        public Exception? ConnectionException { get; set; }
 
-        public IReadOnlyList<string> GetPortNames() => Ports;
+        public IReadOnlyList<string> GetPortNames() =>
+            DiscoveryException is null ? Ports : throw DiscoveryException;
         public NintendoSwitch.ConnectResult Connect(string port)
         {
+            if (ConnectionException is not null)
+            {
+                throw ConnectionException;
+            }
+
             IsConnected = true;
             return NintendoSwitch.ConnectResult.Success;
         }

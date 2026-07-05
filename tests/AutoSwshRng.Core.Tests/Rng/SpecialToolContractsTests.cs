@@ -16,6 +16,16 @@ public class SpecialToolContractsTests
     }
 
     [Test]
+    public void RejectsAdvanceRangeWhoseInclusiveLengthOverflows()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SpecialToolSearchRequest(
+            SpecialToolKind.WailordRespawn,
+            new RngState(1, 2),
+            0,
+            ulong.MaxValue));
+    }
+
+    [Test]
     public void LotoIdsMustContainSixDigits()
     {
         Assert.Throws<ArgumentException>(() => new SpecialToolSearchRequest(
