@@ -79,6 +79,19 @@ public class OwoowSpreadFinderServiceTests
             Is.EqualTo(new[] { uint.MaxValue - 1, uint.MaxValue }));
     }
 
+    [Test]
+    public void CancelsLargeRangesWithoutWaitingForOneHugeUpstreamPartition()
+    {
+        ISpreadFinderService service = new OwoowSpreadFinderService();
+        var request = CreateRequest(
+            new SpreadSearchScope.Range(0, 100_000_000, partitionCount: 1),
+            Enumerable.Repeat(IndividualValueRange.Any, 6));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(5));
+
+        Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await service.SearchAsync(request, cancellation.Token));
+    }
+
     private static SpreadSearchRequest CreateRequest(
         SpreadSearchScope scope,
         IEnumerable<IndividualValueRange> ranges)

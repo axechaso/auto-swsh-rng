@@ -9,6 +9,8 @@ namespace AutoSwshRng.Upstream;
 
 public sealed class OwoowSpreadFinderService : ISpreadFinderService
 {
+    private const ulong MaximumChunkSize = 16_384;
+
     public async Task<IReadOnlyList<SpreadSearchResult>> SearchAsync(
         SpreadSearchRequest request,
         CancellationToken cancellationToken = default)
@@ -51,25 +53,29 @@ public sealed class OwoowSpreadFinderService : ISpreadFinderService
         CancellationToken cancellationToken)
     {
         var totalSeedCount = (ulong)end - start + 1;
-        var partitionCount = (int)Math.Min((ulong)requestedPartitionCount, totalSeedCount);
-        var basePartitionSize = totalSeedCount / (ulong)partitionCount;
-        var extraSeedCount = totalSeedCount % (ulong)partitionCount;
+        var maximumConcurrency = (int)Math.Min((ulong)requestedPartitionCount, totalSeedCount);
         var nextStart = (ulong)start;
-        var tasks = new List<Task<List<SpreadFinderFrame>>>(partitionCount);
+        var results = new List<SpreadFinderFrame>();
 
-        for (var index = 0; index < partitionCount; index++)
+        while (nextStart <= end)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var tasks = new List<Task<List<SpreadFinderFrame>>>(maximumConcurrency);
+            for (var index = 0; index < maximumConcurrency && nextStart <= end; index++)
+            {
+                var remaining = (ulong)end - nextStart + 1;
+                var count = Math.Min(MaximumChunkSize, remaining);
+                var chunkEnd = nextStart + count - 1;
+                tasks.Add(OwoowSpreadFinder.Generate((uint)nextStart, (uint)chunkEnd, config));
+                nextStart = chunkEnd + 1;
+            }
 
-            var partitionSize = basePartitionSize + ((ulong)index < extraSeedCount ? 1UL : 0UL);
-            var partitionEnd = nextStart + partitionSize - 1;
-            tasks.Add(OwoowSpreadFinder.Generate((uint)nextStart, (uint)partitionEnd, config));
-            nextStart = partitionEnd + 1;
+            var chunks = await Task.WhenAll(tasks).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            results.AddRange(chunks.SelectMany(chunk => chunk));
         }
 
-        var partitions = await Task.WhenAll(tasks).ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
-        return partitions.SelectMany(partition => partition).ToList();
+        return results;
     }
 
     private static GeneratorConfig CreateGeneratorConfig(SpreadSearchRequest request)
