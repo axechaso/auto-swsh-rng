@@ -2,7 +2,6 @@ using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyCon.Core.Config;
 using EasyCon.Core;
-using EasyCon.Script.Assembly;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Text;
@@ -12,17 +11,7 @@ namespace AutoSwshRng.Upstream;
 
 public static class EasyConScriptAdapter
 {
-    private const string ScriptSyntaxHelpResourceName = "AutoSwshRng.Upstream.Resources.EasyCon.scriptdoc.txt";
     private const string CaptureHelpResourceName = "AutoSwshRng.Upstream.Resources.EasyCon.capturedoc.txt";
-
-    private static readonly EasyConBoardDefinition[] SupportedBoards =
-    [
-        new("Leonardo", "Leonardo", 924),
-        new("Teensy 2.0", "Teensy2", 924),
-        new("Teensy 2.0++", "Teensy2pp", 3996),
-        new("Beetle", "Beetle", 924),
-        new("Arduino UNO R3", "UNO", 412),
-    ];
 
     private static readonly EasyConCaptureTypeDefinition[] CaptureTypes =
     [
@@ -153,63 +142,6 @@ public static class EasyConScriptAdapter
             compilation.NeedIL);
     }
 
-    public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(string scriptText)
-    {
-        return AssembleFirmwareScript(scriptText, null);
-    }
-
-    public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(
-        string scriptText,
-        IReadOnlyDictionary<string, Func<int>>? externalGetters)
-    {
-        return AssembleFirmwareScript(scriptText, externalGetters, autoRun: true);
-    }
-
-    public static EasyConFirmwareAssemblyResult AssembleFirmwareScript(
-        string scriptText,
-        IReadOnlyDictionary<string, Func<int>>? externalGetters,
-        bool autoRun)
-    {
-        var scripter = new Scripter();
-        var getterMap = externalGetters?.ToDictionary(pair => pair.Key, pair => pair.Value)
-            ?? [];
-        var diagnostics = scripter.Parse(scriptText, null!, getterMap);
-        if (diagnostics.HasErrors())
-        {
-            return new EasyConFirmwareAssemblyResult(
-                Success: false,
-                Bytes: [],
-                ErrorMessage: string.Join(Environment.NewLine, diagnostics.Where(diagnostic => diagnostic.IsError).Select(diagnostic => diagnostic.Message)));
-        }
-
-        try
-        {
-            return new EasyConFirmwareAssemblyResult(
-                Success: true,
-                Bytes: scripter.Assemble(autoRun),
-                ErrorMessage: null);
-        }
-        catch (NotImplementedException)
-        {
-            return new EasyConFirmwareAssemblyResult(
-                Success: false,
-                Bytes: [],
-                ErrorMessage: "此版本暂不支持编译");
-        }
-        catch (AssembleException ex)
-        {
-            return new EasyConFirmwareAssemblyResult(
-                Success: false,
-                Bytes: [],
-                ErrorMessage: ex.Message);
-        }
-    }
-
-    public static IReadOnlyList<EasyConBoardDefinition> GetSupportedBoards()
-    {
-        return SupportedBoards;
-    }
-
     public static IReadOnlyList<EasyConCaptureTypeDefinition> GetCaptureTypes()
     {
         return CaptureTypes;
@@ -278,11 +210,6 @@ public static class EasyConScriptAdapter
         return new EasyConAlertConfigDefinition(
             config.timeout,
             config.alerts.Select(alert => new EasyConAlertProviderDefinition(alert.name, alert.enable, alert.method)).ToArray());
-    }
-
-    public static string GetScriptSyntaxHelp()
-    {
-        return ReadEmbeddedUtf8Resource(ScriptSyntaxHelpResourceName);
     }
 
     public static string GetCaptureHelp()
@@ -391,22 +318,6 @@ public sealed record EasyConScriptCompileResult(
     IReadOnlyList<string> Diagnostics,
     bool HasKeyAction,
     bool NeedsImageLabels);
-
-public sealed record EasyConFirmwareAssemblyResult(
-    bool Success,
-    IReadOnlyList<byte> Bytes,
-    string? ErrorMessage);
-
-public sealed record EasyConBoardDefinition(
-    string DisplayName,
-    string CoreName,
-    int DataSize)
-{
-    public override string ToString()
-    {
-        return DisplayName;
-    }
-}
 
 public sealed record EasyConCaptureTypeDefinition(
     string Name,

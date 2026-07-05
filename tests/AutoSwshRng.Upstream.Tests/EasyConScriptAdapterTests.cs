@@ -3,6 +3,24 @@ namespace AutoSwshRng.Upstream.Tests;
 public class EasyConScriptAdapterTests
 {
     [Test]
+    public void ExcludedFirmwareAndSyntaxApisAreNotExposed()
+    {
+        var methodNames = typeof(EasyConScriptAdapter)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Select(method => method.Name);
+        var assembly = typeof(EasyConScriptAdapter).Assembly;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(methodNames, Does.Not.Contain("AssembleFirmwareScript"));
+            Assert.That(methodNames, Does.Not.Contain("GetSupportedBoards"));
+            Assert.That(methodNames, Does.Not.Contain("GetScriptSyntaxHelp"));
+            Assert.That(assembly.GetType("AutoSwshRng.Upstream.EasyConFirmwareAssemblyResult"), Is.Null);
+            Assert.That(assembly.GetType("AutoSwshRng.Upstream.EasyConBoardDefinition"), Is.Null);
+        });
+    }
+
+    [Test]
     public void EvaluatesPrintScriptWithoutSerialDevice()
     {
         var result = EasyConScriptAdapter.Evaluate("PRINT \"hello\"");
@@ -43,37 +61,6 @@ public class EasyConScriptAdapterTests
     }
 
     [Test]
-    public void FirmwareAssemblyReportsOriginalUnsupportedCompilerMessage()
-    {
-        var result = EasyConScriptAdapter.AssembleFirmwareScript("PRINT \"hello\"");
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.Success, Is.False);
-            Assert.That(result.Bytes, Is.Empty);
-            Assert.That(result.ErrorMessage, Is.EqualTo("此版本暂不支持编译"));
-        });
-    }
-
-    [Test]
-    public void FirmwareAssemblyAcceptsOriginalCaptureExternalVariables()
-    {
-        var result = EasyConScriptAdapter.AssembleFirmwareScript(
-            "PRINT @target",
-            new Dictionary<string, Func<int>>
-            {
-                ["target"] = () => 7,
-            });
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.Success, Is.False);
-            Assert.That(result.Bytes, Is.Empty);
-            Assert.That(result.ErrorMessage, Is.EqualTo("此版本暂不支持编译"));
-        });
-    }
-
-    [Test]
     public void ToggleCommentCommentsUncommentedLinesLikeOriginalEasyCon()
     {
         var toggled = EasyConScriptAdapter.ToggleCommentLines("PRINT \"hello\"\n  WAIT 10");
@@ -90,16 +77,6 @@ public class EasyConScriptAdapterTests
     }
 
     [Test]
-    public void SupportedBoardsMatchOriginalEasyConOrder()
-    {
-        var boards = EasyConScriptAdapter.GetSupportedBoards();
-
-        Assert.That(
-            boards.Select(board => board.DisplayName),
-            Is.EqualTo(new[] { "Leonardo", "Teensy 2.0", "Teensy 2.0++", "Beetle", "Arduino UNO R3" }));
-    }
-
-    [Test]
     public void CaptureTypesExposeOriginalOpenCvApiNames()
     {
         var captureTypes = EasyConScriptAdapter.GetCaptureTypes();
@@ -108,19 +85,6 @@ public class EasyConScriptAdapterTests
         {
             Assert.That(captureTypes.First().Name, Is.EqualTo("ANY"));
             Assert.That(captureTypes.Select(type => type.Name), Is.SupersetOf(new[] { "DSHOW", "MSMF", "FFMPEG" }));
-        });
-    }
-
-    [Test]
-    public void ScriptSyntaxHelpUsesOriginalEasyConDocument()
-    {
-        var help = EasyConScriptAdapter.GetScriptSyntaxHelp();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(help, Does.Contain("所有代码不区分大小写"));
-            Assert.That(help, Does.Contain("语法：PRINT 输出内容"));
-            Assert.That(help, Does.Contain("语法：ALERT 输出内容"));
         });
     }
 

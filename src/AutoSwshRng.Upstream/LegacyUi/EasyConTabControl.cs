@@ -388,7 +388,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         showEasyConMessage("联机模式",
             "- 使用电脑控制单片机的模式" + Environment.NewLine +
             "- 可视化运行，一键切换脚本（即将实装）" + Environment.NewLine +
-            "- 无需反复刷固件" + Environment.NewLine +
             "- 支持超长脚本" + Environment.NewLine +
             "- 可使用虚拟手柄，用键盘玩游戏" + Environment.NewLine + Environment.NewLine +
             "详细使用教程见群946057081文档");
@@ -628,8 +627,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         new HelpTxtDialog(
             "鼠标左键：启用/禁用" + Environment.NewLine +
             "鼠标右键：拖动移动位置，右键点击重置初始位置" + Environment.NewLine +
-            "鼠标中键：禁用并隐藏" + Environment.NewLine + Environment.NewLine +
-            "（注意：在有脚本远程运行的情况下无法使用）",
+            "鼠标中键：禁用并隐藏",
             "关于虚拟手柄").Show();
     }
 
@@ -742,7 +740,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         showEasyConMessage(
             string.Empty,
             "找不到设备！请确认：" + Environment.NewLine +
-            "1.已经为单片机烧好固件" + Environment.NewLine +
+            "1.设备已安装兼容控制程序" + Environment.NewLine +
             "2.已经连好TTL线" + Environment.NewLine +
             "3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁" + Environment.NewLine + Environment.NewLine +
             $"可用端口：{string.Join("、", ports)}");

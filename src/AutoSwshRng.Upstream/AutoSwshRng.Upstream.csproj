@@ -17,8 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\third_party\EasyCon\src\EasyCon2.UI.Common\Resources\Docs\scriptdoc.txt"
-                      LogicalName="AutoSwshRng.Upstream.Resources.EasyCon.scriptdoc.txt" />
     <EmbeddedResource Include="..\..\third_party\EasyCon\src\EasyCon2.UI.Common\Resources\Docs\capturedoc.txt"
                       LogicalName="AutoSwshRng.Upstream.Resources.EasyCon.capturedoc.txt" />
   </ItemGroup>
