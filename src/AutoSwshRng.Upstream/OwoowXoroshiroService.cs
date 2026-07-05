@@ -49,20 +49,23 @@ public sealed class OwoowXoroshiroService : IXoroshiroService
             {
                 var rng = new Xoroshiro128Plus(state.Seed0, state.Seed1);
                 found = false;
-                for (ulong index = 1; index <= request.Amount; index++)
+                for (ulong index = 1; ; index++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     rng.Prev();
                     var previous = rng.GetState();
-                    if (previous.s1 != OwoowUtil.XOROSHIRO_CONST)
+                    if (previous.s1 == OwoowUtil.XOROSHIRO_CONST)
                     {
-                        continue;
+                        state = new RngState(previous.s0, previous.s1);
+                        distance = index;
+                        found = true;
+                        break;
                     }
 
-                    state = new RngState(previous.s0, previous.s1);
-                    distance = index;
-                    found = true;
-                    break;
+                    if (index == request.Amount)
+                    {
+                        break;
+                    }
                 }
 
                 break;

@@ -23,11 +23,16 @@ public sealed class OwoowRetailSeedService : IRetailSeedService
     {
         ArgumentNullException.ThrowIfNull(request);
         var observations = request.Observations.Select(value => (byte)(value - '0')).ToArray();
-        var total = (ulong)(request.MaximumAdvance - request.MinimumAdvance + 1);
+        var total = GetAdvanceCount(
+            request.MinimumAdvance,
+            request.MaximumAdvance);
+        ulong completed = 0;
         var results = new List<RngState>();
         progress?.Report(new OperationProgress(OperationState.Running, 0, total, "Searching retail seeds."));
 
-        for (var advance = request.MinimumAdvance; advance <= request.MaximumAdvance; advance++)
+        foreach (var advance in EnumerateAdvances(
+                     request.MinimumAdvance,
+                     request.MaximumAdvance))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var matches = await Task.Run(
@@ -38,10 +43,11 @@ public sealed class OwoowRetailSeedService : IRetailSeedService
                     cancellationToken)
                 .ConfigureAwait(false);
             results.AddRange(matches.Select(match => new RngState(match.s0, match.s1)));
+            completed++;
             progress?.Report(
                 new OperationProgress(
                     OperationState.Running,
-                    (ulong)(advance - request.MinimumAdvance + 1),
+                    completed,
                     total,
                     "Searching retail seeds."));
         }
@@ -83,5 +89,20 @@ public sealed class OwoowRetailSeedService : IRetailSeedService
                 result.hits,
                 result.advances,
                 new RngState(result.s0, result.s1)));
+    }
+
+    internal static ulong GetAdvanceCount(int minimumAdvance, int maximumAdvance) =>
+        checked((ulong)((long)maximumAdvance - minimumAdvance + 1));
+
+    internal static IEnumerable<int> EnumerateAdvances(
+        int minimumAdvance,
+        int maximumAdvance)
+    {
+        for (var advance = (long)minimumAdvance;
+             advance <= maximumAdvance;
+             advance++)
+        {
+            yield return checked((int)advance);
+        }
     }
 }

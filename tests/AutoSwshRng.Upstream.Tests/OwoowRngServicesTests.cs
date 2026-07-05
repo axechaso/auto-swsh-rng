@@ -11,6 +11,22 @@ namespace AutoSwshRng.Upstream.Tests;
 public class OwoowRngServicesTests
 {
     [Test]
+    public void RetailAdvanceEnumerationDoesNotWrapAtIntMaximum()
+    {
+        var advances = OwoowRetailSeedService
+            .EnumerateAdvances(int.MaxValue, int.MaxValue)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(advances, Is.EqualTo(new[] { int.MaxValue }));
+            Assert.That(
+                OwoowRetailSeedService.GetAdvanceCount(0, int.MaxValue),
+                Is.EqualTo(2_147_483_648UL));
+        });
+    }
+
+    [Test]
     public async Task ForwardJumpMatchesOriginal()
     {
         var state = new RngState(0x123456789ABCDEF0, 0x0FEDCBA987654321);
