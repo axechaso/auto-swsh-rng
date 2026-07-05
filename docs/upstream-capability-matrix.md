@@ -49,6 +49,8 @@
 | 脚本语法帮助 | UI Common/Avalonia Editor | 无 | 排除 |
 | ESP32 配置与纯 UI 菜单行为 | `EasyCon2/Forms/ESPConfig*` 等 | 无 | 排除 |
 
+上述排除项不在 App 中创建入口，`AutoSwshRng.Upstream` 也不公开对应适配 API；`third_party` 中的原始实现仅作为可核验的上游源码快照保留。
+
 ## 无界面证据
 
 - Core、Upstream、CLI 服务测试不创建 `Form`、`UserControl` 或 Avalonia `Window`。
