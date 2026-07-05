@@ -1,6 +1,5 @@
 using AutoSwshRng.Upstream;
 using EasyCon.Core.Config;
-using EasyCon.Script.Assembly;
 using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core;
 using EasyCon2.Avalonia.Core.VPad;
@@ -10,15 +9,12 @@ using EasyCon2.Theme;
 using EasyCon2.Views;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Text.Json;
 
 namespace AutoSwshRng.App.Controls;
 
 public sealed class EasyConTabControl : UserControl, IControllerAdapter
 {
-    private const int RequiredFirmwareVersion = 0x45;
-    private const string FirmwarePath = @"Firmware\";
     private readonly ConfigService originalConfigService = new();
     private readonly DeviceService originalDeviceService = new();
     private readonly CaptureService originalCaptureService = new();
@@ -42,10 +38,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Action disconnectCaptureSource = null!;
     private Action openCaptureConsole = null!;
     private Func<IReadOnlyDictionary<string, Func<int>>> buildCaptureExternalGetters = null!;
-    private Func<EasyConBoardDefinition, IReadOnlyList<byte>, string> generateFirmwareFile = null!;
-    private Action openScriptSyntaxHelp = null!;
     private Action openAlertConfigDialog = null!;
-    private Action openEspConfigDialog = null!;
     private Action openDrawingBoard = null!;
     private Action openMouseJoystickDialog = null!;
     private Action openBluetoothSettingDialog = null!;
@@ -57,15 +50,8 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Func<string, Task<bool>> manualConnectDeviceAsync = null!;
     private Func<bool> isDeviceConnected = null!;
     private Func<bool> unpairDevice = null!;
-    private Func<bool> remoteStartDevice = null!;
-    private Func<bool> remoteStopDevice = null!;
-    private Func<bool> flashClearDevice = null!;
-    private Func<int> getDeviceFirmwareVersion = null!;
-    private Func<string, bool, EasyConFirmwareAssemblyResult> assembleFirmwareScript = null!;
-    private Func<IReadOnlyList<byte>, bool> flashDevice = null!;
     private Action<bool> setDebugLogEnabled = null!;
     private Action<bool> setAutoSaveLogEnabled = null!;
-    private Action<bool> setAutoRunAfterFlashEnabled = null!;
     private Action<bool> setAutoCompletionEnabled = null!;
     private Action<bool> setCodeFoldingEnabled = null!;
     private Action<bool> setDarkModeEnabled = null!;
@@ -76,19 +62,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     Avalonia.Media.Color IControllerAdapter.CurrentLight => Avalonia.Media.Colors.White;
 
     bool IControllerAdapter.IsRunning() => false;
-
-    private static readonly string[] MenuItems =
-    [
-        "文件",
-        "编辑",
-        "脚本",
-        "搜图",
-        "设置",
-        "蓝牙",
-        "ESP32",
-        "画图",
-        "帮助",
-    ];
 
     public EasyConTabControl()
     {
@@ -106,10 +79,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         disconnectCaptureSource = originalCaptureService.Disconnect;
         openCaptureConsole = originalCaptureService.ShowCaptureConsole;
         buildCaptureExternalGetters = () => originalCaptureService.BuildExternalGetters();
-        generateFirmwareFile = GenerateOriginalFirmwareFile;
-        openScriptSyntaxHelp = ShowScriptSyntaxHelp;
         openAlertConfigDialog = ShowAlertConfigDialog;
-        openEspConfigDialog = OpenOriginalEspConfigDialog;
         openDrawingBoard = OpenOriginalDrawingBoard;
         openMouseJoystickDialog = OpenOriginalMouseJoystickDialog;
         openBluetoothSettingDialog = OpenOriginalBluetoothSettingDialog;
@@ -121,21 +91,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         manualConnectDeviceAsync = originalDeviceService.ManualConnectAsync;
         isDeviceConnected = () => originalDeviceService.IsConnected;
         unpairDevice = originalDeviceService.UnPair;
-        remoteStartDevice = originalDeviceService.RemoteStart;
-        remoteStopDevice = originalDeviceService.RemoteStop;
-        flashClearDevice = () => originalDeviceService.Flash(HexWriter.EmptyAsm);
-        getDeviceFirmwareVersion = originalDeviceService.GetVersion;
-        assembleFirmwareScript = (scriptText, autoRun) => EasyConScriptAdapter.AssembleFirmwareScript(scriptText, buildCaptureExternalGetters(), autoRun);
-        flashDevice = bytes => originalDeviceService.Flash(bytes.ToArray());
         setDebugLogEnabled = enabled => originalDeviceService.DebugLogEnabled = enabled;
         setAutoSaveLogEnabled = enabled =>
         {
             originalConfigService.Config.AutoSaveLog = enabled;
-            originalConfigService.Save();
-        };
-        setAutoRunAfterFlashEnabled = enabled =>
-        {
-            originalConfigService.Config.AutoRunAfterFlash = enabled;
             originalConfigService.Save();
         };
         setAutoCompletionEnabled = enabled =>
@@ -192,8 +151,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         WireDeviceListActions();
         WirePageButtons();
         WireScriptActions();
-        WireFirmwareActions();
-        PopulateFirmwareBoards();
         InitializeOriginalStartupState();
     }
 
@@ -241,10 +198,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void WireHelpActions()
     {
-        FindRequiredMenuItem("menuItemFirmwareMode").Click += (_, _) => ShowFirmwareModeHelp();
         FindRequiredMenuItem("menuItemOnlineMode").Click += (_, _) => ShowOnlineModeHelp();
-        FindRequiredMenuItem("menuItemFlashMode").Click += (_, _) => ShowFlashModeHelp();
-        FindRequiredMenuItem("menuItemScriptSyntax").Click += (_, _) => openScriptSyntaxHelp();
         FindRequiredMenuItem("menuItemAbout").Click += (_, _) => ShowAboutMessage();
     }
 
@@ -253,10 +207,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<Button>("btnAutoConnect").Click += (_, _) => _ = AutoConnectDeviceAsync();
         FindRequiredControl<Button>("btnManualConnect").Click += (_, _) => _ = ManualConnectDeviceAsync();
         FindRequiredControl<Button>("btnCaptureToggle").Click += (_, _) => ToggleCaptureSource();
-        FindRequiredControl<Button>("btnRemoteStart").Click += (_, _) => RemoteStartDevice();
-        FindRequiredControl<Button>("btnRemoteStop").Click += (_, _) => RemoteStopDevice();
-        FindRequiredControl<Button>("btnFlash").Click += (_, _) => FlashDevice();
-        FindRequiredControl<Button>("btnFlashClear").Click += (_, _) => FlashClearDevice();
         FindRequiredControl<Button>("btnRecord").Click += (_, _) => ToggleScriptRecording();
         FindRequiredControl<Button>("btnRecordPause").Click += (_, _) => ToggleScriptRecordingPause();
         FindRequiredControl<Button>("btnShowController").Click += (_, _) => ShowVirtualController();
@@ -268,14 +218,11 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             UpdateLinkedSetting("chkDebugLog", "debugLogMenuItem", setDebugLogEnabled);
         FindRequiredControl<CheckBox>("chkAutoSaveLog").CheckedChanged += (_, _) =>
             setAutoSaveLogEnabled(FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked);
-        FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").CheckedChanged += (_, _) =>
-            UpdateLinkedSetting("chkAutoRunAfterFlash", "autoRunAfterFlashMenuItem", setAutoRunAfterFlashEnabled);
         FindRequiredControl<CheckBox>("chkAutoCompletion").CheckedChanged += (_, _) =>
             UpdateLinkedSetting("chkAutoCompletion", "autoCompletionMenuItem", setAutoCompletionEnabled);
         FindRequiredControl<CheckBox>("chkFolding").CheckedChanged += (_, _) =>
             UpdateLinkedSetting("chkFolding", "foldingMenuItem", setCodeFoldingEnabled);
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
-        FindRequiredControl<Button>("btnESPConfig").Click += (_, _) => openEspConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
         FindRequiredControl<Button>("btnBluetoothSetting").Click += (_, _) => openBluetoothSettingDialog();
         FindRequiredControl<Button>("btnKeyMapping").Click += (_, _) => openKeyMappingDialog();
@@ -284,12 +231,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
         FindRequiredMenuItem("alertConfigMenuItem").Click += (_, _) => openAlertConfigDialog();
         FindRequiredMenuItem("debugLogMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkDebugLog");
-        FindRequiredMenuItem("autoRunAfterFlashMenuItem").Click += (_, _) => ToggleMenuItem("autoRunAfterFlashMenuItem");
         FindRequiredMenuItem("foldingMenuItem").Click += (_, _) => ToggleMenuItem("foldingMenuItem");
         FindRequiredMenuItem("autoCompletionMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoCompletion");
         FindRequiredMenuItem("darkModeMenuItem").Click += (_, _) => ToggleDarkModeMenuItem();
         FindRequiredMenuItem("bluetoothSettingMenuItem").Click += (_, _) => openBluetoothSettingDialog();
-        FindRequiredMenuItem("espConfigMenuItem").Click += (_, _) => openEspConfigDialog();
         FindRequiredMenuItem("unpairMenuItem").Click += (_, _) => UnpairDevice();
         FindRequiredMenuItem("drawingBoardMenuItem").Click += (_, _) => openDrawingBoard();
         FindRequiredMenuItem("mouseJoystickMenuItem").Click += (_, _) => openMouseJoystickDialog();
@@ -323,11 +268,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         setDarkModeEnabled(menuItem.Checked);
     }
 
-    private bool IsFirmwareAutoRunEnabled()
-    {
-        return FindRequiredMenuItem("autoRunAfterFlashMenuItem").Checked;
-    }
-
     private void WireDeviceListActions()
     {
         FindRequiredControl<ComboBox>("comboComPort").DropDown += (_, _) => RefreshSerialPorts();
@@ -339,13 +279,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     {
         FindRequiredControl<Button>("btnPageEditor").Click += (_, _) => ShowPage("editorHost", "btnPageEditor", showScriptTitle: true);
         FindRequiredControl<Button>("btnPageLog").Click += (_, _) => ShowPage("logPanel", "btnPageLog", showScriptTitle: false);
-        FindRequiredControl<Button>("btnPageBurn").Click += (_, _) => ShowPage("burnPanel", "btnPageBurn", showScriptTitle: false);
         FindRequiredControl<Button>("btnPageSettings").Click += (_, _) => ShowPage("settingsPanel", "btnPageSettings", showScriptTitle: false);
-    }
-
-    private void WireFirmwareActions()
-    {
-        FindRequiredControl<Button>("btnGenFirmware").Click += (_, _) => GenerateFirmware();
     }
 
     private void ShowPage(string pageName, string selectedButtonName, bool showScriptTitle)
@@ -368,14 +302,14 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void ResetPages()
     {
-        foreach (var pageName in new[] { "burnPanel", "settingsPanel", "logPanel", "editorHost" })
+        foreach (var pageName in new[] { "settingsPanel", "logPanel", "editorHost" })
         {
             FindRequiredControl<Control>(pageName).Visible = false;
         }
 
         FindRequiredControl<Label>("scriptTitleLabel").Visible = false;
 
-        foreach (var buttonName in new[] { "btnPageEditor", "btnPageLog", "btnPageBurn", "btnPageSettings" })
+        foreach (var buttonName in new[] { "btnPageEditor", "btnPageLog", "btnPageSettings" })
         {
             FindRequiredControl<Button>(buttonName).BackColor = Color.FromArgb(230, 229, 224);
         }
@@ -396,16 +330,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         var formatButton = FindRequiredControl<Button>("formatBtn");
         formatButton.Click += (_, _) => FormatCurrentScript();
         FindRequiredMenuItem("formatMenuItem").Click += (_, _) => FormatCurrentScript();
-    }
-
-    private void PopulateFirmwareBoards()
-    {
-        var boardType = FindRequiredControl<ComboBox>("comboBoardType");
-        boardType.Items.AddRange(EasyConScriptAdapter.GetSupportedBoards().Cast<object>().ToArray());
-        if (boardType.Items.Count > 0)
-        {
-            boardType.SelectedIndex = 0;
-        }
     }
 
     private void PopulateCaptureTypeMenu()
@@ -459,16 +383,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             "- 详细使用教程见群946057081文档");
     }
 
-    private void ShowFirmwareModeHelp()
-    {
-        showEasyConMessage("固件模式",
-            "- 生成固件后手动刷入单片机的模式" + Environment.NewLine +
-            "- 独立挂机，即插即用" + Environment.NewLine +
-            "- 支持极限效率脚本" + Environment.NewLine +
-            "- 不需要任何额外配件" + Environment.NewLine + Environment.NewLine +
-            "详细使用教程见群946057081文档");
-    }
-
     private void ShowOnlineModeHelp()
     {
         showEasyConMessage("联机模式",
@@ -477,17 +391,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             "- 无需反复刷固件" + Environment.NewLine +
             "- 支持超长脚本" + Environment.NewLine +
             "- 可使用虚拟手柄，用键盘玩游戏" + Environment.NewLine + Environment.NewLine +
-            "详细使用教程见群946057081文档");
-    }
-
-    private void ShowFlashModeHelp()
-    {
-        showEasyConMessage("烧录模式",
-            "- 连线烧录后脱机运行的模式" + Environment.NewLine +
-            "- 独立挂机，即插即用" + Environment.NewLine +
-            "- 一键烧录，可控运行" + Environment.NewLine +
-            "- 无需反复刷固件" + Environment.NewLine +
-            "- 支持极限效率脚本" + Environment.NewLine + Environment.NewLine +
             "详细使用教程见群946057081文档");
     }
 
@@ -510,12 +413,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private void ShowPendingOriginalDialog(string title)
     {
         showEasyConMessage(title, $"{title}窗口正在接入原版实现。");
-    }
-
-    private void OpenOriginalEspConfigDialog()
-    {
-        using var form = new ESPConfig(originalDeviceService.Device);
-        form.ShowDialog();
     }
 
     private void OpenOriginalDrawingBoard()
@@ -595,11 +492,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         editor.SelectedText = replaceText;
         editor.Select(selectionStart + replaceText.Length, 0);
         editor.Focus();
-    }
-
-    private void ShowScriptSyntaxHelp()
-    {
-        new HelpTxtDialog(EasyConScriptAdapter.GetScriptSyntaxHelp()).Show();
     }
 
     private void ShowCaptureConsoleDisconnectedStatus()
@@ -835,119 +727,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
     }
 
-    private void RemoteStartDevice()
-    {
-        if (!isDeviceConnected())
-        {
-            ShowDeviceNotConnectedWarning();
-            return;
-        }
-
-        if (remoteStartDevice())
-        {
-            ShowStatus("远程运行已开始");
-        }
-        else
-        {
-            ShowStatus("远程运行失败");
-        }
-    }
-
-    private void RemoteStopDevice()
-    {
-        if (!isDeviceConnected())
-        {
-            ShowDeviceNotConnectedWarning();
-            return;
-        }
-
-        if (remoteStopDevice())
-        {
-            ShowStatus("远程停止成功");
-        }
-        else
-        {
-            ShowStatus("远程停止失败");
-        }
-    }
-
-    private void FlashClearDevice()
-    {
-        if (!isDeviceConnected())
-        {
-            ShowDeviceNotConnectedWarning();
-            return;
-        }
-
-        if (flashClearDevice())
-        {
-            ShowStatus("清除烧录成功");
-        }
-        else
-        {
-            ShowStatus("清除烧录失败");
-        }
-    }
-
-    private void FlashDevice()
-    {
-        if (!isDeviceConnected())
-        {
-            ShowDeviceNotConnectedWarning();
-            return;
-        }
-
-        var board = FindRequiredControl<ComboBox>("comboBoardType").SelectedItem as EasyConBoardDefinition;
-        if (board is null)
-        {
-            showEasyConMessage(string.Empty, "请先选择板型");
-            return;
-        }
-
-        if (getDeviceFirmwareVersion() != RequiredFirmwareVersion)
-        {
-            showEasyConMessage(string.Empty, "单片机固件版本不匹配，请先更新固件");
-            return;
-        }
-
-        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
-        var externalGetters = buildCaptureExternalGetters();
-        var result = EasyConScriptAdapter.Format(editor.Text, externalGetters.Keys.ToArray());
-        if (result.HasErrors)
-        {
-            showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
-            return;
-        }
-
-        var assembly = assembleFirmwareScript(editor.Text, IsFirmwareAutoRunEnabled());
-        if (!assembly.Success || assembly.Bytes.Count == 0)
-        {
-            showEasyConMessage(string.Empty, "编译结果为空，无法烧录");
-            return;
-        }
-
-        if (assembly.Bytes.Count > board.DataSize)
-        {
-            showEasyConMessage(string.Empty, $"脚本编译后 {assembly.Bytes.Count} 字节，超出 {board.DisplayName} 的 {board.DataSize} 字节限制");
-            return;
-        }
-
-        if (flashDevice(assembly.Bytes))
-        {
-            ShowStatus("烧录完毕");
-            showEasyConMessage(string.Empty, $"烧录完毕！已使用存储空间({assembly.Bytes.Count}/{board.DataSize})");
-            if (FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked)
-            {
-                remoteStartDevice();
-                ShowStatus("烧录成功，已自动运行");
-            }
-        }
-        else
-        {
-            ShowStatus("烧录失败");
-        }
-    }
-
     private async Task AutoConnectDeviceAsync()
     {
         ShowStatus("尝试连接...");
@@ -1106,7 +885,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         FindRequiredControl<Label>("lblVersion").Text = $"版本: {version}";
         FindRequiredControl<CheckBox>("chkAutoCompletion").Checked = originalConfigService.Config.EnableAutoCompletion;
         FindRequiredControl<CheckBox>("chkFolding").Checked = originalConfigService.Config.ShowControllerHelp;
-        FindRequiredControl<CheckBox>("chkAutoRunAfterFlash").Checked = originalConfigService.Config.AutoRunAfterFlash;
         FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked = originalConfigService.Config.AutoSaveLog;
         FindRequiredControl<CheckBox>("chkDebugLog").Checked = originalDeviceService.DebugLogEnabled;
         FindRequiredMenuItem("autoCompletionMenuItem").Checked = originalConfigService.Config.EnableAutoCompletion;
@@ -1143,14 +921,9 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
-        if (compileResult.HasKeyAction && !CheckOriginalFirmwareVersion())
+        if (compileResult.HasKeyAction)
         {
-            return;
-        }
-
-        if (compileResult.HasKeyAction && !remoteStopDevice())
-        {
-            showEasyConMessage(string.Empty, "需要先停止烧录脚本运行，请点击<远程停止>按钮");
+            showEasyConMessage(string.Empty, "按键脚本请使用自动化动作序列");
             return;
         }
 
@@ -1181,101 +954,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
         log.AppendText("-- 运行结束 --" + Environment.NewLine);
         ShowStatus("运行结束");
-    }
-
-    private bool CheckOriginalFirmwareVersion()
-    {
-        if (getDeviceFirmwareVersion() >= RequiredFirmwareVersion)
-        {
-            return true;
-        }
-
-        ShowStatus("需要更新固件");
-        showEasyConMessage(string.Empty, "固件版本不符，请重新刷入" + FirmwarePath);
-        return false;
-    }
-
-    private void GenerateFirmware()
-    {
-        if (FindRequiredControl<ComboBox>("comboBoardType").SelectedItem is not EasyConBoardDefinition board)
-        {
-            showEasyConMessage(string.Empty, "请先选择板型");
-            return;
-        }
-
-        var editor = FindRequiredControl<TextBox>("easyConScriptEditor");
-        var externalGetters = buildCaptureExternalGetters();
-        var result = EasyConScriptAdapter.Format(editor.Text, externalGetters.Keys.ToArray());
-        if (result.HasErrors)
-        {
-            showEasyConMessage("编译出错", string.Join(Environment.NewLine, result.Diagnostics));
-            return;
-        }
-
-        var assembly = assembleFirmwareScript(editor.Text, IsFirmwareAutoRunEnabled());
-        if (!assembly.Success)
-        {
-            showEasyConMessage(string.Empty, $"生成固件失败：{assembly.ErrorMessage}");
-            return;
-        }
-
-        try
-        {
-            ShowStatus("开始生成固件...");
-            var fileName = generateFirmwareFile(board, assembly.Bytes);
-            ShowStatus("固件生成完毕");
-            showEasyConMessage(string.Empty, "固件生成完毕！已保存为" + Path.GetFileName(fileName));
-        }
-        catch (Exception exception)
-        {
-            ShowStatus("固件生成失败");
-            showEasyConMessage(string.Empty, "固件生成失败！" + exception.Message);
-        }
-    }
-
-    private static string GenerateOriginalFirmwareFile(EasyConBoardDefinition board, IReadOnlyList<byte> bytes)
-    {
-        File.WriteAllBytes("temp.bin", bytes.ToArray());
-        var fileName = GetOriginalFirmwareName(board.CoreName);
-        if (fileName is null)
-        {
-            throw new InvalidOperationException("未找到固件！请确认程序Firmware目录下是否有对应固件文件！");
-        }
-
-        var hex = File.ReadAllText(Path.Combine(FirmwarePath, fileName));
-        hex = HexWriter.WriteHex(hex, bytes.ToArray(), board.DataSize, RequiredFirmwareVersion);
-        var outputFileName = fileName.Replace(".", "+Script.", StringComparison.Ordinal);
-        File.WriteAllText(outputFileName, hex);
-        return outputFileName;
-    }
-
-    private static string? GetOriginalFirmwareName(string coreName)
-    {
-        var directory = new DirectoryInfo(FirmwarePath);
-        if (!directory.Exists)
-        {
-            return null;
-        }
-
-        var maxVersion = 0;
-        string? fileName = null;
-        foreach (var file in directory.GetFiles())
-        {
-            var match = Regex.Match(file.Name, $@"^{Regex.Escape(coreName)} v(\d+)\.hex$", RegexOptions.IgnoreCase);
-            if (!match.Success)
-            {
-                continue;
-            }
-
-            var version = int.Parse(match.Groups[1].Value);
-            if (version > maxVersion)
-            {
-                maxVersion = version;
-                fileName = file.Name;
-            }
-        }
-
-        return fileName;
     }
 
     private void NewCurrentScript()
@@ -1532,32 +1210,24 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             CreateMenuItem("captureTypeMenu", "采集卡类型"),
             CreateMenuItem("setEnvVarMenuItem", "设置环境变量"),
             CreateMenuItem("captureHelpMenuItem", "搜图说明")));
-        var firmwareAutoRunItem = CreateMenuItem("autoRunAfterFlashMenuItem", "烧录自动运行");
-        firmwareAutoRunItem.Checked = true;
-        firmwareAutoRunItem.CheckState = CheckState.Checked;
         var foldingItem = CreateMenuItem("foldingMenuItem", "显示折叠");
         foldingItem.Checked = true;
         foldingItem.CheckState = CheckState.Checked;
         menu.Items.Add(CreateMenuItem("settingsMenu", "设置",
             CreateMenuItem("alertConfigMenuItem", "推送设置"),
             CreateMenuItem("debugLogMenuItem", "显示调试信息"),
-            firmwareAutoRunItem,
             foldingItem,
             CreateMenuItem("autoCompletionMenuItem", "代码自动补全"),
             CreateMenuItem("darkModeMenuItem", "深色模式")));
         menu.Items.Add(CreateMenuItem("bluetoothMenu", "蓝牙",
             CreateMenuItem("bluetoothSettingMenuItem", "蓝牙设备驱动配置")));
-        menu.Items.Add(CreateMenuItem("esp32Menu", "ESP32",
-            CreateMenuItem("espConfigMenuItem", "手柄设置"),
+        menu.Items.Add(CreateMenuItem("deviceMenu", "设备",
             CreateMenuItem("unpairMenuItem", "取消配对")));
         menu.Items.Add(CreateMenuItem("drawingMenu", "画图",
             CreateMenuItem("drawingBoardMenuItem", "喷射"),
             CreateMenuItem("mouseJoystickMenuItem", "自由画板鼠标代替摇杆")));
         menu.Items.Add(CreateMenuItem("helpMenu", "帮助",
-            CreateMenuItem("menuItemFirmwareMode", "固件模式"),
             CreateMenuItem("menuItemOnlineMode", "联机模式"),
-            CreateMenuItem("menuItemFlashMode", "烧录模式"),
-            CreateMenuItem("menuItemScriptSyntax", "脚本语法"),
             new ToolStripSeparator { Name = "toolStripSeparator2" },
             CreateMenuItem("checkUpdateMenuItem", "检查更新"),
             CreateMenuItem("sourceMenuItem", "项目源码"),
@@ -1633,8 +1303,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         };
         sideBar.Controls.Add(CreatePageButton("btnPageLog", "📄", Color.FromArgb(235, 234, 229), 10));
         sideBar.Controls.Add(CreatePageButton("btnPageEditor", "📝", Color.FromArgb(230, 229, 224), 50));
-        sideBar.Controls.Add(CreatePageButton("btnPageBurn", "🔥", Color.FromArgb(230, 229, 224), 90));
-        sideBar.Controls.Add(CreatePageButton("btnPageSettings", "⚙", Color.FromArgb(230, 229, 224), 130));
+        sideBar.Controls.Add(CreatePageButton("btnPageSettings", "⚙", Color.FromArgb(230, 229, 224), 90));
         return sideBar;
     }
 
@@ -1669,7 +1338,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
         contentPanel.Controls.Add(CreateEditorHost());
         contentPanel.Controls.Add(CreateLogPanel());
-        contentPanel.Controls.Add(CreateBurnPanel());
         contentPanel.Controls.Add(CreateSettingsPanel());
         contentPanel.Controls.Add(new Label
         {
@@ -1816,48 +1484,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         return logPanel;
     }
 
-    private static Control CreateBurnPanel()
-    {
-        var burnPanel = new Panel
-        {
-            Name = "burnPanel",
-            Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(242, 241, 237),
-            Visible = false,
-        };
-        burnPanel.Controls.Add(CreateBurnGroup());
-        burnPanel.Controls.Add(CreateFirmwareGroup());
-        return burnPanel;
-    }
-
-    private static Control CreateBurnGroup()
-    {
-        var group = CreateOriginalGroupBox("grpBurn", "烧录", 300, 130);
-        group.Location = new Point(20, 20);
-        group.Margin = Padding.Empty;
-        group.Controls.Add(CreateOriginalButton("btnRemoteStart", "远程运行", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 130, 28));
-        group.Controls.Add(CreateOriginalButton("btnRemoteStop", "远程停止", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 150, 22, 130, 28));
-        group.Controls.Add(CreateOriginalButton("btnFlash", "编译烧录", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 272, 30));
-        group.Controls.Add(CreateOriginalButton("btnFlashClear", "清除烧录", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 90, 130, 28));
-        return group;
-    }
-
-    private static Control CreateFirmwareGroup()
-    {
-        var group = CreateOriginalGroupBox("grpFirmware", "固件", 300, 90);
-        group.Location = new Point(20, 160);
-        group.Margin = Padding.Empty;
-        group.Controls.Add(new ComboBox
-        {
-            Name = "comboBoardType",
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Location = new Point(8, 22),
-            Size = new Size(272, 28),
-        });
-        group.Controls.Add(CreateOriginalButton("btnGenFirmware", "生成固件", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 130, 28));
-        return group;
-    }
-
     private static Control CreateSettingsPanel()
     {
         var settingsPanel = new Panel
@@ -1871,13 +1497,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoCompletion", "代码自动补全", 19, 79));
         settingsPanel.Controls.Add(CreateSettingsCheckBox("chkFolding", "显示代码折叠", 19, 109));
         settingsPanel.Controls.Add(CreateSettingsCheckBox("chkDebugLog", "显示调试信息", 19, 139));
-        settingsPanel.Controls.Add(CreateSettingsHeader("lblRunSettings", "运行设置", 199, 39));
-        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoRunAfterFlash", "烧录后自动运行", 199, 79));
         settingsPanel.Controls.Add(CreateSettingsHeader("lblNotifySettings", "通知设置", 199, 119));
         settingsPanel.Controls.Add(CreateOriginalButton("btnAlertConfig", "推送配置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 159, 85, 30));
         settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoSaveLog", "自动保存日志", 289, 164));
         settingsPanel.Controls.Add(CreateSettingsHeader("lblToolSettings", "工具", 19, 209));
-        settingsPanel.Controls.Add(CreateOriginalButton("btnESPConfig", "ESP32设置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 249, 100, 30));
         settingsPanel.Controls.Add(CreateOriginalButton("btnUnpair", "取消蓝牙配对", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 125, 249, 100, 30));
         settingsPanel.Controls.Add(CreateOriginalButton("btnDrawingBoard", "画图工具", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 289, 85, 30));
         var bluetoothSetting = CreateOriginalButton("btnBluetoothSetting", "蓝牙设置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 308, 85, 30);
@@ -1941,7 +1564,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         panel.Controls.Add(CreateCapturePanel());
         panel.Controls.Add(CreateRecordPanel());
         panel.Controls.Add(CreateControllerPanel());
-        panel.Controls.Add(CreateFirmwarePanel());
         return panel;
     }
 
@@ -2035,15 +1657,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         group.Controls.Add(CreateOriginalButton("btnShowController", "虚拟手柄", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
         group.Controls.Add(CreateOriginalButton("btnKeyMapping", "按键映射", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28));
         return group;
-    }
-
-    private static Control CreateFirmwarePanel()
-    {
-        var panel = CreateGroupPanel("固件", 265, 112);
-        panel.Name = "easyConFirmwarePanel";
-        AddTextRow(panel, "开发板:", "Leonardo");
-        AddButtonGrid(panel, "生成固件", "烧录");
-        return panel;
     }
 
     private static Control CreateStatusStrip()
