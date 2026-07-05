@@ -6,11 +6,11 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 if (args.Length > 0)
 {
-    Environment.ExitCode = await SpreadFinderCliCommand.RunAsync(
+    Environment.ExitCode = await HeadlessCliCommand.RunAsync(
         args,
         Console.Out,
         Console.Error,
-        new OwoowSpreadFinderService());
+        HeadlessCliServices.CreateDefaults());
     return;
 }
 
