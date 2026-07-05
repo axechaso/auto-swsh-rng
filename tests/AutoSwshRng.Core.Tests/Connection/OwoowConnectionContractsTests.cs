@@ -1,4 +1,6 @@
 using AutoSwshRng.Core.Connection;
+using AutoSwshRng.Core.Encounters;
+using AutoSwshRng.Core.Rng;
 
 namespace AutoSwshRng.Core.Tests.Connection;
 
@@ -29,6 +31,42 @@ public class OwoowConnectionContractsTests
         species[0] = 25;
 
         Assert.That(snapshot.SpeciesIds, Is.EqualTo(new ushort[] { 1, 2, 3, 4 }));
+    }
+
+    [Test]
+    public void SnapshotCollectionsCannotBeMutatedThroughPublicContract()
+    {
+        var dex = new DexRecommendationSnapshot([1, 2, 3, 4], null, null);
+        var pokemon = new PokemonSnapshot(
+            25,
+            "Pikachu",
+            0,
+            10,
+            PokemonGender.Male,
+            PokemonShinyType.None,
+            "Hardy",
+            1,
+            0,
+            1,
+            2,
+            new RngIndividualValues([1, 2, 3, 4, 5, 6]),
+            0,
+            null,
+            [10]);
+        var world = new WorldSnapshot(
+            1,
+            new WorldPosition(0, 0, 0),
+            [new FieldObjectSnapshot(new WorldPosition(0, 0, 0), 1, pokemon)]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<NotSupportedException>(
+                () => ((IList<ushort>)dex.SpeciesIds)[0] = 99);
+            Assert.Throws<NotSupportedException>(
+                () => ((IList<ushort>)pokemon.Moves)[0] = 99);
+            Assert.Throws<NotSupportedException>(
+                () => ((IList<FieldObjectSnapshot>)world.Objects).Clear());
+        });
     }
 
     [Test]

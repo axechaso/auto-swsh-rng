@@ -95,6 +95,35 @@ public class OverworldSearchRequestTests
     }
 
     [Test]
+    public void EncounterRequestsRejectUnknownEnums()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new EncounterCatalogRequest(
+                    (GameVersion)999,
+                    EncounterKind.Symbol,
+                    "area",
+                    "weather"));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new EncounterCatalogRequest(
+                    GameVersion.Sword,
+                    (EncounterKind)999,
+                    "area",
+                    "weather"));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new IndividualValueConstraint(
+                    (IndividualValueMatch)999,
+                    0,
+                    31));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new MarkFilter((MarkFilterMode)999));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new EncounterFilter(shiny: (ShinyFilter)999));
+        });
+    }
+
+    [Test]
     public void RequestCopiesDexRecommendationSlots()
     {
         var slots = new short[] { 1, 2, 3, 4 };
@@ -102,6 +131,22 @@ public class OverworldSearchRequestTests
         slots[0] = 99;
 
         Assert.That(request.DexRecommendationSlots[0], Is.EqualTo(1));
+    }
+
+    [Test]
+    public void RequestCollectionsCannotBeMutatedThroughPublicContract()
+    {
+        var request = CreateSymbolRequest([1, 2, 3, 4]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<NotSupportedException>(
+                () => ((IList<short>)request.DexRecommendationSlots)[0] = 99);
+            Assert.Throws<NotSupportedException>(
+                () => ((IList<IndividualValueConstraint>)
+                    request.Filter.IndividualValues)[0] =
+                    new IndividualValueConstraint(IndividualValueMatch.Range, 1, 1));
+        });
     }
 
     private static OverworldSearchRequest CreateSymbolRequest(short[] slots)

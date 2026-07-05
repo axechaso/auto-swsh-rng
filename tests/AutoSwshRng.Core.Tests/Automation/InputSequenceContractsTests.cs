@@ -20,6 +20,30 @@ public class InputSequenceContractsTests
     }
 
     [Test]
+    public void SequenceActionsCannotBeMutatedThroughPublicContract()
+    {
+        var sequence = new InputSequence([new ResetInputAction()]);
+
+        Assert.Throws<NotSupportedException>(
+            () => ((IList<ControllerInputAction>)sequence.Actions)[0] =
+                new ButtonInputAction(ControllerButton.A, true));
+    }
+
+    [Test]
+    public void ControllerActionsRejectUnknownEnums()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new ButtonInputAction((ControllerButton)999, true));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new DpadInputAction((DpadDirection)999, true));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new StickInputAction((ControllerStick)999, 0, 0, true));
+        });
+    }
+
+    [Test]
     public void WaitMustBeNonNegative()
     {
         Assert.Throws<ArgumentOutOfRangeException>(

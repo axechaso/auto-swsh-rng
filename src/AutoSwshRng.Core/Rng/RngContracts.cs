@@ -14,6 +14,11 @@ public sealed record XoroshiroRequest
 {
     public XoroshiroRequest(RngState state, XoroshiroOperation operation, ulong amount)
     {
+        if (!Enum.IsDefined(operation))
+        {
+            throw new ArgumentOutOfRangeException(nameof(operation));
+        }
+
         if (amount == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be positive.");
@@ -180,17 +185,18 @@ public sealed record AnimationSequenceRequest
 
 public sealed class AnimationSequenceResult
 {
-    private readonly byte[] observations;
+    private readonly IReadOnlyList<byte> observations;
 
     public AnimationSequenceResult(IEnumerable<byte> observations, RngState initialState)
     {
         ArgumentNullException.ThrowIfNull(observations);
-        this.observations = observations.ToArray();
-        if (this.observations.Any(value => value > 1))
+        var observationCopy = observations.ToArray();
+        if (observationCopy.Any(value => value > 1))
         {
             throw new ArgumentException("Animation observations must be zero or one.", nameof(observations));
         }
 
+        this.observations = Array.AsReadOnly(observationCopy);
         InitialState = initialState;
     }
 
@@ -200,7 +206,7 @@ public sealed class AnimationSequenceResult
 
 public sealed record ReidentifySeedRequest
 {
-    private readonly byte[] observations;
+    private readonly IReadOnlyList<byte> observations;
 
     public ReidentifySeedRequest(
         IEnumerable<byte> observations,
@@ -208,12 +214,13 @@ public sealed record ReidentifySeedRequest
         string pattern)
     {
         ArgumentNullException.ThrowIfNull(observations);
-        this.observations = observations.ToArray();
-        if (this.observations.Any(value => value > 1))
+        var observationCopy = observations.ToArray();
+        if (observationCopy.Any(value => value > 1))
         {
             throw new ArgumentException("Animation observations must be zero or one.", nameof(observations));
         }
 
+        this.observations = Array.AsReadOnly(observationCopy);
         RetailSeedRequest.ValidateBinary(pattern, 1, int.MaxValue, nameof(pattern));
         InitialState = initialState;
         Pattern = pattern;

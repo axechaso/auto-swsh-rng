@@ -20,6 +20,11 @@ public sealed record IndividualValueConstraint
         int minimum,
         int maximum)
     {
+        if (!Enum.IsDefined(match))
+        {
+            throw new ArgumentOutOfRangeException(nameof(match));
+        }
+
         if (minimum is < 0 or > 31)
         {
             throw new ArgumentOutOfRangeException(nameof(minimum));
@@ -87,6 +92,11 @@ public sealed record MarkFilter
 
     public MarkFilter(MarkFilterMode mode, string? specificMark = null)
     {
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        }
+
         if (mode == MarkFilterMode.Specific && string.IsNullOrWhiteSpace(specificMark))
         {
             throw new ArgumentException("A specific mark name is required.", nameof(specificMark));
@@ -109,7 +119,7 @@ public enum PokemonGender
 
 public sealed record EncounterFilter
 {
-    private readonly IndividualValueConstraint[] individualValues;
+    private readonly IReadOnlyList<IndividualValueConstraint> individualValues;
 
     public static EncounterFilter Any { get; } = new();
 
@@ -125,13 +135,34 @@ public sealed record EncounterFilter
         string? targetAbility = null,
         PokemonGender? targetGender = null)
     {
-        this.individualValues = individualValues?.ToArray()
+        if (!Enum.IsDefined(shiny))
+        {
+            throw new ArgumentOutOfRangeException(nameof(shiny));
+        }
+
+        if (!Enum.IsDefined(aura))
+        {
+            throw new ArgumentOutOfRangeException(nameof(aura));
+        }
+
+        if (!Enum.IsDefined(height))
+        {
+            throw new ArgumentOutOfRangeException(nameof(height));
+        }
+
+        if (targetGender is { } gender && !Enum.IsDefined(gender))
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetGender));
+        }
+
+        var individualValueCopy = individualValues?.ToArray()
             ?? Enumerable.Repeat(IndividualValueConstraint.Any, 6).ToArray();
-        if (this.individualValues.Length != 6)
+        if (individualValueCopy.Length != 6)
         {
             throw new ArgumentException("Exactly six IV constraints are required.", nameof(individualValues));
         }
 
+        this.individualValues = Array.AsReadOnly(individualValueCopy);
         TargetSpecies = string.IsNullOrWhiteSpace(targetSpecies) ? null : targetSpecies;
         Shiny = shiny;
         Aura = aura;
@@ -172,7 +203,7 @@ public sealed record OverworldEnvironmentSettings(
 
 public sealed record OverworldSearchRequest
 {
-    private readonly short[] dexRecommendationSlots;
+    private readonly IReadOnlyList<short> dexRecommendationSlots;
 
     public OverworldSearchRequest(
         RngState initialState,
@@ -211,14 +242,16 @@ public sealed record OverworldSearchRequest
             throw new ArgumentException("Static encounters require a target species.", nameof(filter));
         }
 
-        this.dexRecommendationSlots = dexRecommendationSlots?.ToArray() ?? [0, 0, 0, 0];
-        if (this.dexRecommendationSlots.Length != 4)
+        var dexRecommendationSlotCopy =
+            dexRecommendationSlots?.ToArray() ?? [0, 0, 0, 0];
+        if (dexRecommendationSlotCopy.Length != 4)
         {
             throw new ArgumentException(
                 "Exactly four Pokédex recommendation slots are required.",
                 nameof(dexRecommendationSlots));
         }
 
+        this.dexRecommendationSlots = Array.AsReadOnly(dexRecommendationSlotCopy);
         InitialState = initialState;
         StartAdvance = startAdvance;
         EndAdvance = endAdvance;

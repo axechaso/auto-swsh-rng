@@ -80,20 +80,34 @@ public enum DiggingBroReward : byte
     RareBone,
 }
 
-public sealed record SpecialToolMenuClose(
-    bool Enabled,
-    uint NonPlayerCharacters,
-    bool HoldDirection,
-    Weather Weather)
+public sealed record SpecialToolMenuClose
 {
+    public SpecialToolMenuClose(
+        bool enabled,
+        uint nonPlayerCharacters,
+        bool holdDirection,
+        Weather weather)
+    {
+        MenuCloseCalibrationRequest.ValidateWeather(weather);
+        Enabled = enabled;
+        NonPlayerCharacters = nonPlayerCharacters;
+        HoldDirection = holdDirection;
+        Weather = weather;
+    }
+
     public static SpecialToolMenuClose None { get; } =
         new(false, 0, false, Weather.Normal);
+
+    public bool Enabled { get; }
+    public uint NonPlayerCharacters { get; }
+    public bool HoldDirection { get; }
+    public Weather Weather { get; }
 }
 
 public sealed class SpecialToolSearchRequest
 {
-    private readonly string[] lotoIds;
-    private readonly CramInputItem[] cramInputs;
+    private readonly IReadOnlyList<string> lotoIds;
+    private readonly IReadOnlyList<CramInputItem> cramInputs;
     private readonly ReadOnlyDictionary<DiggingBroReward, byte> diggingBroMinimumRewards;
 
     public SpecialToolSearchRequest(
@@ -139,25 +153,44 @@ public sealed class SpecialToolSearchRequest
             throw new ArgumentOutOfRangeException(nameof(game));
         }
 
-        this.lotoIds = lotoIds?.ToArray() ?? [];
-        if (this.lotoIds.Any(id =>
-                id.Length != 6 || id.Any(character => !char.IsAsciiDigit(character))))
+        if (!Enum.IsDefined(lotoPrize))
+        {
+            throw new ArgumentOutOfRangeException(nameof(lotoPrize));
+        }
+
+        if (!Enum.IsDefined(success))
+        {
+            throw new ArgumentOutOfRangeException(nameof(success));
+        }
+
+        if (!Enum.IsDefined(cramPrize))
+        {
+            throw new ArgumentOutOfRangeException(nameof(cramPrize));
+        }
+
+        var lotoIdCopy = lotoIds?.ToArray() ?? [];
+        if (lotoIdCopy.Any(id =>
+                id is null
+                || id.Length != 6
+                || id.Any(character => !char.IsAsciiDigit(character))))
         {
             throw new ArgumentException("Every Loto-ID must contain exactly six digits.", nameof(lotoIds));
         }
 
-        this.cramInputs = cramInputs?.ToArray()
+        var cramInputCopy = cramInputs?.ToArray()
             ?? Enumerable.Repeat(CramInputItem.BlackApricorn, 4).ToArray();
-        if (this.cramInputs.Length != 4)
+        if (cramInputCopy.Length != 4)
         {
             throw new ArgumentException("Exactly four Cram-o-matic inputs are required.", nameof(cramInputs));
         }
 
-        if (this.cramInputs.Any(value => !Enum.IsDefined(value)))
+        if (cramInputCopy.Any(value => !Enum.IsDefined(value)))
         {
             throw new ArgumentOutOfRangeException(nameof(cramInputs));
         }
 
+        this.lotoIds = Array.AsReadOnly(lotoIdCopy);
+        this.cramInputs = Array.AsReadOnly(cramInputCopy);
         if (wattTraderSlotMaximum < wattTraderSlotMinimum)
         {
             throw new ArgumentOutOfRangeException(

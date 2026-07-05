@@ -37,6 +37,11 @@ public sealed class SpreadSearchRequest
                 "Guaranteed individual value count must be between 0 and 6.");
         }
 
+        if (!Enum.IsDefined(scale))
+        {
+            throw new ArgumentOutOfRangeException(nameof(scale));
+        }
+
         Scope = scope;
         IndividualValueRanges = new ReadOnlyCollection<IndividualValueRange>(copiedRanges);
         GuaranteedIndividualValues = guaranteedIndividualValues;

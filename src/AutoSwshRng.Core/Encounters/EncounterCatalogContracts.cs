@@ -19,6 +19,16 @@ public sealed record EncounterCatalogRequest
         string weather,
         string leadAbility = "")
     {
+        if (!Enum.IsDefined(game))
+        {
+            throw new ArgumentOutOfRangeException(nameof(game));
+        }
+
+        if (!Enum.IsDefined(kind))
+        {
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        }
+
         if (string.IsNullOrWhiteSpace(area))
         {
             throw new ArgumentException("Area is required.", nameof(area));

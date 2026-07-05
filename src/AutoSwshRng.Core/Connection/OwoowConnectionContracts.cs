@@ -65,7 +65,7 @@ public sealed record TrainerSnapshot(
 
 public sealed class DexRecommendationSnapshot
 {
-    private readonly ushort[] speciesIds;
+    private readonly IReadOnlyList<ushort> speciesIds;
 
     public DexRecommendationSnapshot(
         IEnumerable<ushort> speciesIds,
@@ -73,14 +73,15 @@ public sealed class DexRecommendationSnapshot
         ulong? seed)
     {
         ArgumentNullException.ThrowIfNull(speciesIds);
-        this.speciesIds = speciesIds.ToArray();
-        if (this.speciesIds.Length != 4)
+        var speciesIdCopy = speciesIds.ToArray();
+        if (speciesIdCopy.Length != 4)
         {
             throw new ArgumentException(
                 "Exactly four Pokédex recommendation slots are required.",
                 nameof(speciesIds));
         }
 
+        this.speciesIds = Array.AsReadOnly(speciesIdCopy);
         Location = location;
         Seed = seed;
     }
@@ -99,7 +100,7 @@ public enum PokemonShinyType
 
 public sealed class PokemonSnapshot
 {
-    private readonly ushort[] moves;
+    private readonly IReadOnlyList<ushort> moves;
 
     public PokemonSnapshot(
         ushort speciesId,
@@ -138,7 +139,7 @@ public sealed class PokemonSnapshot
         IndividualValues = individualValues;
         Height = height;
         Mark = mark;
-        this.moves = moves.ToArray();
+        this.moves = Array.AsReadOnly(moves.ToArray());
     }
 
     public ushort SpeciesId { get; }
@@ -167,7 +168,7 @@ public sealed record FieldObjectSnapshot(
 
 public sealed class WorldSnapshot
 {
-    private readonly FieldObjectSnapshot[] objects;
+    private readonly IReadOnlyList<FieldObjectSnapshot> objects;
 
     public WorldSnapshot(
         ulong saveLocation,
@@ -178,7 +179,7 @@ public sealed class WorldSnapshot
         ArgumentNullException.ThrowIfNull(objects);
         SaveLocation = saveLocation;
         PlayerPosition = playerPosition;
-        this.objects = objects.ToArray();
+        this.objects = Array.AsReadOnly(objects.ToArray());
     }
 
     public ulong SaveLocation { get; }

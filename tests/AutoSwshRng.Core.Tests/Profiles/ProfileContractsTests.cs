@@ -5,6 +5,13 @@ namespace AutoSwshRng.Core.Tests.Profiles;
 public class ProfileContractsTests
 {
     [Test]
+    public void ProfileRejectsUnknownGameVersion()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RngProfile("main", (GameVersion)999, 1, 2, false, false));
+    }
+
+    [Test]
     public void ProfilePreservesTrainerConfiguration()
     {
         var profile = new RngProfile("Sword save", GameVersion.Sword, 1337, 1390, true, true);
@@ -56,5 +63,24 @@ public class ProfileContractsTests
         profiles.Clear();
 
         Assert.That(settings.Profiles, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void SettingsProfilesCannotBeMutatedThroughPublicContract()
+    {
+        var settings = new RngApplicationSettings(
+            "main",
+            [new RngProfile("main", GameVersion.Sword, 1, 2, false, false)]);
+
+        Assert.Throws<NotSupportedException>(
+            () => ((IList<RngProfile>)settings.Profiles)[0] =
+                new RngProfile("other", GameVersion.Shield, 3, 4, false, false));
+    }
+
+    [Test]
+    public void SettingsRejectNullProfileEntriesAsValidationErrors()
+    {
+        Assert.Throws<ArgumentException>(
+            () => new RngApplicationSettings(null, [null!]));
     }
 }

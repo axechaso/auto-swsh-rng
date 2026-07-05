@@ -13,11 +13,34 @@ public enum Weather
     HeavyFog,
 }
 
-public sealed record MenuCloseCalibrationRequest(
-    RngState State,
-    uint NonPlayerCharacters,
-    bool HoldDirection,
-    Weather Weather);
+public sealed record MenuCloseCalibrationRequest
+{
+    public MenuCloseCalibrationRequest(
+        RngState state,
+        uint nonPlayerCharacters,
+        bool holdDirection,
+        Weather weather)
+    {
+        ValidateWeather(weather);
+        State = state;
+        NonPlayerCharacters = nonPlayerCharacters;
+        HoldDirection = holdDirection;
+        Weather = weather;
+    }
+
+    public RngState State { get; }
+    public uint NonPlayerCharacters { get; }
+    public bool HoldDirection { get; }
+    public Weather Weather { get; }
+
+    internal static void ValidateWeather(Weather weather)
+    {
+        if (!Enum.IsDefined(weather))
+        {
+            throw new ArgumentOutOfRangeException(nameof(weather));
+        }
+    }
+}
 
 public sealed record RainCalibrationRequest(RngState State, uint Ticks);
 
@@ -26,17 +49,44 @@ public sealed record AreaLoadCalibrationRequest(
     uint AreaRolls,
     uint NonPlayerCharacters);
 
-public sealed record FlyCalibrationRequest(
-    RngState State,
-    uint RainTicksBeforeMap,
-    uint RainTicksAfterMenu,
-    uint AreaRolls,
-    uint AreaNonPlayerCharacters,
-    uint RainTicksDuringAreaLoad,
-    uint MenuNonPlayerCharacters,
-    bool HoldDirection,
-    Weather Weather,
-    uint RainTicksBeforeEncounter);
+public sealed record FlyCalibrationRequest
+{
+    public FlyCalibrationRequest(
+        RngState state,
+        uint rainTicksBeforeMap,
+        uint rainTicksAfterMenu,
+        uint areaRolls,
+        uint areaNonPlayerCharacters,
+        uint rainTicksDuringAreaLoad,
+        uint menuNonPlayerCharacters,
+        bool holdDirection,
+        Weather weather,
+        uint rainTicksBeforeEncounter)
+    {
+        MenuCloseCalibrationRequest.ValidateWeather(weather);
+        State = state;
+        RainTicksBeforeMap = rainTicksBeforeMap;
+        RainTicksAfterMenu = rainTicksAfterMenu;
+        AreaRolls = areaRolls;
+        AreaNonPlayerCharacters = areaNonPlayerCharacters;
+        RainTicksDuringAreaLoad = rainTicksDuringAreaLoad;
+        MenuNonPlayerCharacters = menuNonPlayerCharacters;
+        HoldDirection = holdDirection;
+        Weather = weather;
+        RainTicksBeforeEncounter = rainTicksBeforeEncounter;
+    }
+
+    public RngState State { get; }
+    public uint RainTicksBeforeMap { get; }
+    public uint RainTicksAfterMenu { get; }
+    public uint AreaRolls { get; }
+    public uint AreaNonPlayerCharacters { get; }
+    public uint RainTicksDuringAreaLoad { get; }
+    public uint MenuNonPlayerCharacters { get; }
+    public bool HoldDirection { get; }
+    public Weather Weather { get; }
+    public uint RainTicksBeforeEncounter { get; }
+}
 
 public sealed record CalibrationResult(uint Advances, RngState State);
 

@@ -42,4 +42,52 @@ public class CaptureContractsTests
             null,
             null));
     }
+
+    [Test]
+    public void NotificationContractsRejectUnknownMethodAndProtectCollections()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new NotificationEndpoint(
+            "test",
+            true,
+            (NotificationHttpMethod)999,
+            "https://example.test",
+            null,
+            null,
+            null));
+
+        var endpoint = new NotificationEndpoint(
+            "test",
+            true,
+            NotificationHttpMethod.Get,
+            "https://example.test",
+            null,
+            new Dictionary<string, string> { ["X-Test"] = "value" },
+            null,
+            new Dictionary<string, string> { ["custom"] = "value" });
+        var request = new NotificationRequest(
+            "content",
+            "title",
+            [endpoint],
+            TimeSpan.FromSeconds(1));
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<NotSupportedException>(
+                () => ((IDictionary<string, string>)endpoint.Headers)["X-Test"] = "changed");
+            Assert.Throws<NotSupportedException>(
+                () => ((IDictionary<string, string>)endpoint.Variables)["custom"] = "changed");
+            Assert.Throws<NotSupportedException>(
+                () => ((IList<NotificationEndpoint>)request.Endpoints).Clear());
+        });
+    }
+
+    [Test]
+    public void NotificationRequestRejectsNullEndpointEntriesAsValidationErrors()
+    {
+        Assert.Throws<ArgumentException>(() => new NotificationRequest(
+            "content",
+            "title",
+            [null!],
+            TimeSpan.FromSeconds(1)));
+    }
 }

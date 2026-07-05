@@ -39,6 +39,16 @@ public class SpreadSearchRequestTests
     }
 
     [Test]
+    public void RequestRejectsUnknownScale()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new SpreadSearchRequest(
+                new SpreadSearchScope.Seeds([0]),
+                AnyIndividualValueRanges(),
+                scale: (SpreadScale)999));
+    }
+
+    [Test]
     public void SeedScopeRequiresAtLeastOneSeed()
     {
         Assert.Throws<ArgumentException>(() => new SpreadSearchScope.Seeds([]));

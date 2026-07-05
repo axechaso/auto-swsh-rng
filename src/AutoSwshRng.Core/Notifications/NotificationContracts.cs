@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace AutoSwshRng.Core.Notifications;
 
 public enum NotificationHttpMethod
@@ -8,8 +10,8 @@ public enum NotificationHttpMethod
 
 public sealed class NotificationEndpoint
 {
-    private readonly Dictionary<string, string> headers;
-    private readonly Dictionary<string, string> variables;
+    private readonly ReadOnlyDictionary<string, string> headers;
+    private readonly ReadOnlyDictionary<string, string> variables;
 
     public NotificationEndpoint(
         string name,
@@ -22,6 +24,11 @@ public sealed class NotificationEndpoint
         IReadOnlyDictionary<string, string>? variables = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (!Enum.IsDefined(method))
+        {
+            throw new ArgumentOutOfRangeException(nameof(method));
+        }
+
         if (!Uri.TryCreate(urlTemplate.Replace("{{token}}", "token"), UriKind.Absolute, out _))
         {
             throw new ArgumentException("Notification URL must be absolute.", nameof(urlTemplate));
@@ -32,9 +39,11 @@ public sealed class NotificationEndpoint
         Method = method;
         UrlTemplate = urlTemplate;
         Token = token ?? string.Empty;
-        this.headers = headers?.ToDictionary() ?? [];
+        this.headers = new ReadOnlyDictionary<string, string>(
+            headers?.ToDictionary() ?? []);
         BodyTemplate = bodyTemplate ?? string.Empty;
-        this.variables = variables?.ToDictionary() ?? [];
+        this.variables = new ReadOnlyDictionary<string, string>(
+            variables?.ToDictionary() ?? []);
     }
 
     public string Name { get; }
@@ -49,7 +58,7 @@ public sealed class NotificationEndpoint
 
 public sealed class NotificationRequest
 {
-    private readonly NotificationEndpoint[] endpoints;
+    private readonly IReadOnlyList<NotificationEndpoint> endpoints;
 
     public NotificationRequest(
         string content,
@@ -67,7 +76,15 @@ public sealed class NotificationRequest
 
         Content = content;
         Title = title;
-        this.endpoints = endpoints.ToArray();
+        var endpointCopy = endpoints.ToArray();
+        if (endpointCopy.Any(endpoint => endpoint is null))
+        {
+            throw new ArgumentException(
+                "Notification endpoints cannot contain null entries.",
+                nameof(endpoints));
+        }
+
+        this.endpoints = Array.AsReadOnly(endpointCopy);
         Timeout = timeout;
     }
 

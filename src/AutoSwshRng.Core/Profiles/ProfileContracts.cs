@@ -16,6 +16,11 @@ public sealed record RngProfile
         bool hasShinyCharm,
         bool hasMarkCharm)
     {
+        if (!Enum.IsDefined(game))
+        {
+            throw new ArgumentOutOfRangeException(nameof(game));
+        }
+
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException("Profile name is required.", nameof(name));
@@ -44,7 +49,7 @@ public sealed record RngProfile
 
 public sealed class RngApplicationSettings : IEquatable<RngApplicationSettings>
 {
-    private readonly RngProfile[] profiles;
+    private readonly IReadOnlyList<RngProfile> profiles;
 
     public RngApplicationSettings(
         string? activeProfileName,
@@ -55,19 +60,27 @@ public sealed class RngApplicationSettings : IEquatable<RngApplicationSettings>
         ArgumentOutOfRangeException.ThrowIfNegative(maxSearchTasksPowerOfTwo);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(maxSearchTasksPowerOfTwo, 6);
 
-        this.profiles = profiles.ToArray();
-        if (this.profiles.Select(profile => profile.Name).Distinct(StringComparer.Ordinal).Count()
-            != this.profiles.Length)
+        var profileCopy = profiles.ToArray();
+        if (profileCopy.Any(profile => profile is null))
+        {
+            throw new ArgumentException(
+                "Profile list cannot contain null entries.",
+                nameof(profiles));
+        }
+
+        if (profileCopy.Select(profile => profile.Name).Distinct(StringComparer.Ordinal).Count()
+            != profileCopy.Length)
         {
             throw new ArgumentException("Profile names must be unique.", nameof(profiles));
         }
 
         if (activeProfileName is not null
-            && !this.profiles.Any(profile => profile.Name == activeProfileName))
+            && !profileCopy.Any(profile => profile.Name == activeProfileName))
         {
             throw new ArgumentException("The active profile must exist in the profile list.", nameof(activeProfileName));
         }
 
+        this.profiles = Array.AsReadOnly(profileCopy);
         ActiveProfileName = activeProfileName;
         MaxSearchTasksPowerOfTwo = maxSearchTasksPowerOfTwo;
     }
