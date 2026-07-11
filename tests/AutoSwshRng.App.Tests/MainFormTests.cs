@@ -304,6 +304,48 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void EasyConExcludedFeatureTextIsAbsent()
+    {
+        using var form = new MainForm();
+        var menu = FindControl(form, "easyConOriginalMenu");
+        var visibleTexts = GetDescendantTexts(form)
+            .Concat(GetAllToolStripItemTexts(menu))
+            .ToArray();
+
+        foreach (var excludedText in new[]
+        {
+            "远程运行",
+            "远程停止",
+            "烧录",
+            "清除烧录",
+            "固件生成",
+            "生成固件",
+            "ESP32",
+        })
+        {
+            Assert.That(
+                visibleTexts.Any(text => text.Contains(excludedText, StringComparison.OrdinalIgnoreCase)),
+                Is.False,
+                $"Excluded EasyCon text '{excludedText}' should not be visible.");
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRemovedBurnPageLeavesNoSidebarGap()
+    {
+        using var form = new MainForm();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<int>(FindControl(form, "btnPageLog"), "Top"), Is.EqualTo(10));
+            Assert.That(GetProperty<int>(FindControl(form, "btnPageEditor"), "Top"), Is.EqualTo(50));
+            Assert.That(GetProperty<int>(FindControl(form, "btnPageSettings"), "Top"), Is.EqualTo(90));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void EasyConTabRestoresOriginalMenuDropDownItems()
     {
         using var form = new MainForm();
@@ -2368,6 +2410,40 @@ public class MainFormTests
         Assert.That(GetProperty<string>(placeholder, "Text"), Does.Contain("自动化流程"));
     }
 
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void AutomationFlowTabContainsOnlyConcisePlaceholder()
+    {
+        using var form = new MainForm();
+        var placeholder = FindControl(form, "automationFlowPlaceholder");
+        var automationTab = GetProperty<object>(placeholder, "Parent");
+        var childCount = ((IEnumerable)GetProperty<object>(automationTab, "Controls"))
+            .Cast<object>()
+            .Count();
+        var texts = GetDescendantTexts(automationTab);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(childCount, Is.EqualTo(1));
+            foreach (var forbiddenText in new[]
+            {
+                "五步",
+                "步骤导航",
+                "执行计划",
+                "dry-run",
+                "实机",
+                "设备编排",
+                "预览执行",
+            })
+            {
+                Assert.That(
+                    texts.Any(text => text.Contains(forbiddenText, StringComparison.OrdinalIgnoreCase)),
+                    Is.False,
+                    $"Automation placeholder should not contain '{forbiddenText}'.");
+            }
+        });
+    }
+
     private static IDisposable PreserveEasyConConfig(ConfigState config)
     {
         var configPath = AppPaths.ConfigFile;
@@ -2498,6 +2574,31 @@ public class MainFormTests
         }
 
         return texts;
+    }
+
+    private static IReadOnlyCollection<string> GetAllToolStripItemTexts(object toolStrip)
+    {
+        var texts = new List<string>();
+        AddToolStripTexts(GetToolStripSearchItems(toolStrip), texts);
+        return texts;
+    }
+
+    private static void AddToolStripTexts(IEnumerable items, List<string> texts)
+    {
+        foreach (var item in items)
+        {
+            var text = GetProperty<string>(item, "Text");
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                texts.Add(text);
+            }
+
+            if (!item.GetType().Name.Contains("Separator", StringComparison.Ordinal)
+                && item.GetType().GetProperty("DropDownItems") is not null)
+            {
+                AddToolStripTexts((IEnumerable)GetProperty<object>(item, "DropDownItems"), texts);
+            }
+        }
     }
 
     private static object FindToolStripItem(object toolStrip, string name)
