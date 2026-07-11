@@ -1,13 +1,33 @@
+using AutoSwshRng.Core.Connection;
+using AutoSwshRng.Core.Common;
+using AutoSwshRng.Core.Encounters;
+using AutoSwshRng.Core.Profiles;
+using AutoSwshRng.Core.Rng;
+using System.Globalization;
+
 namespace AutoSwshRng.App.Controls;
 
 public sealed class OwoowTabControl : UserControl
 {
     private const int CanvasWidth = 1278;
     private readonly OwoowUiServices services;
+    private readonly CancellationTokenSource lifetimeCancellation = new();
+    private readonly Action<string, string> showMessage;
+    private CancellationTokenSource? searchCancellation;
+    private CancellationTokenSource? skipCancellation;
+    private PokemonSnapshot? cachedWildPokemon;
+    private AnimationSequenceResult? retailSequence;
+    private ulong retailInitial;
+    private bool updatingCatalog;
+    private bool updatingRetailPattern;
 
-    public OwoowTabControl(OwoowUiServices? services = null)
+    public OwoowTabControl(
+        OwoowUiServices? services = null,
+        Action<string, string>? messageSink = null)
     {
         this.services = services ?? OwoowUiServices.CreateDefault();
+        showMessage = messageSink ?? ((title, message) =>
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error));
 
         Dock = DockStyle.Fill;
         Font = new Font("Segoe UI", 9F);
@@ -34,9 +54,1024 @@ public sealed class OwoowTabControl : UserControl
 
         scrollHost.Controls.Add(canvas);
         Controls.Add(scrollHost);
+
+        WireConnectionActions();
+        WireEncounterActions();
+        WireCatalogActions();
+        WireConnectedUtilityActions();
+        WireRetailActions();
+        this.services.Connection.StatusChanged += ConnectionStatusChanged;
     }
 
     internal OwoowUiServices Services => services;
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            services.Connection.StatusChanged -= ConnectionStatusChanged;
+            searchCancellation?.Cancel();
+            searchCancellation?.Dispose();
+            skipCancellation?.Cancel();
+            skipCancellation?.Dispose();
+            lifetimeCancellation.Cancel();
+            lifetimeCancellation.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private void WireConnectionActions()
+    {
+        FindRequiredControl<Button>("B_Connect").Click += async (_, _) => await ConnectAsync();
+        FindRequiredControl<Button>("B_Disconnect").Click += async (_, _) => await DisconnectAsync();
+        FindRequiredControl<Button>("B_CopyToInitial").Click += (_, _) => CopyCurrentStateToInitial();
+    }
+
+    private void WireEncounterActions()
+    {
+        foreach (var kind in Enum.GetValues<EncounterKind>())
+        {
+            var kindName = kind.ToString();
+            FindRequiredControl<Button>($"B_{kindName}_Search").Click += async (_, _) =>
+                await SearchEncountersAsync(kind);
+            FindRequiredControl<Button>($"B_{kindName}_MenuClose").Click += async (_, _) =>
+                await CalculateMenuCloseAsync(kind);
+
+            var menuClose = FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose");
+            menuClose.CheckedChanged += (_, _) =>
+            {
+                FindRequiredControl<Button>($"B_{kindName}_MenuClose").Enabled = menuClose.Checked;
+                FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose_Direction").Enabled = menuClose.Checked;
+                FindRequiredControl<TextBox>($"TB_{kindName}_NPCs").Enabled = menuClose.Checked;
+            };
+        }
+
+        foreach (var stat in new[] { "HP", "Atk", "Def", "SpA", "SpD", "Spe" })
+        {
+            var minimum = FindRequiredControl<NumericUpDown>($"NUD_{stat}_Min");
+            var maximum = FindRequiredControl<NumericUpDown>($"NUD_{stat}_Max");
+            FindRequiredControl<Button>($"B_{stat}_Min").Click += (_, _) => minimum.Value = 0;
+            FindRequiredControl<Button>($"B_{stat}_Max").Click += (_, _) => maximum.Value = 31;
+        }
+
+        FindRequiredControl<Button>("B_CalculateRain").Click += async (_, _) => await CalculateRainAsync();
+    }
+
+    private async Task CalculateMenuCloseAsync(EncounterKind kind)
+    {
+        var kindName = kind.ToString();
+        var button = FindRequiredControl<Button>($"B_{kindName}_MenuClose");
+        button.Enabled = false;
+        try
+        {
+            var request = new MenuCloseCalibrationRequest(
+                ReadInitialState(),
+                ParseUInt32(FindRequiredControl<TextBox>($"TB_{kindName}_NPCs").Text, "NPCs"),
+                FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose_Direction").Checked,
+                ParseWeather(FindRequiredControl<ComboBox>($"CB_{kindName}_Weather").Text));
+            var result = await services.Calibration.CalculateMenuCloseAsync(request, lifetimeCancellation.Token);
+            FindRequiredControl<TextBox>("TB_Status").Text = $"Menu close: {result.Advances} advances.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Menu-close calibration failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose").Checked;
+        }
+    }
+
+    private async Task CalculateRainAsync()
+    {
+        var button = FindRequiredControl<Button>("B_CalculateRain");
+        button.Enabled = false;
+        try
+        {
+            var request = new RainCalibrationRequest(
+                ReadInitialState(),
+                (uint)FindRequiredControl<NumericUpDown>("NUD_RainTick").Value);
+            var result = await services.Calibration.CalculateRainAsync(request, lifetimeCancellation.Token);
+            FindRequiredControl<TextBox>("TB_Status").Text = $"Rain: {result.Advances} advances.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Rain calibration failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = true;
+        }
+    }
+
+    private RngState ReadInitialState() => new(
+        ParseHexUInt64(FindRequiredControl<TextBox>("TB_Seed0").Text, "Seed[0]"),
+        ParseHexUInt64(FindRequiredControl<TextBox>("TB_Seed1").Text, "Seed[1]"));
+
+    private static Weather ParseWeather(string value) => value switch
+    {
+        "Overcast" => Weather.Overcast,
+        "Raining" => Weather.Raining,
+        "Thunderstorm" => Weather.Thunderstorm,
+        "Intense Sun" or "IntenseSun" => Weather.IntenseSun,
+        "Snowing" => Weather.Snowing,
+        "Snowstorm" => Weather.Snowstorm,
+        "Sandstorm" => Weather.Sandstorm,
+        "Heavy Fog" or "HeavyFog" => Weather.HeavyFog,
+        _ => Weather.Normal,
+    };
+
+    private void WireCatalogActions()
+    {
+        Load += async (_, _) => await InitializeCatalogAsync();
+        FindRequiredControl<ComboBox>("CB_Game").SelectedIndexChanged += async (_, _) =>
+            await LoadCatalogForCurrentTabAsync();
+        FindRequiredControl<TabControl>("TC_EncounterType").SelectedIndexChanged += async (_, _) =>
+            await LoadCatalogForCurrentTabAsync();
+
+        foreach (var kind in Enum.GetValues<EncounterKind>())
+        {
+            var kindName = kind.ToString();
+            FindRequiredControl<ComboBox>($"CB_{kindName}_Area").SelectedIndexChanged += async (_, _) =>
+                await LoadWeatherAndSpeciesAsync(kind);
+            FindRequiredControl<ComboBox>($"CB_{kindName}_Weather").SelectedIndexChanged += async (_, _) =>
+                await LoadSpeciesAsync(kind);
+        }
+    }
+
+    private void WireConnectedUtilityActions()
+    {
+        FindRequiredControl<Button>("B_RefreshDexRec").Click += async (_, _) => await RefreshDexRecommendationsAsync();
+        FindRequiredControl<Button>("B_ReadEncounter").Click += async (_, _) => await ReadWildEncounterAsync();
+        FindRequiredControl<Button>("B_CopyToFilter").Click += (_, _) => CopyWildEncounterToFilter();
+        FindRequiredControl<Button>("B_SkipForward").Click += async (_, _) => await SkipDaysAsync(forward: true);
+        FindRequiredControl<Button>("B_SkipBack").Click += async (_, _) => await SkipDaysAsync(forward: false);
+        FindRequiredControl<Button>("B_CancelSkip").Click += (_, _) => skipCancellation?.Cancel();
+        FindRequiredControl<Button>("B_SkipAdvance").Click += async (_, _) => await AdvanceConnectedStateAsync();
+        FindRequiredControl<Button>("B_NTP").Click += async (_, _) => await ResetNetworkTimeAsync();
+    }
+
+    private void WireRetailActions()
+    {
+        FindRequiredControl<Button>("B_GenerateRetailPattern").Click += async (_, _) =>
+            await GenerateRetailPatternAsync();
+        FindRequiredControl<Button>("B_RetailUpdateSeeds").Click += async (_, _) =>
+            await UpdateRetailSeedsAsync();
+        FindRequiredControl<TextBox>("TB_Animations").TextChanged += async (_, _) =>
+            await ReidentifyRetailSeedAsync();
+    }
+
+    private async Task UpdateRetailSeedsAsync()
+    {
+        FindRequiredControl<TextBox>("TB_CurrentAdvances").Text = "0";
+        CopyCurrentStateToInitial();
+        await GenerateRetailPatternAsync();
+        updatingRetailPattern = true;
+        try
+        {
+            FindRequiredControl<TextBox>("TB_Animations").Clear();
+        }
+        finally
+        {
+            updatingRetailPattern = false;
+        }
+
+        FindRequiredControl<TextBox>("TB_Animations").Focus();
+    }
+
+    private async Task GenerateRetailPatternAsync()
+    {
+        var button = FindRequiredControl<Button>("B_GenerateRetailPattern");
+        button.Enabled = false;
+        try
+        {
+            var seed0 = ParseHexUInt64(FindRequiredControl<TextBox>("TB_Seed0").Text, "Seed[0]");
+            var seed1 = ParseHexUInt64(FindRequiredControl<TextBox>("TB_Seed1").Text, "Seed[1]");
+            retailInitial = ParseUInt64(FindRequiredControl<TextBox>("TB_RetailInitial").Text, "Retail initial");
+            var countValue = ParseUInt64(FindRequiredControl<TextBox>("TB_RetailRange").Text, "Retail range");
+            if (countValue is 0 or > int.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException("Retail range", "Retail range must be between 1 and 2147483647.");
+            }
+
+            retailSequence = await services.RetailSeeds.GenerateAnimationSequenceAsync(
+                new AnimationSequenceRequest(new RngState(seed0, seed1), retailInitial, (int)countValue),
+                lifetimeCancellation.Token);
+            FindRequiredControl<TextBox>("TB_RetailAdvances").Text = "Need more inputs";
+            FindRequiredControl<TextBox>("TB_Status").Text = "Retail pattern generated.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            retailSequence = null;
+            FindRequiredControl<TextBox>("TB_RetailAdvances").Text = exception.Message;
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Retail pattern failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = true;
+        }
+    }
+
+    private async Task ReidentifyRetailSeedAsync()
+    {
+        if (updatingRetailPattern)
+        {
+            return;
+        }
+
+        var pattern = FindRequiredControl<TextBox>("TB_Animations").Text.Trim();
+        if (retailSequence is null)
+        {
+            FindRequiredControl<TextBox>("TB_RetailAdvances").Text = "Generate First ↑";
+            return;
+        }
+
+        if (pattern.Length <= 5)
+        {
+            FindRequiredControl<TextBox>("TB_RetailAdvances").Text = "Need more inputs";
+            return;
+        }
+
+        try
+        {
+            var result = await services.RetailSeeds.ReidentifyAsync(
+                new ReidentifySeedRequest(retailSequence.Observations, retailSequence.InitialState, pattern),
+                lifetimeCancellation.Token);
+            if (result.Hits == 1)
+            {
+                var advances = checked((ulong)result.Advances + retailInitial);
+                FindRequiredControl<TextBox>("TB_RetailAdvances").Text = advances.ToString(CultureInfo.InvariantCulture);
+                FindRequiredControl<TextBox>("TB_CurrentAdvances").Text = advances.ToString(CultureInfo.InvariantCulture);
+                UpdateCurrentState(result.State);
+            }
+            else if (result.Hits == 0)
+            {
+                FindRequiredControl<TextBox>("TB_RetailAdvances").Text = "No results";
+            }
+            else
+            {
+                FindRequiredControl<TextBox>("TB_RetailAdvances").Text = $"{result.Hits} results";
+            }
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_RetailAdvances").Text = exception.Message;
+            showMessage("Retail re-identification failed", exception.Message);
+        }
+    }
+
+    private async Task RefreshDexRecommendationsAsync()
+    {
+        var button = FindRequiredControl<Button>("B_RefreshDexRec");
+        button.Enabled = false;
+        try
+        {
+            var snapshot = await services.Connection.ReadDexRecommendationAsync(
+                (ModifierKeys & Keys.Shift) == Keys.Shift,
+                lifetimeCancellation.Token);
+            for (var index = 0; index < snapshot.SpeciesIds.Count; index++)
+            {
+                ReplaceComboItems(
+                    FindRequiredControl<ComboBox>($"CB_DexRec{index + 1}"),
+                    [snapshot.SpeciesIds[index].ToString(CultureInfo.InvariantCulture)]);
+            }
+
+            FindRequiredControl<TextBox>("TB_Status").Text = "Pokédex recommendations updated.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Pokédex recommendation failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = services.Connection.Status.State == ConnectionState.Connected;
+        }
+    }
+
+    private async Task ReadWildEncounterAsync()
+    {
+        var button = FindRequiredControl<Button>("B_ReadEncounter");
+        button.Enabled = false;
+        try
+        {
+            var pokemon = await services.Connection.ReadWildPokemonAsync(lifetimeCancellation.Token);
+            cachedWildPokemon = pokemon;
+            FindRequiredControl<TextBox>("TB_Wild").Text = string.Join(
+                Environment.NewLine,
+                pokemon.SpeciesName,
+                $"EC: {pokemon.EncryptionConstant:X8}",
+                $"PID: {pokemon.PersonalityId:X8}",
+                $"{pokemon.Nature} Nature",
+                $"Ability: {pokemon.AbilityId}",
+                $"IVs: {pokemon.IndividualValues.HP}/{pokemon.IndividualValues.Attack}/{pokemon.IndividualValues.Defense}/{pokemon.IndividualValues.SpecialAttack}/{pokemon.IndividualValues.SpecialDefense}/{pokemon.IndividualValues.Speed}",
+                $"Height: {pokemon.Height}",
+                string.IsNullOrWhiteSpace(pokemon.Mark) ? string.Empty : $"Mark: {pokemon.Mark}");
+            FindRequiredControl<Button>("B_CopyToFilter").Enabled = true;
+            FindRequiredControl<TextBox>("TB_Status").Text = "Encounter read.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            cachedWildPokemon = null;
+            FindRequiredControl<TextBox>("TB_Wild").Clear();
+            FindRequiredControl<Button>("B_CopyToFilter").Enabled = false;
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Read encounter failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = services.Connection.Status.State == ConnectionState.Connected;
+        }
+    }
+
+    private void CopyWildEncounterToFilter()
+    {
+        if (cachedWildPokemon is null)
+        {
+            return;
+        }
+
+        var values = cachedWildPokemon.IndividualValues.ToArray();
+        var stats = new[] { "HP", "Atk", "Def", "SpA", "SpD", "Spe" };
+        for (var index = 0; index < stats.Length; index++)
+        {
+            FindRequiredControl<NumericUpDown>($"NUD_{stats[index]}_Min").Value = values[index];
+            FindRequiredControl<NumericUpDown>($"NUD_{stats[index]}_Max").Value = values[index];
+        }
+    }
+
+    private async Task SkipDaysAsync(bool forward)
+    {
+        if (skipCancellation is not null)
+        {
+            return;
+        }
+
+        var count = ParseUInt32(FindRequiredControl<TextBox>("TB_Skips").Text, "Days");
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCancellation.Token);
+        skipCancellation = cancellation;
+        SetCfwBusy(true);
+        try
+        {
+            for (var index = 0U; index < count; index++)
+            {
+                cancellation.Token.ThrowIfCancellationRequested();
+                if (forward)
+                {
+                    await services.Connection.SkipDayAsync(cancellation.Token);
+                }
+                else
+                {
+                    await services.Connection.SkipDayBackAsync(cancellation.Token);
+                }
+
+                FindRequiredControl<TextBox>("TB_AdvancesIncrease").Text = (index + 1).ToString(CultureInfo.InvariantCulture);
+            }
+
+            await RefreshConnectedStateAsync(cancellation.Token);
+            FindRequiredControl<TextBox>("TB_Status").Text = forward ? "Days advanced." : "Days moved back.";
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = "Date skipping cancelled.";
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Date skipping failed", exception.Message);
+        }
+        finally
+        {
+            skipCancellation = null;
+            SetCfwBusy(false);
+        }
+    }
+
+    private async Task AdvanceConnectedStateAsync()
+    {
+        var button = FindRequiredControl<Button>("B_SkipAdvance");
+        button.Enabled = false;
+        try
+        {
+            var amount = ParseUInt64(FindRequiredControl<TextBox>("TB_Skips").Text, "Advances");
+            var state = await services.Connection.ReadRngStateAsync(lifetimeCancellation.Token);
+            var result = await services.Xoroshiro.CalculateAsync(
+                new XoroshiroRequest(state, XoroshiroOperation.Next, amount),
+                lifetimeCancellation.Token);
+            await services.Connection.WriteRngStateAsync(result.State, lifetimeCancellation.Token);
+            UpdateCurrentState(result.State);
+            FindRequiredControl<TextBox>("TB_AdvancesIncrease").Text = amount.ToString(CultureInfo.InvariantCulture);
+            FindRequiredControl<TextBox>("TB_Status").Text = "RNG state advanced.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Advance failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = services.Connection.Status.State == ConnectionState.Connected;
+        }
+    }
+
+    private async Task ResetNetworkTimeAsync()
+    {
+        var button = FindRequiredControl<Button>("B_NTP");
+        button.Enabled = false;
+        try
+        {
+            await services.Connection.ResetNetworkTimeAsync(lifetimeCancellation.Token);
+            FindRequiredControl<TextBox>("TB_Status").Text = "Network time reset.";
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("NTP reset failed", exception.Message);
+        }
+        finally
+        {
+            button.Enabled = services.Connection.Status.State == ConnectionState.Connected;
+        }
+    }
+
+    private async Task RefreshConnectedStateAsync(CancellationToken cancellationToken)
+    {
+        var state = await services.Connection.ReadRngStateAsync(cancellationToken);
+        UpdateCurrentState(state);
+    }
+
+    private void UpdateCurrentState(RngState state)
+    {
+        FindRequiredControl<TextBox>("TB_CurrentS0").Text = state.Seed0.ToString("X16", CultureInfo.InvariantCulture);
+        FindRequiredControl<TextBox>("TB_CurrentS1").Text = state.Seed1.ToString("X16", CultureInfo.InvariantCulture);
+    }
+
+    private void SetCfwBusy(bool busy)
+    {
+        var connected = services.Connection.Status.State == ConnectionState.Connected;
+        FindRequiredControl<TextBox>("TB_Skips").Enabled = connected && !busy;
+        FindRequiredControl<Button>("B_SkipForward").Enabled = connected && !busy;
+        FindRequiredControl<Button>("B_SkipBack").Enabled = connected && !busy;
+        FindRequiredControl<Button>("B_SkipAdvance").Enabled = connected && !busy;
+        FindRequiredControl<Button>("B_NTP").Enabled = connected && !busy;
+        FindRequiredControl<Button>("B_CancelSkip").Enabled = busy;
+    }
+
+    private async Task InitializeCatalogAsync()
+    {
+        try
+        {
+            var dexOptions = await services.EncounterCatalog.GetDexRecommendationOptionsAsync(
+                includeNone: true,
+                lifetimeCancellation.Token);
+            foreach (var name in new[] { "CB_DexRec1", "CB_DexRec2", "CB_DexRec3", "CB_DexRec4" })
+            {
+                ReplaceComboItems(FindRequiredControl<ComboBox>(name), dexOptions);
+            }
+
+            await LoadCatalogForCurrentTabAsync();
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Encounter catalog failed", exception.Message);
+        }
+    }
+
+    private async Task LoadCatalogForCurrentTabAsync()
+    {
+        if (updatingCatalog || lifetimeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        updatingCatalog = true;
+        try
+        {
+            var kind = GetSelectedEncounterKind();
+            var game = GetSelectedGame();
+            var areas = await services.EncounterCatalog.GetAreasAsync(game, kind, lifetimeCancellation.Token);
+            ReplaceComboItems(FindRequiredControl<ComboBox>($"CB_{kind}_Area"), areas);
+            await LoadWeatherAndSpeciesCoreAsync(game, kind);
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Encounter catalog failed", exception.Message);
+        }
+        finally
+        {
+            updatingCatalog = false;
+        }
+    }
+
+    private async Task LoadWeatherAndSpeciesAsync(EncounterKind kind)
+    {
+        if (updatingCatalog || kind != GetSelectedEncounterKind() || lifetimeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        updatingCatalog = true;
+        try
+        {
+            await LoadWeatherAndSpeciesCoreAsync(GetSelectedGame(), kind);
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Encounter catalog failed", exception.Message);
+        }
+        finally
+        {
+            updatingCatalog = false;
+        }
+    }
+
+    private async Task LoadWeatherAndSpeciesCoreAsync(GameVersion game, EncounterKind kind)
+    {
+        var area = FindRequiredControl<ComboBox>($"CB_{kind}_Area").Text;
+        if (string.IsNullOrWhiteSpace(area))
+        {
+            return;
+        }
+
+        var weather = await services.EncounterCatalog.GetWeatherAsync(
+            game,
+            kind,
+            area,
+            lifetimeCancellation.Token);
+        ReplaceComboItems(FindRequiredControl<ComboBox>($"CB_{kind}_Weather"), weather);
+        await LoadSpeciesCoreAsync(game, kind, area);
+    }
+
+    private async Task LoadSpeciesAsync(EncounterKind kind)
+    {
+        if (updatingCatalog || kind != GetSelectedEncounterKind() || lifetimeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        updatingCatalog = true;
+        try
+        {
+            var area = FindRequiredControl<ComboBox>($"CB_{kind}_Area").Text;
+            await LoadSpeciesCoreAsync(GetSelectedGame(), kind, area);
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Encounter catalog failed", exception.Message);
+        }
+        finally
+        {
+            updatingCatalog = false;
+        }
+    }
+
+    private async Task LoadSpeciesCoreAsync(GameVersion game, EncounterKind kind, string area)
+    {
+        var weather = FindRequiredControl<ComboBox>($"CB_{kind}_Weather").Text;
+        if (string.IsNullOrWhiteSpace(area) || string.IsNullOrWhiteSpace(weather))
+        {
+            return;
+        }
+
+        var species = await services.EncounterCatalog.GetSpeciesAsync(
+            game,
+            kind,
+            area,
+            weather,
+            lifetimeCancellation.Token);
+        ReplaceComboItems(FindRequiredControl<ComboBox>($"CB_{kind}_Species"), species);
+    }
+
+    private static void ReplaceComboItems(ComboBox comboBox, IReadOnlyList<string> values)
+    {
+        comboBox.BeginUpdate();
+        try
+        {
+            comboBox.Items.Clear();
+            comboBox.Items.AddRange(values.Cast<object>().ToArray());
+            comboBox.SelectedIndex = comboBox.Items.Count > 0 ? 0 : -1;
+        }
+        finally
+        {
+            comboBox.EndUpdate();
+        }
+    }
+
+    private EncounterKind GetSelectedEncounterKind()
+    {
+        var selectedIndex = FindRequiredControl<TabControl>("TC_EncounterType").SelectedIndex;
+        return selectedIndex is >= 0 and <= 3 ? (EncounterKind)selectedIndex : EncounterKind.Static;
+    }
+
+    private GameVersion GetSelectedGame() =>
+        FindRequiredControl<ComboBox>("CB_Game").SelectedIndex == 1
+            ? GameVersion.Shield
+            : GameVersion.Sword;
+
+    private async Task SearchEncountersAsync(EncounterKind kind)
+    {
+        var button = FindRequiredControl<Button>($"B_{kind}_Search");
+        if (searchCancellation is not null)
+        {
+            searchCancellation.Cancel();
+            return;
+        }
+
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCancellation.Token);
+        searchCancellation = cancellation;
+        button.Text = "Cancel";
+        try
+        {
+            var request = BuildSearchRequest(kind);
+            var progress = new Progress<OperationProgress>(value =>
+                FindRequiredControl<TextBox>("TB_Status").Text = value.Message);
+            var results = await services.Encounters.SearchAsync(request, progress, cancellation.Token);
+            BindEncounterResults(results);
+            FindRequiredControl<TextBox>("TB_Status").Text = $"Found {results.Count} result(s).";
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = "Search cancelled.";
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Search failed", exception.Message);
+        }
+        finally
+        {
+            searchCancellation = null;
+            button.Text = "Search!";
+        }
+    }
+
+    private OverworldSearchRequest BuildSearchRequest(EncounterKind kind)
+    {
+        var kindName = kind.ToString();
+        var seed0 = ParseHexUInt64(FindRequiredControl<TextBox>("TB_Seed0").Text, "Seed[0]");
+        var seed1 = ParseHexUInt64(FindRequiredControl<TextBox>("TB_Seed1").Text, "Seed[1]");
+        var startAdvance = ParseUInt64(FindRequiredControl<TextBox>($"TB_{kindName}_Initial").Text, "Initial Adv.");
+        var advanceCount = ParseUInt64(FindRequiredControl<TextBox>($"TB_{kindName}_Advances").Text, "Advances");
+        var endAdvance = checked(startAdvance + advanceCount);
+        var game = FindRequiredControl<ComboBox>("CB_Game").SelectedIndex == 1
+            ? GameVersion.Shield
+            : GameVersion.Sword;
+        var area = RequiredSelection(FindRequiredControl<ComboBox>($"CB_{kindName}_Area"), "Area");
+        var weather = RequiredSelection(FindRequiredControl<ComboBox>($"CB_{kindName}_Weather"), "Weather");
+        var species = RequiredSelection(FindRequiredControl<ComboBox>($"CB_{kindName}_Species"), "Target");
+        var leadAbility = FindRequiredControl<ComboBox>($"CB_{kindName}_LeadAbility").Text;
+        var context = new EncounterCatalogRequest(game, kind, area, weather, leadAbility);
+        var profile = new RngProfile(
+            "Current",
+            game,
+            ParseUInt16(FindRequiredControl<TextBox>("TB_TID").Text, "TID"),
+            ParseUInt16(FindRequiredControl<TextBox>("TB_SID").Text, "SID"),
+            FindRequiredControl<CheckBox>("CB_ShinyCharm").Checked,
+            FindRequiredControl<CheckBox>("CB_MarkCharm").Checked);
+        var filter = new EncounterFilter(
+            targetSpecies: species,
+            shiny: ParseShinyFilter(FindRequiredControl<ComboBox>("CB_Filter_Shiny").Text),
+            aura: ParseAuraFilter(FindRequiredControl<ComboBox>("CB_Filter_Aura").Text),
+            mark: ParseMarkFilter(FindRequiredControl<ComboBox>("CB_Filter_Mark").Text),
+            height: ParseHeightFilter(FindRequiredControl<ComboBox>("CB_Filter_Height").Text),
+            individualValues: CreateIndividualValueConstraints(),
+            rareEncryptionConstant: FindRequiredControl<CheckBox>("CB_RareEC").Checked);
+        var menuClose = FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose").Checked;
+        var environment = new OverworldEnvironmentSettings(
+            menuClose,
+            menuClose ? ParseUInt32(FindRequiredControl<TextBox>($"TB_{kindName}_NPCs").Text, "NPCs") : 0,
+            menuClose && FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose_Direction").Checked,
+            FindRequiredControl<CheckBox>("CB_ConsiderFlying").Checked,
+            (uint)FindRequiredControl<NumericUpDown>("NUD_AreaLoad").Value,
+            (uint)FindRequiredControl<NumericUpDown>("NUD_FlyNPCs").Value,
+            FindRequiredControl<CheckBox>("CB_ConsiderRain").Checked,
+            (uint)FindRequiredControl<NumericUpDown>("NUD_RainTick").Value,
+            0);
+        var knockouts = kind is EncounterKind.Symbol or EncounterKind.Fishing
+            ? checked((int)ParseUInt32(FindRequiredControl<TextBox>($"TB_{kindName}_KOs").Text, "KOs"))
+            : 0;
+        var maximumStep = kind == EncounterKind.Hidden
+            && int.TryParse(FindRequiredControl<ComboBox>("CB_Hidden_MaxStep").Text, out var parsedStep)
+                ? parsedStep
+                : 0;
+
+        return new OverworldSearchRequest(
+            new RngState(seed0, seed1),
+            startAdvance,
+            endAdvance,
+            context,
+            profile,
+            filter,
+            environment,
+            knockouts,
+            maximumStep,
+            [0, 0, 0, 0]);
+    }
+
+    private IReadOnlyList<IndividualValueConstraint> CreateIndividualValueConstraints()
+    {
+        return new[] { "HP", "Atk", "Def", "SpA", "SpD", "Spe" }
+            .Select(stat => new IndividualValueConstraint(
+                IndividualValueMatch.Range,
+                (int)FindRequiredControl<NumericUpDown>($"NUD_{stat}_Min").Value,
+                (int)FindRequiredControl<NumericUpDown>($"NUD_{stat}_Max").Value))
+            .ToArray();
+    }
+
+    private void BindEncounterResults(IReadOnlyList<OverworldEncounterResult> results)
+    {
+        var grid = FindRequiredControl<DataGridView>("DGV_Results");
+        grid.Rows.Clear();
+        foreach (var result in results)
+        {
+            grid.Rows.Add(
+                result.Advance.ToString(CultureInfo.InvariantCulture),
+                result.Jump.ToString(CultureInfo.InvariantCulture),
+                result.Step.ToString(CultureInfo.InvariantCulture),
+                result.Animation.ToString(),
+                result.Species,
+                result.Shiny,
+                result.BrilliantAura ? "Yes" : "No",
+                result.Level.ToString(CultureInfo.InvariantCulture),
+                result.Ability,
+                result.Nature,
+                result.Gender.ToString(),
+                result.IndividualValues.HP.ToString(CultureInfo.InvariantCulture),
+                result.IndividualValues.Attack.ToString(CultureInfo.InvariantCulture),
+                result.IndividualValues.Defense.ToString(CultureInfo.InvariantCulture),
+                result.IndividualValues.SpecialAttack.ToString(CultureInfo.InvariantCulture),
+                result.IndividualValues.SpecialDefense.ToString(CultureInfo.InvariantCulture),
+                result.IndividualValues.Speed.ToString(CultureInfo.InvariantCulture),
+                result.Mark,
+                result.EncryptionConstant.ToString("X8", CultureInfo.InvariantCulture),
+                result.PersonalityId.ToString("X8", CultureInfo.InvariantCulture),
+                $"{result.HeightDescription} ({result.Height})",
+                result.Item,
+                result.EggMove,
+                result.State.Seed0.ToString("X16", CultureInfo.InvariantCulture),
+                result.State.Seed1.ToString("X16", CultureInfo.InvariantCulture));
+        }
+    }
+
+    private static ShinyFilter ParseShinyFilter(string value) => value switch
+    {
+        "Either" => ShinyFilter.Either,
+        "Star" => ShinyFilter.Star,
+        "Square" => ShinyFilter.Square,
+        "None" => ShinyFilter.None,
+        _ => ShinyFilter.Any,
+    };
+
+    private static AuraFilter ParseAuraFilter(string value) => value switch
+    {
+        "Brilliant" => AuraFilter.Brilliant,
+        "None" => AuraFilter.None,
+        _ => AuraFilter.Any,
+    };
+
+    private static MarkFilter ParseMarkFilter(string value) => value switch
+    {
+        "None" => new MarkFilter(MarkFilterMode.None),
+        "Any" => new MarkFilter(MarkFilterMode.Any),
+        _ => MarkFilter.Ignore,
+    };
+
+    private static HeightFilter ParseHeightFilter(string value) => value switch
+    {
+        "XXXS" => HeightFilter.XXXS,
+        "XXS" => HeightFilter.XXS,
+        "XS" => HeightFilter.XS,
+        "S" => HeightFilter.Small,
+        "M" => HeightFilter.Medium,
+        "L" => HeightFilter.Large,
+        "XL" => HeightFilter.XL,
+        "XXL" => HeightFilter.XXL,
+        "XXXL" => HeightFilter.XXXL,
+        "XXXS or XXXL" => HeightFilter.MinOrMax,
+        _ => HeightFilter.Any,
+    };
+
+    private static string RequiredSelection(ComboBox comboBox, string fieldName)
+    {
+        var value = comboBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(value) || value is "None" or "(None)")
+        {
+            throw new ArgumentException($"{fieldName} is required.");
+        }
+
+        return value;
+    }
+
+    private static ulong ParseHexUInt64(string value, string fieldName)
+    {
+        if (!ulong.TryParse(value.Trim(), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var result))
+        {
+            throw new ArgumentException($"{fieldName} must be a hexadecimal value.");
+        }
+
+        return result;
+    }
+
+    private static ulong ParseUInt64(string value, string fieldName)
+    {
+        if (!ulong.TryParse(value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var result))
+        {
+            throw new ArgumentException($"{fieldName} must be a non-negative integer.");
+        }
+
+        return result;
+    }
+
+    private static uint ParseUInt32(string value, string fieldName)
+    {
+        if (!uint.TryParse(value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var result))
+        {
+            throw new ArgumentException($"{fieldName} must be a non-negative integer.");
+        }
+
+        return result;
+    }
+
+    private static ushort ParseUInt16(string value, string fieldName)
+    {
+        if (!ushort.TryParse(value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var result))
+        {
+            throw new ArgumentException($"{fieldName} must be between 0 and 65535.");
+        }
+
+        return result;
+    }
+
+    private async Task ConnectAsync()
+    {
+        var connectButton = FindRequiredControl<Button>("B_Connect");
+        connectButton.Enabled = false;
+        FindRequiredControl<TextBox>("TB_Status").Text = "Connecting...";
+
+        try
+        {
+            var host = FindRequiredControl<TextBox>("TB_SwitchIP").Text.Trim();
+            var settings = new OwoowConnectionSettings(ConnectionProtocol.Wifi, host, 6000);
+            var status = await services.Connection.ConnectAsync(settings, lifetimeCancellation.Token);
+            if (status.State != ConnectionState.Connected)
+            {
+                throw new InvalidOperationException(status.Message);
+            }
+
+            var state = await services.Connection.ReadRngStateAsync(lifetimeCancellation.Token);
+            var trainer = await services.Connection.ReadTrainerAsync(lifetimeCancellation.Token);
+
+            FindRequiredControl<TextBox>("TB_CurrentS0").Text = state.Seed0.ToString("X16");
+            FindRequiredControl<TextBox>("TB_CurrentS1").Text = state.Seed1.ToString("X16");
+            FindRequiredControl<TextBox>("TB_TID").Text = trainer.TrainerId.ToString("D5");
+            FindRequiredControl<TextBox>("TB_SID").Text = trainer.SecretId.ToString("D5");
+            FindRequiredControl<CheckBox>("CB_ShinyCharm").Checked = trainer.HasShinyCharm;
+            FindRequiredControl<CheckBox>("CB_MarkCharm").Checked = trainer.HasMarkCharm;
+            FindRequiredControl<TextBox>("TB_Status").Text = status.Message;
+            SetConnectedState(true);
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+            SetConnectedState(false);
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            SetConnectedState(false);
+            showMessage("Connection failed", exception.Message);
+        }
+    }
+
+    private async Task DisconnectAsync()
+    {
+        var disconnectButton = FindRequiredControl<Button>("B_Disconnect");
+        disconnectButton.Enabled = false;
+        try
+        {
+            await services.Connection.DisconnectAsync(lifetimeCancellation.Token);
+            FindRequiredControl<TextBox>("TB_Status").Text = services.Connection.Status.Message;
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = exception.Message;
+            showMessage("Disconnect failed", exception.Message);
+        }
+        finally
+        {
+            SetConnectedState(false);
+        }
+    }
+
+    private void CopyCurrentStateToInitial()
+    {
+        FindRequiredControl<TextBox>("TB_Seed0").Text = FindRequiredControl<TextBox>("TB_CurrentS0").Text;
+        FindRequiredControl<TextBox>("TB_Seed1").Text = FindRequiredControl<TextBox>("TB_CurrentS1").Text;
+    }
+
+    private void ConnectionStatusChanged(object? sender, ConnectionStatusChangedEventArgs eventArgs)
+    {
+        RunOnUi(() =>
+        {
+            FindRequiredControl<TextBox>("TB_Status").Text = eventArgs.Status.Message;
+            if (eventArgs.Status.State is ConnectionState.Connected or ConnectionState.Disconnected)
+            {
+                SetConnectedState(eventArgs.Status.State == ConnectionState.Connected);
+            }
+        });
+    }
+
+    private void SetConnectedState(bool connected)
+    {
+        FindRequiredControl<Button>("B_Connect").Enabled = !connected;
+        FindRequiredControl<Button>("B_Disconnect").Enabled = connected;
+        FindRequiredControl<Button>("B_CopyToInitial").Enabled = connected;
+        FindRequiredControl<Button>("B_ReadEncounter").Enabled = connected;
+        FindRequiredControl<Button>("B_RefreshDexRec").Enabled = connected;
+        FindRequiredControl<TextBox>("TB_Skips").Enabled = connected;
+        FindRequiredControl<Button>("B_SkipForward").Enabled = connected;
+        FindRequiredControl<Button>("B_SkipBack").Enabled = connected;
+        FindRequiredControl<Button>("B_SkipAdvance").Enabled = connected;
+        FindRequiredControl<Button>("B_NTP").Enabled = connected;
+        if (!connected)
+        {
+            FindRequiredControl<Button>("B_CancelSkip").Enabled = false;
+        }
+    }
+
+    private void RunOnUi(Action action)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(action);
+            return;
+        }
+
+        action();
+    }
+
+    private T FindRequiredControl<T>(string name)
+        where T : Control
+    {
+        var matches = Controls.Find(name, true);
+        if (matches.Length == 0 || matches[0] is not T control)
+        {
+            throw new InvalidOperationException($"Control '{name}' was not found as {typeof(T).Name}.");
+        }
+
+        return control;
+    }
 
     private static MenuStrip CreateSubWindowsMenu()
     {
