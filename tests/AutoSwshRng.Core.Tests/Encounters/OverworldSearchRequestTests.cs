@@ -134,6 +134,34 @@ public class OverworldSearchRequestTests
     }
 
     [Test]
+    public void RequestEnablesFiltersByDefault()
+    {
+        var request = CreateSymbolRequest([1, 2, 3, 4]);
+
+        Assert.That(request.FiltersEnabled, Is.True);
+    }
+
+    [Test]
+    public void RequestCanDisableFilters()
+    {
+        var request = new OverworldSearchRequest(
+            new RngState(1, 2),
+            0,
+            9,
+            new EncounterCatalogRequest(
+                GameVersion.Sword,
+                EncounterKind.Symbol,
+                "area",
+                "weather"),
+            Profile,
+            EncounterFilter.Any,
+            OverworldEnvironmentSettings.None,
+            filtersEnabled: false);
+
+        Assert.That(request.FiltersEnabled, Is.False);
+    }
+
+    [Test]
     public void RequestCollectionsCannotBeMutatedThroughPublicContract()
     {
         var request = CreateSymbolRequest([1, 2, 3, 4]);

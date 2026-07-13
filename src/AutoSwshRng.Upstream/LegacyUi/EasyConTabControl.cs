@@ -1,4 +1,5 @@
 using AutoSwshRng.Upstream;
+using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core;
@@ -52,12 +53,13 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private Func<bool> unpairDevice = null!;
     private Action<bool> setDebugLogEnabled = null!;
     private Action<bool> setAutoSaveLogEnabled = null!;
-    private Action<bool> setAutoCompletionEnabled = null!;
-    private Action<bool> setCodeFoldingEnabled = null!;
     private Action<bool> setDarkModeEnabled = null!;
     private Action startRecordDevice = null!;
     private Action pauseRecordDevice = null!;
+    private Action resumeRecordDevice = null!;
     private Action stopRecordDevice = null!;
+    private Func<string> getRecordedScript = null!;
+    private Func<string, IReadOnlyDictionary<string, Func<int>>, Task<EasyConScriptResult>> executeKeyScriptAsync = null!;
 
     Avalonia.Media.Color IControllerAdapter.CurrentLight => Avalonia.Media.Colors.White;
 
@@ -97,16 +99,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             originalConfigService.Config.AutoSaveLog = enabled;
             originalConfigService.Save();
         };
-        setAutoCompletionEnabled = enabled =>
-        {
-            originalConfigService.Config.EnableAutoCompletion = enabled;
-            originalConfigService.Save();
-        };
-        setCodeFoldingEnabled = enabled =>
-        {
-            originalConfigService.Config.ShowControllerHelp = enabled;
-            originalConfigService.Save();
-        };
         setDarkModeEnabled = enabled =>
         {
             originalConfigService.Config.DarkMode = enabled;
@@ -115,7 +107,13 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         };
         startRecordDevice = originalDeviceService.StartRecord;
         pauseRecordDevice = originalDeviceService.PauseRecord;
+        resumeRecordDevice = () => originalDeviceService.Device.recordState = EasyDevice.RecordState.RECORD_START;
         stopRecordDevice = originalDeviceService.StopRecord;
+        getRecordedScript = originalDeviceService.GetRecordScript;
+        executeKeyScriptAsync = (script, externalGetters) => EasyConScriptAdapter.ExecuteAsync(
+            script,
+            new GamePadAdapter(originalDeviceService.Device),
+            externalGetters);
         originalDeviceService.ConnectionStateChanged += connected => PostToUi(() => UpdateDeviceStatus(connected));
         originalDeviceService.StatusChanged += message => PostToUi(() => ShowStatus(message));
         originalDeviceService.Log += message => PostToUi(() => AppendLogLine(message));
@@ -152,11 +150,45 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         WirePageButtons();
         WireScriptActions();
         InitializeOriginalStartupState();
+        ApplyTheme();
+        ThemeManager.ThemeChanged += ThemeChanged;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            ThemeManager.ThemeChanged -= ThemeChanged;
+        }
+        base.Dispose(disposing);
     }
 
     public bool CloseForParentForm()
     {
-        return CloseCurrentScript();
+        if (!CloseCurrentScript())
+        {
+            return false;
+        }
+        if (captureSourceConnected)
+        {
+            disconnectCaptureSource();
+            captureSourceConnected = false;
+        }
+        if (recordState != EasyConRecordState.Stopped)
+        {
+            stopRecordDevice();
+            recordState = EasyConRecordState.Stopped;
+        }
+        if (virtualControllerBound)
+        {
+            deactivateVirtualController();
+            virtualControllerBound = false;
+        }
+        if (originalDeviceService.IsConnected)
+        {
+            originalDeviceService.Disconnect();
+        }
+        return true;
     }
 
     private void WireFileActions()
@@ -177,7 +209,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private void WireEditorState()
     {
-        FindRequiredControl<TextBox>("easyConScriptEditor").TextChanged += (_, _) => currentScriptModified = true;
+        FindRequiredControl<TextBox>("easyConScriptEditor").TextChanged += (_, _) =>
+        {
+            currentScriptModified = true;
+            var title = currentScriptPath is null ? "未命名脚本" : Path.GetFileName(currentScriptPath);
+            FindRequiredControl<Label>("scriptTitleLabel").Text = $"{title}(已编辑)";
+        };
     }
 
     private void WireEditActions()
@@ -218,21 +255,14 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             UpdateLinkedSetting("chkDebugLog", "debugLogMenuItem", setDebugLogEnabled);
         FindRequiredControl<CheckBox>("chkAutoSaveLog").CheckedChanged += (_, _) =>
             setAutoSaveLogEnabled(FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked);
-        FindRequiredControl<CheckBox>("chkAutoCompletion").CheckedChanged += (_, _) =>
-            UpdateLinkedSetting("chkAutoCompletion", "autoCompletionMenuItem", setAutoCompletionEnabled);
-        FindRequiredControl<CheckBox>("chkFolding").CheckedChanged += (_, _) =>
-            UpdateLinkedSetting("chkFolding", "foldingMenuItem", setCodeFoldingEnabled);
         FindRequiredControl<Button>("btnAlertConfig").Click += (_, _) => openAlertConfigDialog();
         FindRequiredControl<Button>("btnDrawingBoard").Click += (_, _) => openDrawingBoard();
-        FindRequiredControl<Button>("btnBluetoothSetting").Click += (_, _) => openBluetoothSettingDialog();
         FindRequiredControl<Button>("btnKeyMapping").Click += (_, _) => openKeyMappingDialog();
         FindRequiredControl<Button>("btnUnpair").Click += (_, _) => UnpairDevice();
         FindRequiredControl<Button>("btnCheckUpdate").Click += (_, _) => _ = CheckForUpdatesAsync();
         FindRequiredControl<Button>("btnSource").Click += (_, _) => openExternalLink("https://github.com/EasyConNS/EasyCon");
         FindRequiredMenuItem("alertConfigMenuItem").Click += (_, _) => openAlertConfigDialog();
         FindRequiredMenuItem("debugLogMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkDebugLog");
-        FindRequiredMenuItem("foldingMenuItem").Click += (_, _) => ToggleMenuItem("foldingMenuItem");
-        FindRequiredMenuItem("autoCompletionMenuItem").Click += (_, _) => ToggleLinkedCheckBox("chkAutoCompletion");
         FindRequiredMenuItem("darkModeMenuItem").Click += (_, _) => ToggleDarkModeMenuItem();
         FindRequiredMenuItem("bluetoothSettingMenuItem").Click += (_, _) => openBluetoothSettingDialog();
         FindRequiredMenuItem("unpairMenuItem").Click += (_, _) => UnpairDevice();
@@ -255,17 +285,120 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         checkBox.Checked = !checkBox.Checked;
     }
 
-    private void ToggleMenuItem(string menuItemName)
-    {
-        var menuItem = FindRequiredMenuItem(menuItemName);
-        menuItem.Checked = !menuItem.Checked;
-    }
-
     private void ToggleDarkModeMenuItem()
     {
         var menuItem = FindRequiredMenuItem("darkModeMenuItem");
         menuItem.Checked = !menuItem.Checked;
         setDarkModeEnabled(menuItem.Checked);
+    }
+
+    private void ThemeChanged(bool _) => PostToUi(ApplyTheme);
+
+    private void ApplyTheme()
+    {
+        SuspendLayout();
+        BackColor = ThemeManager.PageBackground;
+        ForeColor = ThemeManager.TextPrimary;
+        ApplyControlTheme(this);
+        ApplyPageButtonTheme("btnPageLog", "logPanel");
+        ApplyPageButtonTheme("btnPageEditor", "editorHost");
+        ApplyPageButtonTheme("btnPageSettings", "settingsPanel");
+
+        var menu = FindRequiredControl<MenuStrip>("easyConOriginalMenu");
+        var status = FindRequiredControl<StatusStrip>("easyConStatusStrip");
+        menu.BackColor = ThemeManager.MenuBackground;
+        status.BackColor = ThemeManager.StatusStripBackground;
+        var renderer = new ToolStripProfessionalRenderer(
+            ThemeManager.IsDark ? new DarkMenuColors() : new ProfessionalColorTable())
+        {
+            RoundedEdges = false,
+        };
+        menu.Renderer = renderer;
+        status.Renderer = renderer;
+        SetToolStripItemColors(menu.Items);
+        SetToolStripItemColors(status.Items);
+        ResumeLayout();
+    }
+
+    private void ApplyPageButtonTheme(string buttonName, string pageName)
+    {
+        FindRequiredControl<Button>(buttonName).BackColor = FindRequiredControl<Control>(pageName).Visible
+            ? ThemeManager.ButtonBackground
+            : ThemeManager.SurfaceBackground;
+    }
+
+    private static void ApplyControlTheme(Control root)
+    {
+        foreach (Control control in root.Controls)
+        {
+            switch (control)
+            {
+                case MenuStrip or StatusStrip:
+                    break;
+                case TextBox textBox when textBox.Name is "logTxtBox" or "easyConScriptEditor":
+                    textBox.BackColor = ThemeManager.DarkSurfaceBackground;
+                    textBox.ForeColor = ThemeManager.DarkSurfaceText;
+                    break;
+                case TextBox textBox:
+                    textBox.BackColor = ThemeManager.IsDark ? ThemeManager.SurfaceBackground : SystemColors.Window;
+                    textBox.ForeColor = ThemeManager.IsDark ? ThemeManager.TextPrimary : SystemColors.WindowText;
+                    break;
+                case ComboBox comboBox:
+                    comboBox.BackColor = ThemeManager.IsDark ? ThemeManager.SurfaceBackground : SystemColors.Window;
+                    comboBox.ForeColor = ThemeManager.IsDark ? ThemeManager.TextPrimary : SystemColors.WindowText;
+                    break;
+                case Button button:
+                    if (!button.Name.StartsWith("btnPage", StringComparison.Ordinal))
+                    {
+                        button.BackColor = button.Name == "runStopBtn"
+                            ? ThemeManager.Success
+                            : ThemeManager.ButtonBackground;
+                    }
+                    button.ForeColor = button.Name == "runStopBtn"
+                        ? ThemeManager.WhiteOrLight
+                        : ThemeManager.TextPrimary;
+                    break;
+                case Label label:
+                    label.ForeColor = label.Name is "lblVersion"
+                        ? ThemeManager.TextSecondary
+                        : ThemeManager.TextPrimary;
+                    if (label.Name == "scriptTitleLabel")
+                    {
+                        label.BackColor = ThemeManager.SurfaceBackground;
+                    }
+                    break;
+                case CheckBox checkBox:
+                    checkBox.ForeColor = ThemeManager.TextPrimary;
+                    checkBox.BackColor = ThemeManager.PageBackground;
+                    break;
+                case GroupBox groupBox:
+                    groupBox.ForeColor = ThemeManager.TextPrimary;
+                    groupBox.BackColor = ThemeManager.PageBackground;
+                    break;
+                case SplitContainer splitContainer:
+                    splitContainer.BackColor = ThemeManager.SurfaceBackground;
+                    break;
+                case Panel panel when panel.Name is "contentPanel" or "settingsPanel" or "rightPanel":
+                    panel.BackColor = ThemeManager.PageBackground;
+                    break;
+                case Panel panel:
+                    panel.BackColor = ThemeManager.SurfaceBackground;
+                    break;
+            }
+            ApplyControlTheme(control);
+        }
+    }
+
+    private static void SetToolStripItemColors(ToolStripItemCollection items)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            item.ForeColor = ThemeManager.TextPrimary;
+            if (item is ToolStripMenuItem menuItem)
+            {
+                SetToolStripItemColors(menuItem.DropDownItems);
+            }
+        }
     }
 
     private void WireDeviceListActions()
@@ -297,7 +430,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             scriptTitle.BringToFront();
         }
 
-        FindRequiredControl<Button>(selectedButtonName).BackColor = Color.FromArgb(235, 234, 229);
+        FindRequiredControl<Button>(selectedButtonName).BackColor = ThemeManager.ButtonBackground;
     }
 
     private void ResetPages()
@@ -311,7 +444,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
         foreach (var buttonName in new[] { "btnPageEditor", "btnPageLog", "btnPageSettings" })
         {
-            FindRequiredControl<Button>(buttonName).BackColor = Color.FromArgb(230, 229, 224);
+            FindRequiredControl<Button>(buttonName).BackColor = ThemeManager.SurfaceBackground;
         }
     }
 
@@ -387,7 +520,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     {
         showEasyConMessage("联机模式",
             "- 使用电脑控制单片机的模式" + Environment.NewLine +
-            "- 可视化运行，一键切换脚本（即将实装）" + Environment.NewLine +
             "- 支持超长脚本" + Environment.NewLine +
             "- 可使用虚拟手柄，用键盘玩游戏" + Environment.NewLine + Environment.NewLine +
             "详细使用教程见群946057081文档");
@@ -686,6 +818,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         pauseButton.Enabled = false;
         FindRequiredControl<TextBox>("easyConScriptEditor").ReadOnly = false;
         stopRecordDevice();
+        FindRequiredControl<TextBox>("easyConScriptEditor").Text = getRecordedScript() ?? string.Empty;
         ShowStatus("录制完成");
     }
 
@@ -702,7 +835,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         else if (recordState == EasyConRecordState.Paused)
         {
             recordState = EasyConRecordState.Started;
-            startRecordDevice();
+            resumeRecordDevice();
             pauseButton.Text = "暂停录制";
             ShowStatus("继续录制");
         }
@@ -881,21 +1014,18 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
 
         FindRequiredControl<Label>("lblVersion").Text = $"版本: {version}";
-        FindRequiredControl<CheckBox>("chkAutoCompletion").Checked = originalConfigService.Config.EnableAutoCompletion;
-        FindRequiredControl<CheckBox>("chkFolding").Checked = originalConfigService.Config.ShowControllerHelp;
         FindRequiredControl<CheckBox>("chkAutoSaveLog").Checked = originalConfigService.Config.AutoSaveLog;
         FindRequiredControl<CheckBox>("chkDebugLog").Checked = originalDeviceService.DebugLogEnabled;
-        FindRequiredMenuItem("autoCompletionMenuItem").Checked = originalConfigService.Config.EnableAutoCompletion;
         FindRequiredMenuItem("debugLogMenuItem").Checked = originalDeviceService.DebugLogEnabled;
         FindRequiredMenuItem("darkModeMenuItem").Checked = originalConfigService.Config.DarkMode;
 
         var log = FindRequiredControl<TextBox>("logTxtBox");
         log.Text = "正在初始化伊机控..." + Environment.NewLine +
             "准备就绪，欢迎使用伊机控！" + Environment.NewLine +
-            "将脚本文件直接拖入窗口打开，然后点击运行开始执行脚本";
+            "请通过文件菜单打开脚本，然后点击运行开始执行脚本";
     }
 
-    private void RunCurrentScript()
+    private async void RunCurrentScript()
     {
         if (currentScriptPath is not null && currentScriptModified)
         {
@@ -919,16 +1049,26 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             return;
         }
 
-        if (compileResult.HasKeyAction)
-        {
-            showEasyConMessage(string.Empty, "按键脚本请使用自动化动作序列");
-            return;
-        }
-
-        var result = EasyConScriptAdapter.Evaluate(editor.Text, externalGetters);
-
         log.AppendText("-- 开始运行 --" + Environment.NewLine);
         ShowStatus("运行中");
+
+        deactivateVirtualController();
+
+        EasyConScriptResult result;
+        try
+        {
+            result = compileResult.HasKeyAction
+                ? await executeKeyScriptAsync(editor.Text, externalGetters)
+                : EasyConScriptAdapter.Evaluate(editor.Text, externalGetters);
+        }
+        catch (Exception exception)
+        {
+            log.AppendText(exception.Message + Environment.NewLine);
+            log.AppendText("-- 运行出错 --" + Environment.NewLine);
+            ShowStatus("运行出错");
+            showEasyConMessage("脚本运行出错", exception.Message);
+            return;
+        }
 
         if (result.HasErrors)
         {
@@ -937,8 +1077,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             ShowStatus("运行出错");
             return;
         }
-
-        deactivateVirtualController();
 
         foreach (var line in result.Printed)
         {
@@ -1012,6 +1150,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         }
 
         File.WriteAllText(currentScriptPath, FindRequiredControl<TextBox>("easyConScriptEditor").Text);
+        FindRequiredControl<Label>("scriptTitleLabel").Text = Path.GetFileName(currentScriptPath);
         currentScriptModified = false;
         ShowStatus("文件已保存");
         return true;
@@ -1208,14 +1347,9 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             CreateMenuItem("captureTypeMenu", "采集卡类型"),
             CreateMenuItem("setEnvVarMenuItem", "设置环境变量"),
             CreateMenuItem("captureHelpMenuItem", "搜图说明")));
-        var foldingItem = CreateMenuItem("foldingMenuItem", "显示折叠");
-        foldingItem.Checked = true;
-        foldingItem.CheckState = CheckState.Checked;
         menu.Items.Add(CreateMenuItem("settingsMenu", "设置",
             CreateMenuItem("alertConfigMenuItem", "推送设置"),
             CreateMenuItem("debugLogMenuItem", "显示调试信息"),
-            foldingItem,
-            CreateMenuItem("autoCompletionMenuItem", "代码自动补全"),
             CreateMenuItem("darkModeMenuItem", "深色模式")));
         menu.Items.Add(CreateMenuItem("bluetoothMenu", "蓝牙",
             CreateMenuItem("bluetoothSettingMenuItem", "蓝牙设备驱动配置")));
@@ -1282,6 +1416,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(230, 229, 224),
             SplitterWidth = 6,
+            SplitterDistance = 644,
             Panel2MinSize = 240,
         };
         mainSplit.Panel1.Controls.Add(CreateContentPanel());
@@ -1374,11 +1509,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             Font = new Font(FontFamily.GenericMonospace, 10),
             Multiline = true,
             ScrollBars = ScrollBars.Both,
-            Text = "PRINT \"hello\"" + Environment.NewLine +
-                "WAIT 1000" + Environment.NewLine +
-                "PRESS A 30" + Environment.NewLine +
-                "WAIT 200" + Environment.NewLine +
-                "PRESS B 30",
+            Text = string.Empty,
             WordWrap = false,
         };
         editorHost.Controls.Add(editor);
@@ -1492,19 +1623,14 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             Visible = false,
         };
         settingsPanel.Controls.Add(CreateSettingsHeader("lblEditorSettings", "编辑器设置", 19, 39));
-        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoCompletion", "代码自动补全", 19, 79));
-        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkFolding", "显示代码折叠", 19, 109));
-        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkDebugLog", "显示调试信息", 19, 139));
-        settingsPanel.Controls.Add(CreateSettingsHeader("lblNotifySettings", "通知设置", 199, 119));
-        settingsPanel.Controls.Add(CreateOriginalButton("btnAlertConfig", "推送配置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 159, 85, 30));
-        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoSaveLog", "自动保存日志", 289, 164));
-        settingsPanel.Controls.Add(CreateSettingsHeader("lblToolSettings", "工具", 19, 209));
-        settingsPanel.Controls.Add(CreateOriginalButton("btnUnpair", "取消蓝牙配对", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 125, 249, 100, 30));
-        settingsPanel.Controls.Add(CreateOriginalButton("btnDrawingBoard", "画图工具", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 289, 85, 30));
-        var bluetoothSetting = CreateOriginalButton("btnBluetoothSetting", "蓝牙设置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 308, 85, 30);
-        bluetoothSetting.Visible = false;
-        settingsPanel.Controls.Add(bluetoothSetting);
-        settingsPanel.Controls.Add(CreateSettingsHeader("lblAbout", "关于", 19, 330));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkDebugLog", "显示调试信息", 19, 79));
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblNotifySettings", "通知设置", 199, 39));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnAlertConfig", "推送配置", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 199, 79, 85, 30));
+        settingsPanel.Controls.Add(CreateSettingsCheckBox("chkAutoSaveLog", "自动保存日志", 289, 84));
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblToolSettings", "工具", 19, 129));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnUnpair", "取消蓝牙配对", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 169, 100, 30));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnDrawingBoard", "画图工具", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 125, 169, 85, 30));
+        settingsPanel.Controls.Add(CreateSettingsHeader("lblAbout", "关于", 19, 219));
         settingsPanel.Controls.Add(new Label
         {
             Name = "lblVersion",
@@ -1512,10 +1638,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             AutoSize = true,
             Font = new Font("微软雅黑", 9F),
             ForeColor = Color.FromArgb(140, 139, 132),
-            Location = new Point(19, 370),
+            Location = new Point(19, 259),
         });
-        settingsPanel.Controls.Add(CreateOriginalButton("btnCheckUpdate", "检查更新", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 400, 85, 30));
-        settingsPanel.Controls.Add(CreateOriginalButton("btnSource", "项目源码", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 109, 400, 85, 30));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnCheckUpdate", "检查更新", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 19, 289, 85, 30));
+        settingsPanel.Controls.Add(CreateOriginalButton("btnSource", "项目源码", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 109, 289, 85, 30));
         return settingsPanel;
     }
 
@@ -1549,11 +1675,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     {
         var panel = new FlowLayoutPanel
         {
+            Name = "rightPanel",
             Dock = DockStyle.Fill,
             AutoScroll = true,
-            BackColor = Color.FromArgb(245, 245, 245),
+            BackColor = Color.FromArgb(242, 241, 237),
             FlowDirection = FlowDirection.TopDown,
-            Padding = new Padding(8),
+            Padding = new Padding(4),
             WrapContents = false,
         };
 
@@ -1562,6 +1689,14 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         panel.Controls.Add(CreateCapturePanel());
         panel.Controls.Add(CreateRecordPanel());
         panel.Controls.Add(CreateControllerPanel());
+        panel.SizeChanged += (_, _) =>
+        {
+            var availableWidth = Math.Max(220, panel.ClientSize.Width - panel.Padding.Horizontal - 20);
+            foreach (Control child in panel.Controls)
+            {
+                child.Width = availableWidth;
+            }
+        };
         return panel;
     }
 
@@ -1586,13 +1721,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private static Control CreateSerialPanel()
     {
         var group = CreateOriginalGroupBox("grpDevice", "设备连接", 265, 130);
-        group.Controls.Add(new Panel
-        {
-            Name = "easyConSerialPanel",
-            Width = 1,
-            Height = 1,
-            Visible = false,
-        });
         group.Controls.Add(new ComboBox
         {
             Name = "comboComPort",
@@ -1607,13 +1735,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private static Control CreateCapturePanel()
     {
         var group = CreateOriginalGroupBox("grpVideoSource", "视频源", 265, 150);
-        group.Controls.Add(new Panel
-        {
-            Name = "easyConCapturePanel",
-            Width = 1,
-            Height = 1,
-            Visible = false,
-        });
         group.Controls.Add(new ComboBox
         {
             Name = "comboVideoSource",
@@ -1628,13 +1749,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private static Control CreateRecordPanel()
     {
         var group = CreateOriginalGroupBox("grpRecord", "录制", 265, 90);
-        group.Controls.Add(new Panel
-        {
-            Name = "easyConRecordPanel",
-            Width = 1,
-            Height = 1,
-            Visible = false,
-        });
         group.Controls.Add(CreateOriginalButton("btnRecord", "录制脚本", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
         var pauseButton = CreateOriginalButton("btnRecordPause", "暂停录制", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28);
         pauseButton.Enabled = false;
@@ -1645,13 +1759,6 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
     private static Control CreateControllerPanel()
     {
         var group = CreateOriginalGroupBox("grpController", "手柄", 265, 90);
-        group.Controls.Add(new Panel
-        {
-            Name = "easyConControllerPanel",
-            Width = 1,
-            Height = 1,
-            Visible = false,
-        });
         group.Controls.Add(CreateOriginalButton("btnShowController", "虚拟手柄", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
         group.Controls.Add(CreateOriginalButton("btnKeyMapping", "按键映射", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28));
         return group;

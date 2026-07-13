@@ -140,6 +140,30 @@ public class OwoowSpecialRngToolServiceTests
     }
 
     [Test]
+    public async Task AnyWeatherMenuCloseMatchesOriginalAllWeather()
+    {
+        var request = new SpecialToolSearchRequest(
+            SpecialToolKind.CramOMatic,
+            State,
+            0,
+            20,
+            menuClose: new SpecialToolMenuClose(true, 3, false, Weather.Any));
+        var expected = await Cramomatic.Generate(
+            State.Seed0,
+            State.Seed1,
+            0,
+            20,
+            CreateConfig(request));
+
+        var actual = await new OwoowSpecialRngToolService().SearchAsync(request);
+
+        Assert.That(
+            actual.Select(FrameProjection),
+            Is.EqualTo(expected.Select(frame =>
+                $"{frame.Advances}|{frame.Jump}|{frame.Animation}||{frame.Prize}|{frame.Seed0}|{frame.Seed1}|{frame.Bonus}|||")));
+    }
+
+    [Test]
     public void HonorsCancellationBetweenBoundedChunks()
     {
         var request = new SpecialToolSearchRequest(

@@ -1,4 +1,5 @@
 using AutoSwshRng.App;
+using AutoSwshRng.Upstream;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Services;
@@ -60,10 +61,10 @@ public class MainFormTests
             Assert.That(GetToolStripItemTexts(menu), Is.EqualTo(new[] { "文件", "编辑", "脚本", "搜图", "设置", "蓝牙", "设备", "画图", "帮助" }));
             Assert.That(FindControl(form, "easyConScriptEditor"), Is.Not.Null);
             Assert.That(FindControl(form, "logTxtBox"), Is.Not.Null);
-            Assert.That(FindControl(form, "easyConSerialPanel"), Is.Not.Null);
-            Assert.That(FindControl(form, "easyConCapturePanel"), Is.Not.Null);
-            Assert.That(FindControl(form, "easyConRecordPanel"), Is.Not.Null);
-            Assert.That(FindControl(form, "easyConControllerPanel"), Is.Not.Null);
+            Assert.That(FindControl(form, "grpDevice").GetType().Name, Is.EqualTo("GroupBox"));
+            Assert.That(FindControl(form, "grpVideoSource").GetType().Name, Is.EqualTo("GroupBox"));
+            Assert.That(FindControl(form, "grpRecord").GetType().Name, Is.EqualTo("GroupBox"));
+            Assert.That(FindControl(form, "grpController").GetType().Name, Is.EqualTo("GroupBox"));
             Assert.That(status.GetType().Name, Is.EqualTo("StatusStrip"));
             Assert.That(GetToolStripItemTexts(status), Does.Contain("单片机未连接"));
             Assert.That(GetToolStripItemTexts(status), Does.Contain("采集卡未连接"));
@@ -87,6 +88,13 @@ public class MainFormTests
             "btnGenFirmware",
             "chkAutoRunAfterFlash",
             "btnESPConfig",
+            "btnBluetoothSetting",
+            "chkAutoCompletion",
+            "chkFolding",
+            "easyConSerialPanel",
+            "easyConCapturePanel",
+            "easyConRecordPanel",
+            "easyConControllerPanel",
         ];
         string[] excludedMenuItems =
         [
@@ -95,6 +103,8 @@ public class MainFormTests
             "menuItemFlashMode",
             "menuItemScriptSyntax",
             "espConfigMenuItem",
+            "foldingMenuItem",
+            "autoCompletionMenuItem",
         ];
 
         Assert.Multiple(() =>
@@ -136,6 +146,9 @@ public class MainFormTests
             "固件生成",
             "生成固件",
             "ESP32",
+            "代码自动补全",
+            "显示代码折叠",
+            "即将实装",
         })
         {
             Assert.That(
@@ -173,7 +186,7 @@ public class MainFormTests
             Assert.That(GetProperty<bool>(FindToolStripItem(menu, "scriptMenu"), "Visible"), Is.False);
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "scriptMenu")), Is.EqualTo(new[] { "格式化", "运行" }));
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "captureMenu")), Is.EqualTo(new[] { "采集卡类型", "设置环境变量", "搜图说明" }));
-            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "settingsMenu")), Is.EqualTo(new[] { "推送设置", "显示调试信息", "显示折叠", "代码自动补全", "深色模式" }));
+            Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "settingsMenu")), Is.EqualTo(new[] { "推送设置", "显示调试信息", "深色模式" }));
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "bluetoothMenu")), Is.EqualTo(new[] { "蓝牙设备驱动配置" }));
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "deviceMenu")), Is.EqualTo(new[] { "取消配对" }));
             Assert.That(GetToolStripDropDownItemTexts(FindToolStripItem(menu, "drawingMenu")), Is.EqualTo(new[] { "喷射", "自由画板鼠标代替摇杆" }));
@@ -411,6 +424,7 @@ public class MainFormTests
         {
             Assert.That(messages.Select(item => item.Title), Is.EqualTo(new[] { "联机模式", "采集卡", "关于" }));
             Assert.That(messages[0].Message, Does.Contain("电脑控制"));
+            Assert.That(messages[0].Message, Does.Not.Contain("即将实装"));
             Assert.That(messages[1].Message, Does.Contain("默认采集卡类型选择any"));
             Assert.That(messages[1].Message, Does.Contain("设置环境变量"));
             Assert.That(messages[2].Message, Does.Contain("伊机控 v"));
@@ -430,7 +444,7 @@ public class MainFormTests
         {
             Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("正在初始化伊机控..."));
             Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("准备就绪，欢迎使用伊机控！"));
-            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("将脚本文件直接拖入窗口打开，然后点击运行开始执行脚本"));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("请通过文件菜单打开脚本，然后点击运行开始执行脚本"));
         });
     }
 
@@ -732,17 +746,30 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConRunButtonDirectsLegacyKeyScriptsToActionSequences()
+    public void EasyConRunButtonExecutesLegacyKeyScriptInItsOwnPage()
     {
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var editor = FindControl(form, "easyConScriptEditor");
         var logText = FindControl(form, "logTxtBox");
         var messages = new List<(string Title, string Message)>();
+        var executedScripts = new List<string>();
         var deactivateCalls = 0;
 
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
         SetField(easyCon, "deactivateVirtualController", new Action(() => deactivateCalls++));
+        SetField(
+            easyCon,
+            "executeKeyScriptAsync",
+            new Func<string, IReadOnlyDictionary<string, Func<int>>, Task<EasyConScriptResult>>((script, _) =>
+            {
+                executedScripts.Add(script);
+                return Task.FromResult(new EasyConScriptResult(
+                    HasErrors: false,
+                    Diagnostics: [],
+                    Printed: ["按键脚本已执行" + Environment.NewLine],
+                    Alerted: []));
+            }));
         SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
         SetProperty(editor, "Text", "A");
         SetProperty(logText, "Text", string.Empty);
@@ -751,9 +778,41 @@ public class MainFormTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(messages, Is.EqualTo(new[] { (string.Empty, "按键脚本请使用自动化动作序列") }));
-            Assert.That(deactivateCalls, Is.EqualTo(0));
-            Assert.That(GetProperty<string>(logText, "Text"), Is.Empty);
+            Assert.That(messages, Is.Empty);
+            Assert.That(executedScripts, Is.EqualTo(new[] { "A" }));
+            Assert.That(deactivateCalls, Is.EqualTo(1));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("按键脚本已执行"));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("-- 运行结束 --"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConRunButtonShowsRealKeyScriptExecutionError()
+    {
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var editor = FindControl(form, "easyConScriptEditor");
+        var logText = FindControl(form, "logTxtBox");
+        var messages = new List<(string Title, string Message)>();
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(
+            easyCon,
+            "executeKeyScriptAsync",
+            new Func<string, IReadOnlyDictionary<string, Func<int>>, Task<EasyConScriptResult>>((_, _) =>
+                Task.FromException<EasyConScriptResult>(new InvalidOperationException("串口写入失败"))));
+        SetField(easyCon, "showEasyConMessage", new Action<string, string>((title, message) => messages.Add((title, message))));
+        SetProperty(editor, "Text", "A");
+        SetProperty(logText, "Text", string.Empty);
+
+        InvokeClick(FindControl(form, "runStopBtn"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Is.EqualTo(new[] { ("脚本运行出错", "串口写入失败") }));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("串口写入失败"));
+            Assert.That(GetProperty<string>(logText, "Text"), Does.Contain("-- 运行出错 --"));
         });
     }
 
@@ -907,6 +966,7 @@ public class MainFormTests
             using var form = new MainForm();
             var easyCon = FindControlByType(form, "EasyConTabControl");
             var editor = FindControl(form, "easyConScriptEditor");
+            var title = FindControl(form, "scriptTitleLabel");
             var menu = FindControl(form, "easyConOriginalMenu");
             var status = FindControl(form, "easyConStatusStrip");
 
@@ -918,6 +978,7 @@ public class MainFormTests
             Assert.Multiple(() =>
             {
                 Assert.That(File.ReadAllText(tempPath), Is.EqualTo("PRINT \"saved\""));
+                Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo(Path.GetFileName(tempPath)));
                 Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已保存"));
             });
         }
@@ -1007,7 +1068,7 @@ public class MainFormTests
             Assert.Multiple(() =>
             {
                 Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("PRINT \"changed\""));
-                Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo(Path.GetFileName(tempPath)));
+                Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo($"{Path.GetFileName(tempPath)}(已编辑)"));
                 Assert.That(GetProperty<string>(FindToolStripItem(status, "toolStripStatusLabel1"), "Text"), Is.EqualTo("文件已打开"));
             });
         }
@@ -1082,7 +1143,9 @@ public class MainFormTests
     {
         using var form = new MainForm();
 
+        var easyCon = FindControlByType(form, "EasyConTabControl");
         var mainSplit = FindControl(form, "mainSplit");
+        var rightPanel = FindControl(form, "rightPanel");
         var contentPanel = FindControl(form, "contentPanel");
         var editorHost = FindControl(form, "editorHost");
         var logPanel = FindControl(form, "logPanel");
@@ -1094,16 +1157,45 @@ public class MainFormTests
         Assert.Multiple(() =>
         {
             Assert.That(mainSplit.GetType().Name, Is.EqualTo("SplitContainer"));
+            Assert.That(GetProperty<int>(mainSplit, "SplitterDistance"), Is.EqualTo(644));
             Assert.That(GetProperty<Color>(mainSplit, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
+            Assert.That(GetProperty<Color>(rightPanel, "BackColor"), Is.EqualTo(Color.FromArgb(242, 241, 237)));
+            Assert.That(GetProperty<Padding>(rightPanel, "Padding"), Is.EqualTo(new Padding(4)));
+            Assert.That(GetProperty<Padding>(GetProperty<object>(easyCon, "Parent"), "Padding"), Is.EqualTo(Padding.Empty));
             Assert.That(GetProperty<Color>(contentPanel, "BackColor"), Is.EqualTo(Color.FromArgb(242, 241, 237)));
             Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo("未命名脚本"));
+            Assert.That(GetProperty<string>(FindControl(form, "easyConScriptEditor"), "Text"), Is.Empty);
+            Assert.That(GetField<bool>(easyCon, "currentScriptModified"), Is.False);
             Assert.That(GetProperty<bool>(title, "Visible"), Is.False);
             Assert.That(GetProperty<bool>(editorHost, "Visible"), Is.False);
             Assert.That(GetProperty<object>(logPanel, "Dock").ToString(), Is.EqualTo("Fill"));
             Assert.That(GetProperty<string>(clearLog, "AccessibleName"), Is.EqualTo("清除日志输出"));
-            Assert.That(GetProperty<Color>(logText, "BackColor"), Is.EqualTo(Color.FromArgb(64, 64, 64)));
-            Assert.That(GetProperty<Color>(logText, "ForeColor"), Is.EqualTo(Color.White));
+            Assert.That(GetProperty<Color>(logText, "BackColor"), Is.EqualTo(ThemeManager.DarkSurfaceBackground));
+            Assert.That(GetProperty<Color>(logText, "ForeColor"), Is.EqualTo(ThemeManager.DarkSurfaceText));
             Assert.That(GetProperty<bool>(settingsPanel, "Visible"), Is.False);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConMainSplitKeepsOriginalEditorAndRightPanelRatioAfterLayout()
+    {
+        using var form = new MainForm();
+        form.Show();
+        SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
+        Application.DoEvents();
+        var split = FindControl(form, "mainSplit");
+        var panel2 = GetProperty<object>(split, "Panel2");
+        var rightPanel = FindControl(form, "rightPanel");
+
+        Assert.Multiple(() =>
+        {
+            var ratio = (double)GetProperty<int>(split, "SplitterDistance") / GetProperty<int>(split, "Width");
+            Assert.That(ratio, Is.InRange(0.68, 0.75));
+            Assert.That(GetProperty<int>(panel2, "Width"), Is.GreaterThanOrEqualTo(240));
+            Assert.That(GetProperty<bool>(rightPanel, "Visible"), Is.True);
+            Assert.That(GetProperty<int>(rightPanel, "Width"), Is.GreaterThanOrEqualTo(240));
+            Assert.That(GetProperty<int>(FindControl(form, "grpScriptRun"), "Width"), Is.GreaterThanOrEqualTo(220));
         });
     }
 
@@ -1116,8 +1208,6 @@ public class MainFormTests
         Assert.Multiple(() =>
         {
             Assert.That(GetProperty<string>(FindControl(form, "lblEditorSettings"), "Text"), Is.EqualTo("编辑器设置"));
-            Assert.That(GetProperty<string>(FindControl(form, "chkAutoCompletion"), "Text"), Is.EqualTo("代码自动补全"));
-            Assert.That(GetProperty<string>(FindControl(form, "chkFolding"), "Text"), Is.EqualTo("显示代码折叠"));
             Assert.That(GetProperty<string>(FindControl(form, "chkDebugLog"), "Text"), Is.EqualTo("显示调试信息"));
             Assert.That(GetProperty<string>(FindControl(form, "lblNotifySettings"), "Text"), Is.EqualTo("通知设置"));
             Assert.That(GetProperty<string>(FindControl(form, "btnAlertConfig"), "Text"), Is.EqualTo("推送配置"));
@@ -1125,8 +1215,6 @@ public class MainFormTests
             Assert.That(GetProperty<string>(FindControl(form, "lblToolSettings"), "Text"), Is.EqualTo("工具"));
             Assert.That(GetProperty<string>(FindControl(form, "btnUnpair"), "Text"), Is.EqualTo("取消蓝牙配对"));
             Assert.That(GetProperty<string>(FindControl(form, "btnDrawingBoard"), "Text"), Is.EqualTo("画图工具"));
-            Assert.That(GetProperty<string>(FindControl(form, "btnBluetoothSetting"), "Text"), Is.EqualTo("蓝牙设置"));
-            Assert.That(GetProperty<bool>(FindControl(form, "btnBluetoothSetting"), "Visible"), Is.False);
             Assert.That(GetProperty<string>(FindControl(form, "lblAbout"), "Text"), Is.EqualTo("关于"));
             Assert.That(GetProperty<string>(FindControl(form, "lblVersion"), "Text"), Does.StartWith("版本: "));
             Assert.That(GetProperty<string>(FindControl(form, "lblVersion"), "Text"), Does.Not.Contain("--"));
@@ -1137,39 +1225,56 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConSettingsInitializeAndPersistThroughOriginalConfigService()
+    public void EasyConSettingsPanelClosesGapsLeftByRemovedFeatures()
     {
-        using var configRestore = PreserveEasyConConfig(new ConfigState
-        {
-            EnableAutoCompletion = true,
-            ShowControllerHelp = false,
-            AutoSaveLog = true,
-        });
         using var form = new MainForm();
-
-        var autoCompletion = FindControl(form, "chkAutoCompletion");
-        var folding = FindControl(form, "chkFolding");
-        var autoSaveLog = FindControl(form, "chkAutoSaveLog");
 
         Assert.Multiple(() =>
         {
-            Assert.That(GetProperty<bool>(autoCompletion, "Checked"), Is.True);
-            Assert.That(GetProperty<bool>(folding, "Checked"), Is.False);
-            Assert.That(GetProperty<bool>(autoSaveLog, "Checked"), Is.True);
+            Assert.That(GetProperty<int>(FindControl(form, "lblEditorSettings"), "Top"), Is.EqualTo(39));
+            Assert.That(GetProperty<int>(FindControl(form, "chkDebugLog"), "Top"), Is.EqualTo(79));
+            Assert.That(GetProperty<int>(FindControl(form, "lblNotifySettings"), "Top"), Is.EqualTo(39));
+            Assert.That(GetProperty<int>(FindControl(form, "btnAlertConfig"), "Top"), Is.EqualTo(79));
+            Assert.That(GetProperty<int>(FindControl(form, "chkAutoSaveLog"), "Top"), Is.EqualTo(84));
+            Assert.That(GetProperty<int>(FindControl(form, "lblToolSettings"), "Top"), Is.EqualTo(129));
+            Assert.That(GetProperty<int>(FindControl(form, "btnUnpair"), "Top"), Is.EqualTo(169));
+            Assert.That(GetProperty<int>(FindControl(form, "btnDrawingBoard"), "Top"), Is.EqualTo(169));
+            Assert.That(GetProperty<int>(FindControl(form, "lblAbout"), "Top"), Is.EqualTo(219));
+            Assert.That(GetProperty<int>(FindControl(form, "lblVersion"), "Top"), Is.EqualTo(259));
+            Assert.That(GetProperty<int>(FindControl(form, "btnCheckUpdate"), "Top"), Is.EqualTo(289));
+            Assert.That(GetProperty<int>(FindControl(form, "btnSource"), "Top"), Is.EqualTo(289));
         });
+    }
 
-        SetProperty(autoCompletion, "Checked", false);
-        SetProperty(folding, "Checked", true);
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConEditorMarksModifiedTitleAndSavePathsClearIt()
+    {
+        using var form = new MainForm();
+        var editor = FindControl(form, "easyConScriptEditor");
+        var title = FindControl(form, "scriptTitleLabel");
+
+        SetProperty(editor, "Text", "PRINT \"changed\"");
+
+        Assert.That(GetProperty<string>(title, "Text"), Is.EqualTo("未命名脚本(已编辑)"));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConSettingsInitializeAndPersistThroughOriginalConfigService()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { AutoSaveLog = true });
+        using var form = new MainForm();
+
+        var autoSaveLog = FindControl(form, "chkAutoSaveLog");
+
+        Assert.That(GetProperty<bool>(autoSaveLog, "Checked"), Is.True);
+
         SetProperty(autoSaveLog, "Checked", false);
 
         var savedConfig = ConfigManager.LoadConfig();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(savedConfig.EnableAutoCompletion, Is.False);
-            Assert.That(savedConfig.ShowControllerHelp, Is.True);
-            Assert.That(savedConfig.AutoSaveLog, Is.False);
-        });
+        Assert.That(savedConfig.AutoSaveLog, Is.False);
     }
 
     [Test]
@@ -1245,68 +1350,6 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConFoldingMenuMatchesOriginalDefaultAndDoesNotPersistConfig()
-    {
-        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
-        using var form = new MainForm();
-        var menu = FindControl(form, "easyConOriginalMenu");
-        var foldingMenu = FindToolStripItem(menu, "foldingMenuItem");
-        var foldingSetting = FindControl(form, "chkFolding");
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(GetProperty<bool>(foldingMenu, "Checked"), Is.True);
-            Assert.That(GetProperty<bool>(foldingSetting, "Checked"), Is.False);
-        });
-
-        InvokeClick(foldingMenu);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(GetProperty<bool>(foldingMenu, "Checked"), Is.False);
-            Assert.That(GetProperty<bool>(foldingSetting, "Checked"), Is.False);
-            Assert.That(ConfigManager.LoadConfig().ShowControllerHelp, Is.False);
-        });
-    }
-
-    [Test]
-    [Apartment(ApartmentState.STA)]
-    public void EasyConAutoCompletionSettingUpdatesOriginalEditorConfig()
-    {
-        using var configRestore = PreserveEasyConConfig(new ConfigState { EnableAutoCompletion = false });
-        using var form = new MainForm();
-        var easyCon = FindControlByType(form, "EasyConTabControl");
-        var autoCompletion = FindControl(form, "chkAutoCompletion");
-        var states = new List<bool>();
-
-        SetField(easyCon, "setAutoCompletionEnabled", new Action<bool>(states.Add));
-
-        SetProperty(autoCompletion, "Checked", true);
-        SetProperty(autoCompletion, "Checked", false);
-
-        Assert.That(states, Is.EqualTo(new[] { true, false }));
-    }
-
-    [Test]
-    [Apartment(ApartmentState.STA)]
-    public void EasyConCodeFoldingSettingUpdatesOriginalEditorConfig()
-    {
-        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = true });
-        using var form = new MainForm();
-        var easyCon = FindControlByType(form, "EasyConTabControl");
-        var folding = FindControl(form, "chkFolding");
-        var states = new List<bool>();
-
-        SetField(easyCon, "setCodeFoldingEnabled", new Action<bool>(states.Add));
-
-        SetProperty(folding, "Checked", false);
-        SetProperty(folding, "Checked", true);
-
-        Assert.That(states, Is.EqualTo(new[] { false, true }));
-    }
-
-    [Test]
-    [Apartment(ApartmentState.STA)]
     public void EasyConDarkModeMenuInitializesOriginalThemeAndBroadcastsChanges()
     {
         using var configRestore = PreserveEasyConConfig(new ConfigState { DarkMode = true });
@@ -1320,11 +1363,13 @@ public class MainFormTests
             using var form = new MainForm();
             var menu = FindControl(form, "easyConOriginalMenu");
             var darkMode = FindToolStripItem(menu, "darkModeMenuItem");
+            var contentPanel = FindControl(form, "contentPanel");
 
             Assert.Multiple(() =>
             {
                 Assert.That(GetProperty<bool>(darkMode, "Checked"), Is.True);
                 Assert.That(ThemeManager.IsDark, Is.True);
+                Assert.That(GetProperty<Color>(contentPanel, "BackColor"), Is.EqualTo(ThemeManager.PageBackground));
             });
 
             InvokeClick(darkMode);
@@ -1334,6 +1379,7 @@ public class MainFormTests
                 Assert.That(GetProperty<bool>(darkMode, "Checked"), Is.False);
                 Assert.That(ConfigManager.LoadConfig().DarkMode, Is.False);
                 Assert.That(ThemeManager.IsDark, Is.False);
+                Assert.That(GetProperty<Color>(contentPanel, "BackColor"), Is.EqualTo(Color.FromArgb(242, 241, 237)));
                 Assert.That(themeChanges, Is.EqualTo(new[] { false }));
             });
         }
@@ -1644,7 +1690,7 @@ public class MainFormTests
 
         InvokeClick(FindControl(form, "btnAlertConfig"));
         InvokeClick(FindControl(form, "btnDrawingBoard"));
-        InvokeClick(FindControl(form, "btnBluetoothSetting"));
+        InvokeClick(FindToolStripItem(menu, "bluetoothSettingMenuItem"));
         InvokeClick(FindControl(form, "btnKeyMapping"));
 
         Assert.That(opened, Is.EqualTo(new[] { "alert-config", "drawing-board", "bluetooth-setting", "key-mapping" }));
@@ -1807,7 +1853,7 @@ public class MainFormTests
         try
         {
             closeDialogTimer.Start();
-            InvokeClick(FindControl(form, "btnBluetoothSetting"));
+            InvokeClick(FindToolStripItem(FindControl(form, "easyConOriginalMenu"), "bluetoothSettingMenuItem"));
             closeDialogTimer.Stop();
 
             Assert.Multiple(() =>
@@ -2089,38 +2135,98 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void EasyConRecordLifecycleInvokesOriginalRecordActions()
+    public void EasyConRecordResumePreservesActionsRecordedBeforePause()
     {
         using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
         using var form = new MainForm();
         var easyCon = FindControlByType(form, "EasyConTabControl");
         var record = FindControl(form, "btnRecord");
         var pause = FindControl(form, "btnRecordPause");
+        var editor = FindControl(form, "easyConScriptEditor");
         var startCalls = 0;
         var pauseCalls = 0;
+        var resumeCalls = 0;
         var stopCalls = 0;
+        var isRecording = false;
+        var recordedActions = new List<string>();
+
+        void Record(string action)
+        {
+            if (isRecording)
+            {
+                recordedActions.Add(action);
+            }
+        }
 
         SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
         SetField(easyCon, "openVirtualController", new Func<bool>(() => true));
-        SetField(easyCon, "startRecordDevice", new Action(() => startCalls++));
-        SetField(easyCon, "pauseRecordDevice", new Action(() => pauseCalls++));
-        SetField(easyCon, "stopRecordDevice", new Action(() => stopCalls++));
+        SetField(easyCon, "startRecordDevice", new Action(() =>
+        {
+            startCalls++;
+            recordedActions.Clear();
+            isRecording = true;
+        }));
+        SetField(easyCon, "pauseRecordDevice", new Action(() =>
+        {
+            pauseCalls++;
+            isRecording = false;
+        }));
+        SetField(easyCon, "resumeRecordDevice", new Action(() =>
+        {
+            resumeCalls++;
+            isRecording = true;
+        }));
+        SetField(easyCon, "stopRecordDevice", new Action(() =>
+        {
+            stopCalls++;
+            isRecording = false;
+        }));
+        SetField(easyCon, "getRecordedScript", new Func<string>(() => string.Join(Environment.NewLine, recordedActions)));
 
         InvokeClick(FindControl(form, "btnShowController"));
         InvokeClick(record);
+        Record("A DOWN");
         InvokeClick(pause);
+        Record("暂停期间不应记录");
         InvokeClick(pause);
+        Record("A UP");
         InvokeClick(record);
 
         Assert.Multiple(() =>
         {
-            Assert.That(startCalls, Is.EqualTo(2));
+            Assert.That(startCalls, Is.EqualTo(1));
             Assert.That(pauseCalls, Is.EqualTo(1));
+            Assert.That(resumeCalls, Is.EqualTo(1));
             Assert.That(stopCalls, Is.EqualTo(1));
             Assert.That(GetProperty<string>(record, "Text"), Is.EqualTo("录制脚本"));
             Assert.That(GetProperty<string>(pause, "Text"), Is.EqualTo("暂停录制"));
             Assert.That(GetProperty<bool>(pause, "Enabled"), Is.False);
+            Assert.That(GetProperty<string>(editor, "Text"), Is.EqualTo("A DOWN" + Environment.NewLine + "A UP"));
         });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConStoppingEmptyRecordingClearsPreviousEditorText()
+    {
+        using var configRestore = PreserveEasyConConfig(new ConfigState { ShowControllerHelp = false });
+        using var form = new MainForm();
+        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var record = FindControl(form, "btnRecord");
+        var editor = FindControl(form, "easyConScriptEditor");
+
+        SetField(easyCon, "isDeviceConnected", new Func<bool>(() => true));
+        SetField(easyCon, "openVirtualController", new Func<bool>(() => true));
+        SetField(easyCon, "startRecordDevice", new Action(() => { }));
+        SetField(easyCon, "stopRecordDevice", new Action(() => { }));
+        SetField(easyCon, "getRecordedScript", new Func<string>(() => string.Empty));
+        SetProperty(editor, "Text", "旧脚本");
+
+        InvokeClick(FindControl(form, "btnShowController"));
+        InvokeClick(record);
+        InvokeClick(record);
+
+        Assert.That(GetProperty<string>(editor, "Text"), Is.Empty);
     }
 
     [Test]

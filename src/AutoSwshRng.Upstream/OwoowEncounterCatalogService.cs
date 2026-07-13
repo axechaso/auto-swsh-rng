@@ -6,6 +6,7 @@ using owoow.Core.Interfaces;
 using OwoowEncounterKind = owoow.Core.Enums.EncounterType;
 using OwoowEncounters = owoow.Core.Encounters;
 using OwoowGame = owoow.Core.Enums.Game;
+using OwoowRngUtil = owoow.Core.RNG.Util;
 
 namespace AutoSwshRng.Upstream;
 
@@ -106,13 +107,15 @@ public sealed class OwoowEncounterCatalogService : IEncounterCatalogService
         return Task.FromResult<IReadOnlyList<EncounterLookupResult>>(results);
     }
 
-    public Task<IReadOnlyList<string>> GetDexRecommendationOptionsAsync(
+    public Task<IReadOnlyList<DexRecommendationOption>> GetDexRecommendationOptionsAsync(
         bool includeNone = true,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult<IReadOnlyList<string>>(
-            OwoowEncounters.GetDexRecOptions(includeNone).ToArray());
+        return Task.FromResult<IReadOnlyList<DexRecommendationOption>>(
+            OwoowEncounters.GetDexRecOptions(includeNone)
+                .Select(name => new DexRecommendationOption(name, OwoowRngUtil.GetDexRecommendation(name)))
+                .ToArray());
     }
 
     private static EncounterSlot Map(int key, IEncounterTableEntry entry)

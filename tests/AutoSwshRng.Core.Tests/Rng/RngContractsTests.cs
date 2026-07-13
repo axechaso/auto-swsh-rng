@@ -41,6 +41,32 @@ public class RngContractsTests
     }
 
     [Test]
+    public void CalibrationRequestsRejectSpecialToolAnyWeatherSentinel()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new MenuCloseCalibrationRequest(
+                    new RngState(1, 2),
+                    3,
+                    false,
+                    Weather.Any));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => new FlyCalibrationRequest(
+                    new RngState(1, 2),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    false,
+                    Weather.Any,
+                    0));
+        });
+    }
+
+    [Test]
     public void RetailSeedRequiresExactlyOneHundredTwentyEightObservations()
     {
         Assert.Throws<ArgumentException>(() => new RetailSeedRequest("0101"));

@@ -1,3 +1,5 @@
+using EasyScript;
+
 namespace AutoSwshRng.Upstream.Tests;
 
 public class EasyConScriptAdapterTests
@@ -57,6 +59,21 @@ public class EasyConScriptAdapterTests
             Assert.That(result.Diagnostics, Is.Empty);
             Assert.That(result.HasKeyAction, Is.True);
             Assert.That(result.NeedsImageLabels, Is.False);
+        });
+    }
+
+    [Test]
+    public async Task ExecutesKeyScriptThroughProvidedGamePadAdapter()
+    {
+        var gamePad = new RecordingGamePad();
+
+        var result = await EasyConScriptAdapter.ExecuteAsync("A", gamePad);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.HasErrors, Is.False);
+            Assert.That(result.Diagnostics, Is.Empty);
+            Assert.That(gamePad.ClickedKeys, Is.EqualTo(new[] { GamePadKey.A }));
         });
     }
 
@@ -131,5 +148,37 @@ public class EasyConScriptAdapterTests
             Assert.That(config.Providers.Single(provider => provider.Name == "Bark").Method, Is.EqualTo("GET"));
             Assert.That(config.Providers.Single(provider => provider.Name == "自定义Webhook").Method, Is.EqualTo("POST"));
         });
+    }
+
+    private sealed class RecordingGamePad : ICGamePad
+    {
+        public List<GamePadKey> ClickedKeys { get; } = [];
+
+        public DelayType DelayMethod => DelayType.Normal;
+
+        public void ClickButtons(GamePadKey key, int duration, CancellationToken token)
+        {
+            ClickedKeys.Add(key);
+        }
+
+        public void PressButtons(GamePadKey key)
+        {
+        }
+
+        public void ReleaseButtons(GamePadKey key)
+        {
+        }
+
+        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token)
+        {
+        }
+
+        public void SetStick(GamePadKey key, byte x, byte y)
+        {
+        }
+
+        public void ChangeAmiibo(uint index)
+        {
+        }
     }
 }

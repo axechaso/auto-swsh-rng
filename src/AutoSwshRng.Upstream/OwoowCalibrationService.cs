@@ -88,6 +88,7 @@ public sealed class OwoowCalibrationService : ICalibrationService
 
     private static OwoowWeather Map(Weather weather) => weather switch
     {
+        Weather.Any => OwoowWeather.AllWeather,
         Weather.Normal => OwoowWeather.NormalWeather,
         Weather.Overcast => OwoowWeather.Overcast,
         Weather.Raining => OwoowWeather.Raining,

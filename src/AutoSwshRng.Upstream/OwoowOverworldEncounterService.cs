@@ -70,7 +70,8 @@ public sealed class OwoowOverworldEncounterService : IOverworldEncounterService
                     .ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 results.AddRange(frames.Select(MapResult).Where(
-                    result => PassPostFilters(result, request.Filter)));
+                    result => !request.FiltersEnabled
+                        || PassPostFilters(result, request.Filter)));
 
                 completed = end - request.StartAdvance + 1;
                 progress?.Report(
@@ -198,7 +199,7 @@ public sealed class OwoowOverworldEncounterService : IOverworldEncounterService
             ConsiderRain = request.Environment.ConsiderRain,
             RainTicksAreaLoad = request.Environment.RainTicksDuringAreaLoad,
             RainTicksEncounter = request.Environment.RainTicksBeforeEncounter,
-            FiltersEnabled = true,
+            FiltersEnabled = request.FiltersEnabled,
             Game = Map(request.Context.Game),
         };
     }

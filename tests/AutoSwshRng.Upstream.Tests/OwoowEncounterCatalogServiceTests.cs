@@ -2,6 +2,7 @@ using AutoSwshRng.Core.Encounters;
 using AutoSwshRng.Core.Common;
 using AutoSwshRng.Core.Profiles;
 using owoow.Core.Enums;
+using OwoowRngUtil = owoow.Core.RNG.Util;
 using OwoowEncounters = owoow.Core.Encounters;
 
 namespace AutoSwshRng.Upstream.Tests;
@@ -107,6 +108,23 @@ public class OwoowEncounterCatalogServiceTests
             Assert.That(result.Slots, Is.Not.Empty);
             Assert.That(result.Slots.All(slot => slot.Personal.Abilities.Count > 0), Is.True);
             Assert.That(result.Slots.All(slot => slot.Personal.Types.Count > 0), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task DexRecommendationOptionsExposeDisplayNameAndDevIdWithoutLeakingUpstreamTypes()
+    {
+        var service = new OwoowEncounterCatalogService();
+
+        var actual = await service.GetDexRecommendationOptionsAsync(includeNone: true);
+        var expectedNames = OwoowEncounters.GetDexRecOptions(includeNone: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(actual.Select(option => option.DisplayName), Is.EqualTo(expectedNames));
+            Assert.That(actual.Select(option => option.SpeciesId),
+                Is.EqualTo(expectedNames.Select(OwoowRngUtil.GetDexRecommendation)));
+            Assert.That(actual[0], Is.EqualTo(new DexRecommendationOption("(None)", 0)));
         });
     }
 }

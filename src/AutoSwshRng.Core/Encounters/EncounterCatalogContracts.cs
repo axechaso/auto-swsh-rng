@@ -100,6 +100,21 @@ public sealed record EncounterLookupResult(
     string Area,
     string EncounterKind);
 
+public sealed record DexRecommendationOption
+{
+    public DexRecommendationOption(string displayName, short speciesId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        DisplayName = displayName;
+        SpeciesId = speciesId;
+    }
+
+    public string DisplayName { get; }
+    public short SpeciesId { get; }
+
+    public override string ToString() => DisplayName;
+}
+
 public interface IEncounterCatalogService
 {
     Task<IReadOnlyList<string>> GetAreasAsync(
@@ -129,7 +144,7 @@ public interface IEncounterCatalogService
         string species,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<string>> GetDexRecommendationOptionsAsync(
+    Task<IReadOnlyList<DexRecommendationOption>> GetDexRecommendationOptionsAsync(
         bool includeNone = true,
         CancellationToken cancellationToken = default);
 }

@@ -160,6 +160,16 @@ public class OwoowRngServicesTests
     }
 
     [Test]
+    public void AnyWeatherSentinelIsRejectedByCalibrationContract()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MenuCloseCalibrationRequest(
+            new RngState(0x1234, 0x5678),
+            3,
+            false,
+            AutoSwshRng.Core.Rng.Weather.Any));
+    }
+
+    [Test]
     public async Task EnvironmentCalibrationMatchesOriginal()
     {
         var state = new RngState(12, 34);

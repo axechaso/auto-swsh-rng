@@ -215,7 +215,8 @@ public sealed record OverworldSearchRequest
         OverworldEnvironmentSettings environment,
         int auraKnockouts = 500,
         int hiddenMaximumStep = 0,
-        IEnumerable<short>? dexRecommendationSlots = null)
+        IEnumerable<short>? dexRecommendationSlots = null,
+        bool filtersEnabled = true)
     {
         if (endAdvance < startAdvance)
         {
@@ -261,6 +262,7 @@ public sealed record OverworldSearchRequest
         Environment = environment;
         AuraKnockouts = auraKnockouts;
         HiddenMaximumStep = hiddenMaximumStep;
+        FiltersEnabled = filtersEnabled;
     }
 
     public RngState InitialState { get; }
@@ -272,6 +274,7 @@ public sealed record OverworldSearchRequest
     public OverworldEnvironmentSettings Environment { get; }
     public int AuraKnockouts { get; }
     public int HiddenMaximumStep { get; }
+    public bool FiltersEnabled { get; }
     public IReadOnlyList<short> DexRecommendationSlots => dexRecommendationSlots;
 }
 

@@ -88,7 +88,7 @@ public sealed record SpecialToolMenuClose
         bool holdDirection,
         Weather weather)
     {
-        MenuCloseCalibrationRequest.ValidateWeather(weather);
+        MenuCloseCalibrationRequest.ValidateWeather(weather, allowAny: true);
         Enabled = enabled;
         NonPlayerCharacters = nonPlayerCharacters;
         HoldDirection = holdDirection;
@@ -298,5 +298,14 @@ public interface ISpecialRngToolService
     Task<IReadOnlyList<SpecialToolFrame>> SearchAsync(
         SpecialToolSearchRequest request,
         IProgress<OperationProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+
+public interface ILotoIdStore
+{
+    Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default);
+
+    Task SaveAsync(
+        IReadOnlyList<string> ids,
         CancellationToken cancellationToken = default);
 }

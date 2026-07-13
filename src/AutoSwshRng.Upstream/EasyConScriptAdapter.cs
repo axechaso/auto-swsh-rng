@@ -88,11 +88,32 @@ public static class EasyConScriptAdapter
         string scriptText,
         IReadOnlyDictionary<string, Func<int>>? externalGetters = null)
     {
+        return Evaluate(scriptText, pad: null!, externalGetters, CancellationToken.None);
+    }
+
+    internal static Task<EasyConScriptResult> ExecuteAsync(
+        string scriptText,
+        ICGamePad gamePad,
+        IReadOnlyDictionary<string, Func<int>>? externalGetters = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(gamePad);
+        return Task.Run(
+            () => Evaluate(scriptText, gamePad, externalGetters, cancellationToken),
+            cancellationToken);
+    }
+
+    private static EasyConScriptResult Evaluate(
+        string scriptText,
+        ICGamePad pad,
+        IReadOnlyDictionary<string, Func<int>>? externalGetters,
+        CancellationToken cancellationToken)
+    {
         var output = new CapturingOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(scriptText));
         var externalGetterMap = externalGetters?.ToImmutableDictionary(pair => pair.Key, pair => pair.Value)
             ?? ImmutableDictionary<string, Func<int>>.Empty;
-        var result = compilation.Evaluate(output, pad: null!, externalGetterMap, CancellationToken.None);
+        var result = compilation.Evaluate(output, pad, externalGetterMap, cancellationToken);
 
         return new EasyConScriptResult(
             result.Diagnostics.HasErrors(),

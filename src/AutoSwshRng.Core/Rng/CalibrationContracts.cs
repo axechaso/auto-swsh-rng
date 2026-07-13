@@ -2,6 +2,7 @@ namespace AutoSwshRng.Core.Rng;
 
 public enum Weather
 {
+    Any = -1,
     Normal,
     Overcast,
     Raining,
@@ -33,9 +34,9 @@ public sealed record MenuCloseCalibrationRequest
     public bool HoldDirection { get; }
     public Weather Weather { get; }
 
-    internal static void ValidateWeather(Weather weather)
+    internal static void ValidateWeather(Weather weather, bool allowAny = false)
     {
-        if (!Enum.IsDefined(weather))
+        if (!Enum.IsDefined(weather) || (!allowAny && weather == Weather.Any))
         {
             throw new ArgumentOutOfRangeException(nameof(weather));
         }

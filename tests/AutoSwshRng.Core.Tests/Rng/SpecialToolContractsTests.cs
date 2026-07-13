@@ -81,6 +81,32 @@ public class SpecialToolContractsTests
     }
 
     [Test]
+    public void MenuCloseAcceptsAnyWeather()
+    {
+        var menuClose = new SpecialToolMenuClose(true, 2, false, Weather.Any);
+
+        Assert.That(menuClose.Weather, Is.EqualTo(Weather.Any));
+    }
+
+    [Test]
+    public void AnyWeatherDoesNotRenumberExistingWeatherValues()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That((int)Weather.Any, Is.EqualTo(-1));
+            Assert.That((int)Weather.Normal, Is.Zero);
+            Assert.That((int)Weather.Overcast, Is.EqualTo(1));
+            Assert.That((int)Weather.Raining, Is.EqualTo(2));
+            Assert.That((int)Weather.Thunderstorm, Is.EqualTo(3));
+            Assert.That((int)Weather.IntenseSun, Is.EqualTo(4));
+            Assert.That((int)Weather.Snowing, Is.EqualTo(5));
+            Assert.That((int)Weather.Snowstorm, Is.EqualTo(6));
+            Assert.That((int)Weather.Sandstorm, Is.EqualTo(7));
+            Assert.That((int)Weather.HeavyFog, Is.EqualTo(8));
+        });
+    }
+
+    [Test]
     public void LotoIdsRejectNullEntriesAsValidationErrors()
     {
         Assert.Throws<ArgumentException>(() => new SpecialToolSearchRequest(

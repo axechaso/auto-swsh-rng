@@ -18,7 +18,8 @@ public sealed class OwoowUiServices
         IRetailSeedService retailSeeds,
         IXoroshiroService xoroshiro,
         ISpreadFinderService spreadFinder,
-        ISpecialRngToolService specialTools)
+        ISpecialRngToolService specialTools,
+        ILotoIdStore? lotoIds = null)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
         Profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
@@ -29,6 +30,7 @@ public sealed class OwoowUiServices
         Xoroshiro = xoroshiro ?? throw new ArgumentNullException(nameof(xoroshiro));
         SpreadFinder = spreadFinder ?? throw new ArgumentNullException(nameof(spreadFinder));
         SpecialTools = specialTools ?? throw new ArgumentNullException(nameof(specialTools));
+        LotoIds = lotoIds ?? new VolatileLotoIdStore();
     }
 
     public IOwoowConnectionService Connection { get; }
@@ -40,6 +42,7 @@ public sealed class OwoowUiServices
     public IXoroshiroService Xoroshiro { get; }
     public ISpreadFinderService SpreadFinder { get; }
     public ISpecialRngToolService SpecialTools { get; }
+    public ILotoIdStore LotoIds { get; }
 
     public static OwoowUiServices CreateDefault()
     {
@@ -47,6 +50,10 @@ public sealed class OwoowUiServices
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AutoSwshRng",
             "owoow-profiles.json");
+        var lotoIdPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AutoSwshRng",
+            "owoow-loto-ids.json");
 
         return new OwoowUiServices(
             new OwoowConnectionService(),
@@ -57,6 +64,26 @@ public sealed class OwoowUiServices
             new OwoowRetailSeedService(),
             new OwoowXoroshiroService(),
             new OwoowSpreadFinderService(),
-            new OwoowSpecialRngToolService());
+            new OwoowSpecialRngToolService(),
+            new OwoowLotoIdStore(lotoIdPath));
+    }
+
+    private sealed class VolatileLotoIdStore : ILotoIdStore
+    {
+        private IReadOnlyList<string> ids = [];
+
+        public Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(ids);
+        }
+
+        public Task SaveAsync(IReadOnlyList<string> ids, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(ids);
+            cancellationToken.ThrowIfCancellationRequested();
+            this.ids = ids.ToArray();
+            return Task.CompletedTask;
+        }
     }
 }

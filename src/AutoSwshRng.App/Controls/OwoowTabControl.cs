@@ -10,24 +10,55 @@ namespace AutoSwshRng.App.Controls;
 public sealed class OwoowTabControl : UserControl
 {
     private const int CanvasWidth = 1278;
+    private static readonly IReadOnlyDictionary<string, string> SpecialToolPrefixes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["LotoID"] = "LotoID",
+            ["Cramomatic"] = "Cramomatic",
+            ["WattTrader"] = "WattTrader",
+            ["DiggingPa"] = "DiggingPa",
+            ["SkillBro"] = "SkillBro",
+            ["WailordRespawn"] = "Wailord",
+        };
     private readonly OwoowUiServices services;
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private readonly Action<string, string> showMessage;
+    private readonly Action<Form, bool> presentToolWindow;
+    private readonly Action resultTone;
+    private readonly Action resultFocus;
+    private readonly OwoowToolWindowFactory toolWindowFactory;
+    private readonly Dictionary<string, Form> openToolWindows = new(StringComparer.Ordinal);
     private CancellationTokenSource? searchCancellation;
     private CancellationTokenSource? skipCancellation;
+    private IReadOnlyList<DexRecommendationOption> dexRecommendationOptions = [];
     private PokemonSnapshot? cachedWildPokemon;
     private AnimationSequenceResult? retailSequence;
     private ulong retailInitial;
     private bool updatingCatalog;
     private bool updatingRetailPattern;
+    private bool resourcesDisposed;
 
     public OwoowTabControl(
         OwoowUiServices? services = null,
-        Action<string, string>? messageSink = null)
+        Action<string, string>? messageSink = null,
+        Action<Form, bool>? toolWindowPresenter = null,
+        Action? resultTone = null,
+        Action? resultFocus = null)
     {
         this.services = services ?? OwoowUiServices.CreateDefault();
         showMessage = messageSink ?? ((title, message) =>
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error));
+        presentToolWindow = toolWindowPresenter ?? PresentToolWindow;
+        this.resultTone = resultTone ?? System.Media.SystemSounds.Asterisk.Play;
+        this.resultFocus = resultFocus ?? (() =>
+        {
+            var form = FindForm();
+            if (form is not null)
+            {
+                form.Activate();
+            }
+        });
+        toolWindowFactory = new OwoowToolWindowFactory(this.services, showMessage);
 
         Dock = DockStyle.Fill;
         Font = new Font("Segoe UI", 9F);
@@ -60,6 +91,7 @@ public sealed class OwoowTabControl : UserControl
         WireCatalogActions();
         WireConnectedUtilityActions();
         WireRetailActions();
+        WireToolWindowActions();
         this.services.Connection.StatusChanged += ConnectionStatusChanged;
     }
 
@@ -67,8 +99,9 @@ public sealed class OwoowTabControl : UserControl
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !resourcesDisposed)
         {
+            resourcesDisposed = true;
             services.Connection.StatusChanged -= ConnectionStatusChanged;
             searchCancellation?.Cancel();
             searchCancellation?.Dispose();
@@ -76,6 +109,11 @@ public sealed class OwoowTabControl : UserControl
             skipCancellation?.Dispose();
             lifetimeCancellation.Cancel();
             lifetimeCancellation.Dispose();
+            foreach (var form in openToolWindows.Values.ToArray())
+            {
+                form.Dispose();
+            }
+            openToolWindows.Clear();
         }
 
         base.Dispose(disposing);
@@ -104,7 +142,12 @@ public sealed class OwoowTabControl : UserControl
                 FindRequiredControl<Button>($"B_{kindName}_MenuClose").Enabled = menuClose.Checked;
                 FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose_Direction").Enabled = menuClose.Checked;
                 FindRequiredControl<TextBox>($"TB_{kindName}_NPCs").Enabled = menuClose.Checked;
+                FindRequiredControl<Label>($"L_{kindName}_NPCs").Enabled = menuClose.Checked;
+                SynchronizeSpecialToolOption("MenuClose", menuClose.Checked);
             };
+            var holdDirection = FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose_Direction");
+            holdDirection.CheckedChanged += (_, _) =>
+                SynchronizeSpecialToolOption("MenuClose_Direction", holdDirection.Checked);
         }
 
         foreach (var stat in new[] { "HP", "Atk", "Def", "SpA", "SpD", "Spe" })
@@ -222,12 +265,173 @@ public sealed class OwoowTabControl : UserControl
 
     private void WireRetailActions()
     {
+        FindRequiredControl<Button>("B_RetailSeedFinder").Click += (_, _) =>
+            OpenToolWindow(toolWindowFactory.CreateRetailSeedFinder(ApplyRetailState), modal: true);
         FindRequiredControl<Button>("B_GenerateRetailPattern").Click += async (_, _) =>
             await GenerateRetailPatternAsync();
         FindRequiredControl<Button>("B_RetailUpdateSeeds").Click += async (_, _) =>
             await UpdateRetailSeedsAsync();
         FindRequiredControl<TextBox>("TB_Animations").TextChanged += async (_, _) =>
             await ReidentifyRetailSeedAsync();
+    }
+
+    private void WireToolWindowActions()
+    {
+        var menu = FindRequiredControl<MenuStrip>("MS_SubWindows");
+        FindMenuItem(menu, "TSMI_Profiles").Click += (_, _) =>
+            OpenToolWindow(toolWindowFactory.CreateProfiles(ApplyProfile), modal: true);
+        FindMenuItem(menu, "TSMI_EncounterLookup").Click += (_, _) =>
+            OpenToolWindow(toolWindowFactory.CreateEncounterLookup(GetSelectedGame()), modal: false);
+        FindMenuItem(menu, "TSMI_SpreadFinder").Click += (_, _) =>
+            OpenToolWindow(toolWindowFactory.CreateSpreadFinder(), modal: false);
+        FindMenuItem(menu, "TSMI_LotoID").Click += (_, _) =>
+            OpenSpecialToolWindow(SpecialToolKind.LotoId);
+        FindMenuItem(menu, "TSMI_Cramomatic").Click += (_, _) =>
+            OpenSpecialToolWindow(SpecialToolKind.CramOMatic);
+        FindMenuItem(menu, "TSMI_WattTrader").Click += (_, _) =>
+            OpenSpecialToolWindow(SpecialToolKind.WattTrader);
+        FindMenuItem(menu, "TSMI_DiggingPa").Click += (_, _) =>
+            OpenSpecialToolWindow(SpecialToolKind.DiggingPa);
+        FindMenuItem(menu, "TMSI_SkillBro").Click += (_, _) =>
+            OpenSpecialToolWindow(SpecialToolKind.DiggingBro);
+        FindMenuItem(menu, "TSMI_WailordRespawn").Click += (_, _) =>
+            OpenSpecialToolWindow(SpecialToolKind.WailordRespawn);
+        FindMenuItem(menu, "TSMI_XoroshiroTools").Click += (_, _) =>
+            OpenToolWindow(toolWindowFactory.CreateXoroshiroTools(ReadInitialState(), ApplyInitialState), modal: false);
+    }
+
+    private void OpenSpecialToolWindow(SpecialToolKind kind)
+    {
+        try
+        {
+            OpenToolWindow(
+                toolWindowFactory.CreateSpecialTool(
+                    kind,
+                    ReadInitialState(),
+                    GetSelectedGame(),
+                    CreateSpecialToolContext()),
+                modal: false);
+        }
+        catch (Exception exception)
+        {
+            showMessage($"{kind} failed", exception.Message);
+        }
+    }
+
+    private OwoowSpecialToolContext CreateSpecialToolContext()
+    {
+        var tabs = FindRequiredControl<TabControl>("TC_EncounterType");
+        var kind = (EncounterKind)Math.Clamp(tabs.SelectedIndex, 0, Enum.GetValues<EncounterKind>().Length - 1);
+        var prefix = kind.ToString();
+        var weather = FindRequiredControl<ComboBox>($"CB_{prefix}_Weather").Text;
+        if (weather is "None" or "")
+        {
+            weather = "All Weather";
+        }
+
+        return new OwoowSpecialToolContext(
+            FindRequiredControl<TextBox>("TB_CurrentAdvances").Text.Replace(",", string.Empty, StringComparison.Ordinal),
+            FindRequiredControl<TextBox>($"TB_{prefix}_NPCs").Text,
+            FindRequiredControl<CheckBox>($"CB_{prefix}_MenuClose").Checked,
+            FindRequiredControl<CheckBox>($"CB_{prefix}_MenuClose_Direction").Checked,
+            weather,
+            state => ApplySpecialToolState(prefix, state));
+    }
+
+    private void ApplySpecialToolState(string prefix, OwoowSpecialToolState state)
+    {
+        FindRequiredControl<CheckBox>($"CB_{prefix}_MenuClose").Checked = state.MenuClose;
+        FindRequiredControl<CheckBox>($"CB_{prefix}_MenuClose_Direction").Checked = state.HoldDirection;
+        FindRequiredControl<TextBox>($"TB_{prefix}_NPCs").Text = state.NonPlayerCharacters;
+    }
+
+    private void ApplyProfile(RngProfile profile)
+    {
+        FindRequiredControl<ComboBox>("CB_Game").SelectedIndex = (int)profile.Game;
+        FindRequiredControl<TextBox>("TB_TID").Text = profile.TrainerId.ToString("D5", CultureInfo.InvariantCulture);
+        FindRequiredControl<TextBox>("TB_SID").Text = profile.SecretId.ToString("D5", CultureInfo.InvariantCulture);
+        FindRequiredControl<CheckBox>("CB_ShinyCharm").Checked = profile.HasShinyCharm;
+        FindRequiredControl<CheckBox>("CB_MarkCharm").Checked = profile.HasMarkCharm;
+    }
+
+    private void ApplyInitialState(RngState state)
+    {
+        var seed0 = state.Seed0.ToString("X16", CultureInfo.InvariantCulture);
+        var seed1 = state.Seed1.ToString("X16", CultureInfo.InvariantCulture);
+        FindRequiredControl<TextBox>("TB_Seed0").Text = seed0;
+        FindRequiredControl<TextBox>("TB_Seed1").Text = seed1;
+        SynchronizeSpecialToolSeeds(seed0, seed1);
+    }
+
+    private void ApplyRetailState(RngState state)
+    {
+        ApplyInitialState(state);
+        FindRequiredControl<TextBox>("TB_CurrentS0").Text =
+            state.Seed0.ToString("X16", CultureInfo.InvariantCulture);
+        FindRequiredControl<TextBox>("TB_CurrentS1").Text =
+            state.Seed1.ToString("X16", CultureInfo.InvariantCulture);
+    }
+
+    private void OpenToolWindow(Form form, bool modal)
+    {
+        if (!modal)
+        {
+            if (openToolWindows.TryGetValue(form.Name, out var existing))
+            {
+                if (!existing.IsDisposed)
+                {
+                    form.Dispose();
+                    existing.Focus();
+                    return;
+                }
+                openToolWindows.Remove(form.Name);
+            }
+
+            openToolWindows[form.Name] = form;
+            form.FormClosed += (_, _) => openToolWindows.Remove(form.Name);
+        }
+        presentToolWindow(form, modal);
+    }
+
+    private void PresentToolWindow(Form form, bool modal)
+    {
+        var owner = FindForm();
+        if (modal)
+        {
+            try
+            {
+                if (owner is null)
+                {
+                    form.ShowDialog();
+                }
+                else
+                {
+                    form.ShowDialog(owner);
+                }
+            }
+            finally
+            {
+                form.Dispose();
+            }
+
+            return;
+        }
+
+        if (owner is null)
+        {
+            form.Show();
+        }
+        else
+        {
+            form.Show(owner);
+        }
+    }
+
+    private static ToolStripMenuItem FindMenuItem(MenuStrip menu, string name)
+    {
+        return menu.Items.Cast<ToolStripItem>()
+            .OfType<ToolStripMenuItem>()
+            .Single(item => item.Name == name);
     }
 
     private async Task UpdateRetailSeedsAsync()
@@ -347,9 +551,14 @@ public sealed class OwoowTabControl : UserControl
                 lifetimeCancellation.Token);
             for (var index = 0; index < snapshot.SpeciesIds.Count; index++)
             {
+                var speciesId = unchecked((short)snapshot.SpeciesIds[index]);
+                var option = dexRecommendationOptions.FirstOrDefault(value => value.SpeciesId == speciesId)
+                    ?? new DexRecommendationOption(
+                        snapshot.SpeciesIds[index].ToString(CultureInfo.InvariantCulture),
+                        speciesId);
                 ReplaceComboItems(
                     FindRequiredControl<ComboBox>($"CB_DexRec{index + 1}"),
-                    [snapshot.SpeciesIds[index].ToString(CultureInfo.InvariantCulture)]);
+                    [option]);
             }
 
             FindRequiredControl<TextBox>("TB_Status").Text = "Pokédex recommendations updated.";
@@ -429,12 +638,12 @@ public sealed class OwoowTabControl : UserControl
             return;
         }
 
-        var count = ParseUInt32(FindRequiredControl<TextBox>("TB_Skips").Text, "Days");
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCancellation.Token);
         skipCancellation = cancellation;
         SetCfwBusy(true);
         try
         {
+            var count = ParseUInt32(FindRequiredControl<TextBox>("TB_Skips").Text, "Days");
             for (var index = 0U; index < count; index++)
             {
                 cancellation.Token.ThrowIfCancellationRequested();
@@ -549,12 +758,12 @@ public sealed class OwoowTabControl : UserControl
     {
         try
         {
-            var dexOptions = await services.EncounterCatalog.GetDexRecommendationOptionsAsync(
+            dexRecommendationOptions = await services.EncounterCatalog.GetDexRecommendationOptionsAsync(
                 includeNone: true,
                 lifetimeCancellation.Token);
             foreach (var name in new[] { "CB_DexRec1", "CB_DexRec2", "CB_DexRec3", "CB_DexRec4" })
             {
-                ReplaceComboItems(FindRequiredControl<ComboBox>(name), dexOptions);
+                ReplaceComboItems(FindRequiredControl<ComboBox>(name), dexRecommendationOptions);
             }
 
             await LoadCatalogForCurrentTabAsync();
@@ -686,7 +895,7 @@ public sealed class OwoowTabControl : UserControl
         ReplaceComboItems(FindRequiredControl<ComboBox>($"CB_{kind}_Species"), species);
     }
 
-    private static void ReplaceComboItems(ComboBox comboBox, IReadOnlyList<string> values)
+    private static void ReplaceComboItems<T>(ComboBox comboBox, IReadOnlyList<T> values)
     {
         comboBox.BeginUpdate();
         try
@@ -732,6 +941,14 @@ public sealed class OwoowTabControl : UserControl
             var results = await services.Encounters.SearchAsync(request, progress, cancellation.Token);
             BindEncounterResults(results);
             FindRequiredControl<TextBox>("TB_Status").Text = $"Found {results.Count} result(s).";
+            if (results.Count > 0 && FindRequiredControl<CheckBox>("CB_PlayTone").Checked)
+            {
+                resultTone();
+            }
+            if (results.Count > 0 && FindRequiredControl<CheckBox>("CB_FocusWindow").Checked)
+            {
+                resultFocus();
+            }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -772,6 +989,7 @@ public sealed class OwoowTabControl : UserControl
             ParseUInt16(FindRequiredControl<TextBox>("TB_SID").Text, "SID"),
             FindRequiredControl<CheckBox>("CB_ShinyCharm").Checked,
             FindRequiredControl<CheckBox>("CB_MarkCharm").Checked);
+        var filtersEnabled = FindRequiredControl<CheckBox>("CB_EnableFilters").Checked;
         var filter = new EncounterFilter(
             targetSpecies: species,
             shiny: ParseShinyFilter(FindRequiredControl<ComboBox>("CB_Filter_Shiny").Text),
@@ -781,16 +999,19 @@ public sealed class OwoowTabControl : UserControl
             individualValues: CreateIndividualValueConstraints(),
             rareEncryptionConstant: FindRequiredControl<CheckBox>("CB_RareEC").Checked);
         var menuClose = FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose").Checked;
+        var considerFlying = FindRequiredControl<CheckBox>("CB_ConsiderFlying").Checked;
+        var considerRain = FindRequiredControl<CheckBox>("CB_ConsiderRain").Checked;
+        var rainTicks = (uint)FindRequiredControl<NumericUpDown>("NUD_RainTick").Value;
         var environment = new OverworldEnvironmentSettings(
             menuClose,
             menuClose ? ParseUInt32(FindRequiredControl<TextBox>($"TB_{kindName}_NPCs").Text, "NPCs") : 0,
             menuClose && FindRequiredControl<CheckBox>($"CB_{kindName}_MenuClose_Direction").Checked,
-            FindRequiredControl<CheckBox>("CB_ConsiderFlying").Checked,
+            considerFlying,
             (uint)FindRequiredControl<NumericUpDown>("NUD_AreaLoad").Value,
             (uint)FindRequiredControl<NumericUpDown>("NUD_FlyNPCs").Value,
-            FindRequiredControl<CheckBox>("CB_ConsiderRain").Checked,
-            (uint)FindRequiredControl<NumericUpDown>("NUD_RainTick").Value,
-            0);
+            considerRain,
+            considerFlying && considerRain ? rainTicks : 0,
+            !considerFlying && considerRain ? rainTicks : 0);
         var knockouts = kind is EncounterKind.Symbol or EncounterKind.Fishing
             ? checked((int)ParseUInt32(FindRequiredControl<TextBox>($"TB_{kindName}_KOs").Text, "KOs"))
             : 0;
@@ -809,7 +1030,28 @@ public sealed class OwoowTabControl : UserControl
             environment,
             knockouts,
             maximumStep,
-            [0, 0, 0, 0]);
+            Enumerable.Range(1, 4).Select(ReadDexRecommendationSlot),
+            filtersEnabled);
+    }
+
+    private short ReadDexRecommendationSlot(int index)
+    {
+        var comboBox = FindRequiredControl<ComboBox>($"CB_DexRec{index}");
+        if (comboBox.SelectedItem is DexRecommendationOption option)
+        {
+            return option.SpeciesId;
+        }
+
+        var known = dexRecommendationOptions.FirstOrDefault(value =>
+            string.Equals(value.DisplayName, comboBox.Text, StringComparison.Ordinal));
+        if (known is not null)
+        {
+            return known.SpeciesId;
+        }
+
+        return ushort.TryParse(comboBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var speciesId)
+            ? unchecked((short)speciesId)
+            : (short)0;
     }
 
     private IReadOnlyList<IndividualValueConstraint> CreateIndividualValueConstraints()
@@ -1011,8 +1253,51 @@ public sealed class OwoowTabControl : UserControl
 
     private void CopyCurrentStateToInitial()
     {
-        FindRequiredControl<TextBox>("TB_Seed0").Text = FindRequiredControl<TextBox>("TB_CurrentS0").Text;
-        FindRequiredControl<TextBox>("TB_Seed1").Text = FindRequiredControl<TextBox>("TB_CurrentS1").Text;
+        var seed0 = FindRequiredControl<TextBox>("TB_CurrentS0").Text;
+        var seed1 = FindRequiredControl<TextBox>("TB_CurrentS1").Text;
+        FindRequiredControl<TextBox>("TB_Seed0").Text = seed0;
+        FindRequiredControl<TextBox>("TB_Seed1").Text = seed1;
+        SynchronizeSpecialToolSeeds(seed0, seed1);
+    }
+
+    private void SynchronizeSpecialToolSeeds(string seed0, string seed1)
+    {
+        foreach (var (windowName, _) in SpecialToolPrefixes)
+        {
+            if (!openToolWindows.TryGetValue(windowName, out var form) || form.IsDisposed)
+            {
+                continue;
+            }
+
+            SetFormText(form, "TB_Seed0", seed0);
+            SetFormText(form, "TB_Seed1", seed1);
+        }
+    }
+
+    private void SynchronizeSpecialToolOption(string optionName, bool value)
+    {
+        foreach (var (windowName, prefix) in SpecialToolPrefixes)
+        {
+            if (!openToolWindows.TryGetValue(windowName, out var form) || form.IsDisposed)
+            {
+                continue;
+            }
+
+            var matches = form.Controls.Find($"CB_{prefix}_{optionName}", true);
+            if (matches.Length > 0 && matches[0] is CheckBox checkBox)
+            {
+                checkBox.Checked = value;
+            }
+        }
+    }
+
+    private static void SetFormText(Form form, string controlName, string value)
+    {
+        var matches = form.Controls.Find(controlName, true);
+        if (matches.Length > 0 && matches[0] is TextBox textBox)
+        {
+            textBox.Text = value;
+        }
     }
 
     private void ConnectionStatusChanged(object? sender, ConnectionStatusChangedEventArgs eventArgs)

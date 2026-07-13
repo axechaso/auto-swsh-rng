@@ -62,6 +62,50 @@ public class OwoowOverworldEncounterServiceTests
     }
 
     [Test]
+    public async Task GeneratorFiltersAreSkippedWhenFiltersAreDisabled()
+    {
+        var baseline = CreateRequest(EncounterKind.Symbol);
+        var service = new OwoowOverworldEncounterService();
+        var expected = await service.SearchAsync(baseline);
+        Assert.That(expected, Is.Not.Empty);
+        var request = new OverworldSearchRequest(
+            baseline.InitialState,
+            baseline.StartAdvance,
+            baseline.EndAdvance,
+            baseline.Context,
+            baseline.Profile,
+            new EncounterFilter(targetSpecies: "not-a-real-species"),
+            baseline.Environment,
+            filtersEnabled: false);
+
+        var actual = await service.SearchAsync(request);
+
+        Assert.That(actual.Select(Project), Is.EqualTo(expected.Select(Project)));
+    }
+
+    [Test]
+    public async Task AbilityPostFilterIsSkippedWhenFiltersAreDisabled()
+    {
+        var baseline = CreateRequest(EncounterKind.Symbol);
+        var service = new OwoowOverworldEncounterService();
+        var expected = await service.SearchAsync(baseline);
+        Assert.That(expected, Is.Not.Empty);
+        var request = new OverworldSearchRequest(
+            baseline.InitialState,
+            baseline.StartAdvance,
+            baseline.EndAdvance,
+            baseline.Context,
+            baseline.Profile,
+            new EncounterFilter(targetAbility: "not-a-real-ability"),
+            baseline.Environment,
+            filtersEnabled: false);
+
+        var actual = await service.SearchAsync(request);
+
+        Assert.That(actual.Select(Project), Is.EqualTo(expected.Select(Project)));
+    }
+
+    [Test]
     public void SearchHonorsPreCancelledToken()
     {
         using var source = new CancellationTokenSource();

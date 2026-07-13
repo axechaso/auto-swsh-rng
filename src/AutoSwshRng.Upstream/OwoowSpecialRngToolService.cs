@@ -315,6 +315,7 @@ public sealed class OwoowSpecialRngToolService : ISpecialRngToolService
 
     private static owoow.Core.Enums.WeatherType MapWeather(Weather weather) => weather switch
     {
+        Weather.Any => owoow.Core.Enums.WeatherType.AllWeather,
         Weather.Normal => owoow.Core.Enums.WeatherType.NormalWeather,
         Weather.Overcast => owoow.Core.Enums.WeatherType.Overcast,
         Weather.Raining => owoow.Core.Enums.WeatherType.Raining,
