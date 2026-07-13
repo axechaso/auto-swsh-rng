@@ -1161,7 +1161,7 @@ public class MainFormTests
     {
         using var form = new MainForm();
 
-        var easyCon = FindControlByType(form, "EasyConTabControl");
+        var easyCon = (UserControl)FindControlByType(form, "EasyConTabControl");
         var mainSplit = FindControl(form, "mainSplit");
         var rightPanel = FindControl(form, "rightPanel");
         var contentPanel = FindControl(form, "contentPanel");
@@ -1175,6 +1175,9 @@ public class MainFormTests
         Assert.Multiple(() =>
         {
             Assert.That(mainSplit.GetType().Name, Is.EqualTo("SplitContainer"));
+            Assert.That(easyCon.AutoScaleMode, Is.EqualTo(AutoScaleMode.Inherit));
+            Assert.That(easyCon.Font.Name, Is.EqualTo("Microsoft YaHei UI"));
+            Assert.That(easyCon.Font.Size, Is.EqualTo(9F));
             Assert.That(GetProperty<int>(mainSplit, "SplitterDistance"), Is.EqualTo(644));
             Assert.That(GetProperty<Color>(mainSplit, "BackColor"), Is.EqualTo(Color.FromArgb(230, 229, 224)));
             Assert.That(GetProperty<Color>(rightPanel, "BackColor"), Is.EqualTo(Color.FromArgb(242, 241, 237)));
@@ -1202,18 +1205,38 @@ public class MainFormTests
         form.Show();
         SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
         Application.DoEvents();
-        var split = FindControl(form, "mainSplit");
-        var panel2 = GetProperty<object>(split, "Panel2");
-        var rightPanel = FindControl(form, "rightPanel");
+        var mainSplit = (SplitContainer)FindControl(form, "mainSplit");
+        var rightPanel = (Control)FindControl(form, "rightPanel");
+        var scriptRunGroup = (Control)FindControl(form, "grpScriptRun");
+        var runStopButton = (Control)FindControl(form, "runStopBtn");
 
         Assert.Multiple(() =>
         {
-            var ratio = (double)GetProperty<int>(split, "SplitterDistance") / GetProperty<int>(split, "Width");
-            Assert.That(ratio, Is.InRange(0.68, 0.75));
-            Assert.That(GetProperty<int>(panel2, "Width"), Is.GreaterThanOrEqualTo(240));
-            Assert.That(GetProperty<bool>(rightPanel, "Visible"), Is.True);
-            Assert.That(GetProperty<int>(rightPanel, "Width"), Is.GreaterThanOrEqualTo(240));
-            Assert.That(GetProperty<int>(FindControl(form, "grpScriptRun"), "Width"), Is.GreaterThanOrEqualTo(220));
+            Assert.That(mainSplit.FixedPanel, Is.EqualTo(FixedPanel.Panel2));
+            Assert.That(mainSplit.Panel2.Width, Is.InRange(266, 280));
+            Assert.That(scriptRunGroup.Width, Is.EqualTo(228));
+            Assert.That(runStopButton.Width, Is.EqualTo(206));
+            Assert.That(scriptRunGroup.Left, Is.EqualTo(14));
+            Assert.That(scriptRunGroup.Right, Is.LessThanOrEqualTo(rightPanel.Width - rightPanel.Padding.Right));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConLogControlsStayInsideOriginalLayoutBounds()
+    {
+        using var form = new MainForm();
+        form.Show();
+        SetProperty(FindControlByType(form, "TabControl"), "SelectedIndex", 1);
+        Application.DoEvents();
+        var panel = (Control)FindControl(form, "logPanel");
+        var log = (Control)FindControl(form, "logTxtBox");
+        var clearLog = (Control)FindControl(form, "clsLogBtn");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(panel.ClientRectangle.Contains(log.Bounds), Is.True);
+            Assert.That(panel.ClientRectangle.Contains(clearLog.Bounds), Is.True);
         });
     }
 

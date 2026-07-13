@@ -67,7 +67,9 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     public EasyConTabControl()
     {
+        SuspendLayout();
         Dock = DockStyle.Fill;
+        Font = new Font("Microsoft YaHei UI", 9F);
         chooseOpenScriptPath = ShowOpenScriptDialog;
         chooseSaveScriptPath = ShowSaveScriptDialog;
         confirmSaveModifiedScript = ShowSaveModifiedDialog;
@@ -131,7 +133,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             ColumnCount = 1,
             RowCount = 3,
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
         root.Controls.Add(CreateOriginalMenu(), 0, 0);
@@ -152,6 +154,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         InitializeOriginalStartupState();
         ApplyTheme();
         ThemeManager.ThemeChanged += ThemeChanged;
+        ResumeLayout(performLayout: true);
     }
 
     protected override void Dispose(bool disposing)
@@ -1415,9 +1418,10 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             Height = 681,
             Dock = DockStyle.Fill,
             BackColor = Color.FromArgb(230, 229, 224),
+            FixedPanel = FixedPanel.Panel2,
             SplitterWidth = 6,
             SplitterDistance = 644,
-            Panel2MinSize = 240,
+            Panel2MinSize = 266,
         };
         mainSplit.Panel1.Controls.Add(CreateContentPanel());
         mainSplit.Panel1.Controls.Add(CreatePageSidebar());
@@ -1575,6 +1579,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
             Dock = DockStyle.Fill,
             BackColor = SystemColors.Control,
             ForeColor = Color.White,
+            Size = new Size(604, 657),
         };
 
         var log = new TextBox
@@ -1689,20 +1694,12 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         panel.Controls.Add(CreateCapturePanel());
         panel.Controls.Add(CreateRecordPanel());
         panel.Controls.Add(CreateControllerPanel());
-        panel.SizeChanged += (_, _) =>
-        {
-            var availableWidth = Math.Max(220, panel.ClientSize.Width - panel.Padding.Horizontal - 20);
-            foreach (Control child in panel.Controls)
-            {
-                child.Width = availableWidth;
-            }
-        };
         return panel;
     }
 
     private static Control CreateRunPanel()
     {
-        var group = CreateOriginalGroupBox("grpScriptRun", "脚本运行", 265, 162);
+        var group = CreateOriginalGroupBox("grpScriptRun", "脚本运行", 228, 162);
         group.Controls.Add(CreateOriginalButton("runStopBtn", "运行脚本", Color.FromArgb(31, 138, 101), Color.White, 8, 22, 206, 55));
         group.Controls.Add(CreateOriginalButton("formatBtn", "格式化", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 85, 206, 30));
         group.Controls.Add(new Label
@@ -1720,7 +1717,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private static Control CreateSerialPanel()
     {
-        var group = CreateOriginalGroupBox("grpDevice", "设备连接", 265, 130);
+        var group = CreateOriginalGroupBox("grpDevice", "设备连接", 228, 130);
         group.Controls.Add(new ComboBox
         {
             Name = "comboComPort",
@@ -1734,7 +1731,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private static Control CreateCapturePanel()
     {
-        var group = CreateOriginalGroupBox("grpVideoSource", "视频源", 265, 150);
+        var group = CreateOriginalGroupBox("grpVideoSource", "视频源", 228, 150);
         group.Controls.Add(new ComboBox
         {
             Name = "comboVideoSource",
@@ -1748,7 +1745,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private static Control CreateRecordPanel()
     {
-        var group = CreateOriginalGroupBox("grpRecord", "录制", 265, 90);
+        var group = CreateOriginalGroupBox("grpRecord", "录制", 228, 90);
         group.Controls.Add(CreateOriginalButton("btnRecord", "录制脚本", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
         var pauseButton = CreateOriginalButton("btnRecordPause", "暂停录制", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28);
         pauseButton.Enabled = false;
@@ -1758,7 +1755,7 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
 
     private static Control CreateControllerPanel()
     {
-        var group = CreateOriginalGroupBox("grpController", "手柄", 265, 90);
+        var group = CreateOriginalGroupBox("grpController", "手柄", 228, 90);
         group.Controls.Add(CreateOriginalButton("btnShowController", "虚拟手柄", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 22, 206, 28));
         group.Controls.Add(CreateOriginalButton("btnKeyMapping", "按键映射", Color.FromArgb(235, 234, 229), Color.FromArgb(38, 37, 30), 8, 54, 206, 28));
         return group;
