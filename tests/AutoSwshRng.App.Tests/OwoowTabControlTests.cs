@@ -6,6 +6,7 @@ using AutoSwshRng.Core.Profiles;
 using AutoSwshRng.Core.Rng;
 using AutoSwshRng.Core.SpreadFinder;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace AutoSwshRng.App.Tests;
@@ -395,13 +396,6 @@ public class OwoowTabControlTests
 
         try
         {
-            Assert.Multiple(() =>
-            {
-                Assert.That(opened.Select(entry => entry.Form.AutoScaleMode),
-                    Is.All.EqualTo(AutoScaleMode.Font));
-                Assert.That(opened.Select(entry => entry.Form.AutoScaleDimensions),
-                    Is.All.EqualTo(new SizeF(7F, 15F)));
-            });
             Assert.That(opened.Select(entry => entry.Form.Text), Is.EqualTo(new[]
             {
                 "Profile Manager",
@@ -443,12 +437,89 @@ public class OwoowTabControlTests
                 opened.SelectMany(entry => DescendantTexts(entry.Form))
                     .Any(text => text.Contains("unimplemented", StringComparison.OrdinalIgnoreCase)),
                 Is.False);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(opened.Select(entry => entry.Form.IsHandleCreated), Is.All.False);
+                Assert.That(opened.Select(entry => entry.Form.AutoScaleMode),
+                    Is.All.EqualTo(AutoScaleMode.Inherit));
+                Assert.That(opened.Select(entry => entry.Form.AutoScaleDimensions),
+                    Is.All.EqualTo(SizeF.Empty));
+            });
+
+            foreach (var entry in opened)
+            {
+                _ = entry.Form.Handle;
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(opened.Select(entry => entry.Form.IsHandleCreated), Is.All.True);
+                Assert.That(opened.Select(entry => entry.Form.AutoScaleMode),
+                    Is.All.EqualTo(AutoScaleMode.Font));
+                Assert.That(opened.Select(entry => entry.Form.AutoScaleDimensions),
+                    Is.EqualTo(opened.Select(entry => entry.Form.CurrentAutoScaleDimensions)));
+            });
         }
         finally
         {
             foreach (var entry in opened)
             {
                 entry.Form.Dispose();
+            }
+        }
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void OwoowProfileManagerScalesChildrenWhenItsHandleIsCreated()
+    {
+        var previousDpiContext = SetThreadDpiAwarenessContext(new IntPtr(-4));
+        try
+        {
+            var doubles = new OwoowServiceDoubles();
+            Form? profileForm = null;
+            using var control = new OwoowTabControl(
+                doubles.Services,
+                (_, _) => { },
+                (form, _) => profileForm = form);
+            FindMenuItem(FindControl<MenuStrip>(control, "MS_SubWindows"), "TSMI_Profiles").PerformClick();
+            using var dialog = profileForm ?? throw new InvalidOperationException("Profile dialog was not opened.");
+
+            dialog.Show();
+            Application.DoEvents();
+
+            var horizontalScale = dialog.CurrentAutoScaleDimensions.Width / 7F;
+            var verticalScale = dialog.CurrentAutoScaleDimensions.Height / 15F;
+            var profileList = FindControl<ListBox>(dialog, "LB_ProfileList");
+            var addButton = FindControl<Button>(dialog, "B_Add");
+            var selectButton = FindControl<Button>(dialog, "B_Select");
+            var selectTextHeight = TextRenderer.MeasureText(selectButton.Text, selectButton.Font).Height;
+            TestContext.Out.WriteLine(
+                $"DPI={dialog.DeviceDpi}; current={dialog.CurrentAutoScaleDimensions}; " +
+                $"client={dialog.ClientSize}; list={profileList.Bounds}; add={addButton.Bounds}; " +
+                $"select={selectButton.Bounds}; textHeight={selectTextHeight}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(dialog.IsHandleCreated, Is.True);
+                Assert.That(profileList.Width,
+                    Is.GreaterThanOrEqualTo((int)Math.Floor(170F * horizontalScale) - 2));
+                Assert.That(addButton.Width,
+                    Is.GreaterThanOrEqualTo((int)Math.Floor(68F * horizontalScale) - 2));
+                Assert.That(selectButton.Width,
+                    Is.GreaterThanOrEqualTo((int)Math.Floor(70F * horizontalScale) - 2));
+                Assert.That(selectButton.Height,
+                    Is.GreaterThanOrEqualTo((int)Math.Floor(25F * verticalScale) - 2));
+                Assert.That(selectButton.ClientSize.Height,
+                    Is.GreaterThanOrEqualTo(selectTextHeight + 4));
+            });
+        }
+        finally
+        {
+            if (previousDpiContext != IntPtr.Zero)
+            {
+                SetThreadDpiAwarenessContext(previousDpiContext);
             }
         }
     }
@@ -1050,11 +1121,13 @@ public class OwoowTabControlTests
         var scrollHost = FindControl<Panel>(control, "owoowScrollHost");
         var canvas = FindControl<Panel>(control, "owoowMainCanvas");
         var results = FindControl<DataGridView>(control, "DGV_Results");
+        var expectedCanvasSize = new Size(
+            Math.Max(canvas.MinimumSize.Width, scrollHost.ClientSize.Width),
+            Math.Max(canvas.MinimumSize.Height, scrollHost.ClientSize.Height));
 
         Assert.Multiple(() =>
         {
-            Assert.That(canvas.Width, Is.GreaterThanOrEqualTo(scrollHost.ClientSize.Width));
-            Assert.That(canvas.Height, Is.GreaterThanOrEqualTo(scrollHost.ClientSize.Height));
+            Assert.That(canvas.Size, Is.EqualTo(expectedCanvasSize));
             Assert.That(results.Right, Is.LessThanOrEqualTo(canvas.ClientSize.Width - 10));
             Assert.That(results.Bottom, Is.LessThanOrEqualTo(canvas.ClientSize.Height - 12));
         });
@@ -1249,6 +1322,9 @@ public class OwoowTabControlTests
             }
         }
     }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
 
     private sealed class OwoowServiceDoubles
     {

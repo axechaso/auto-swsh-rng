@@ -1757,7 +1757,7 @@ internal sealed class OwoowToolWindowFactory
 
     private static Form CreateForm(string name, string title, int width, int height, bool fixedBorder = false)
     {
-        return new Form
+        return new DeferredAutoScaleForm
         {
             Name = name,
             Text = title,
@@ -1767,9 +1767,25 @@ internal sealed class OwoowToolWindowFactory
             FormBorderStyle = fixedBorder ? FormBorderStyle.FixedSingle : FormBorderStyle.Sizable,
             MaximizeBox = !fixedBorder,
             Font = new Font("Segoe UI", 9F),
-            AutoScaleDimensions = new SizeF(7F, 15F),
-            AutoScaleMode = AutoScaleMode.Font,
         };
+    }
+
+    private sealed class DeferredAutoScaleForm : Form
+    {
+        private bool scaleInitialized;
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            if (scaleInitialized)
+            {
+                return;
+            }
+
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            scaleInitialized = true;
+        }
     }
 
     private static DataGridView CreateGrid(string name, IReadOnlyList<string> columns, Rectangle bounds)
