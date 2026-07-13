@@ -395,6 +395,13 @@ public class OwoowTabControlTests
 
         try
         {
+            Assert.Multiple(() =>
+            {
+                Assert.That(opened.Select(entry => entry.Form.AutoScaleMode),
+                    Is.All.EqualTo(AutoScaleMode.Font));
+                Assert.That(opened.Select(entry => entry.Form.AutoScaleDimensions),
+                    Is.All.EqualTo(new SizeF(7F, 15F)));
+            });
             Assert.That(opened.Select(entry => entry.Form.Text), Is.EqualTo(new[]
             {
                 "Profile Manager",

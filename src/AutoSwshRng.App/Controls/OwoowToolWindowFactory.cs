@@ -1767,6 +1767,8 @@ internal sealed class OwoowToolWindowFactory
             FormBorderStyle = fixedBorder ? FormBorderStyle.FixedSingle : FormBorderStyle.Sizable,
             MaximizeBox = !fixedBorder,
             Font = new Font("Segoe UI", 9F),
+            AutoScaleDimensions = new SizeF(7F, 15F),
+            AutoScaleMode = AutoScaleMode.Font,
         };
     }
 
