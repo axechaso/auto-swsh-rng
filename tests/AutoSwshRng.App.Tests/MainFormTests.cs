@@ -73,9 +73,14 @@ public class MainFormTests
             var runStopButton = (Control)FindControl(form, "runStopBtn");
             var expectedScriptRunWidth = (int)Math.Round(228F * scale);
             var expectedRunButtonWidth = (int)Math.Round(206F * scale);
+            var workingArea = Screen.FromHandle(form.Handle).WorkingArea;
+            var expectedLocation = new Point(
+                workingArea.Left + Math.Max(0, (workingArea.Width - form.Width) / 2),
+                workingArea.Top + Math.Max(0, (workingArea.Height - form.Height) / 2));
             TestContext.Out.WriteLine(
                 $"DPI={form.DeviceDpi}; before={clientSizeBeforeHandle}; after={form.ClientSize}; " +
                 $"auto={form.AutoScaleDimensions}/{form.CurrentAutoScaleDimensions}; " +
+                $"bounds={form.Bounds}; work={workingArea}; expectedLocation={expectedLocation}; " +
                 $"group={scriptRunGroup.Bounds}; run={runStopButton.Bounds}");
 
             Assert.Multiple(() =>
@@ -83,8 +88,36 @@ public class MainFormTests
                 Assert.That(form.IsHandleCreated, Is.True);
                 Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Dpi));
                 Assert.That(form.AutoScaleDimensions, Is.EqualTo(form.CurrentAutoScaleDimensions));
-                Assert.That(form.ClientSize.Width, Is.GreaterThanOrEqualTo(expectedClientSize.Width));
-                Assert.That(form.ClientSize.Height, Is.GreaterThanOrEqualTo(expectedClientSize.Height));
+                Assert.That(form.ClientSize.Width,
+                    Is.InRange(expectedClientSize.Width - 2, expectedClientSize.Width + 2));
+                Assert.That(form.ClientSize.Height,
+                    Is.InRange(expectedClientSize.Height - 2, expectedClientSize.Height + 2));
+                Assert.That(scriptRunGroup.Width,
+                    Is.InRange(expectedScriptRunWidth - 2, expectedScriptRunWidth + 2));
+                Assert.That(runStopButton.Width,
+                    Is.InRange(expectedRunButtonWidth - 2, expectedRunButtonWidth + 2));
+                Assert.That(form.Left, Is.InRange(expectedLocation.X - 2, expectedLocation.X + 2));
+                Assert.That(form.Top, Is.InRange(expectedLocation.Y - 2, expectedLocation.Y + 2));
+                Assert.That(form.Left, Is.GreaterThanOrEqualTo(workingArea.Left - 2));
+                Assert.That(form.Top, Is.GreaterThanOrEqualTo(workingArea.Top - 2));
+                if (form.Width <= workingArea.Width)
+                {
+                    Assert.That(form.Right, Is.LessThanOrEqualTo(workingArea.Right + 2));
+                }
+                if (form.Height <= workingArea.Height)
+                {
+                    Assert.That(form.Bottom, Is.LessThanOrEqualTo(workingArea.Bottom + 2));
+                }
+            });
+
+            var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+            mainTabs.SelectedIndex = 1;
+            Application.DoEvents();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(scriptRunGroup.IsHandleCreated, Is.True);
+                Assert.That(runStopButton.IsHandleCreated, Is.True);
                 Assert.That(scriptRunGroup.Width,
                     Is.InRange(expectedScriptRunWidth - 2, expectedScriptRunWidth + 2));
                 Assert.That(runStopButton.Width,
@@ -94,6 +127,11 @@ public class MainFormTests
             var scaledClientSize = form.ClientSize;
             var scaledScriptRunSize = scriptRunGroup.Size;
             var scaledRunButtonSize = runStopButton.Size;
+            var movedLocation = new Point(
+                workingArea.Left + Math.Min(20, Math.Max(0, workingArea.Width - form.Width)),
+                workingArea.Top + Math.Min(20, Math.Max(0, workingArea.Height - form.Height)));
+            form.Location = movedLocation;
+            Application.DoEvents();
             RecreateHandle(form);
             Application.DoEvents();
 
@@ -105,6 +143,7 @@ public class MainFormTests
                 Assert.That(form.ClientSize, Is.EqualTo(scaledClientSize));
                 Assert.That(scriptRunGroup.Size, Is.EqualTo(scaledScriptRunSize));
                 Assert.That(runStopButton.Size, Is.EqualTo(scaledRunButtonSize));
+                Assert.That(form.Location, Is.EqualTo(movedLocation));
             });
         }
         finally

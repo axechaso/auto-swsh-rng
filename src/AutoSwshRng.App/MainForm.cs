@@ -57,9 +57,18 @@ public sealed class MainForm : Form
             return;
         }
 
+        var initialWorkingArea = Screen.FromHandle(Handle).WorkingArea;
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         dpiScaleInitialized = true;
+        CenterInitialWindow(initialWorkingArea);
+    }
+
+    private void CenterInitialWindow(Rectangle workingArea)
+    {
+        var left = workingArea.Left + Math.Max(0, (workingArea.Width - Width) / 2);
+        var top = workingArea.Top + Math.Max(0, (workingArea.Height - Height) / 2);
+        SetBounds(left, top, 0, 0, BoundsSpecified.Location);
     }
 
     private static TabPage CreateControlTab(string title, Control control, bool edgeToEdge = false)
