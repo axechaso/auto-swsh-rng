@@ -6,6 +6,7 @@ namespace AutoSwshRng.App;
 public sealed class MainForm : Form
 {
     private readonly EasyConTabControl easyConTab = new();
+    private bool dpiScaleInitialized;
     private readonly ToolStripStatusLabel currentModuleStatusLabel = new()
     {
         Name = "autoSwshCurrentModuleStatusLabel",
@@ -19,8 +20,6 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Microsoft YaHei UI", 9F);
         MinimumSize = new Size(1040, 680);
         ClientSize = new Size(1310, 760);
@@ -49,6 +48,19 @@ public sealed class MainForm : Form
     }
 
     public IReadOnlyList<string> TabTitles => mainTabs.TabPages.Cast<TabPage>().Select(page => page.Text).ToArray();
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        if (dpiScaleInitialized)
+        {
+            return;
+        }
+
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        dpiScaleInitialized = true;
+    }
 
     private static TabPage CreateControlTab(string title, Control control, bool edgeToEdge = false)
     {

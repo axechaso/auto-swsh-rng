@@ -6,6 +6,7 @@ using EasyCon2.Services;
 using EasyCon2.Theme;
 using System.Collections;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace AutoSwshRng.App.Tests;
@@ -28,6 +29,8 @@ public class MainFormTests
     public void MainFormUsesDpiAwareReplicaViewport()
     {
         using var form = new MainForm();
+        form.Show();
+        Application.DoEvents();
         var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
         var owoowTab = mainTabs.TabPages
             .Cast<TabPage>()
@@ -39,6 +42,78 @@ public class MainFormTests
             Assert.That(form.ClientSize.Width, Is.GreaterThanOrEqualTo(1278));
             Assert.That(owoowTab.Padding, Is.EqualTo(Padding.Empty));
         });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void MainFormScalesLogicalViewportAfterPerMonitorHandleCreation()
+    {
+        var previousDpiContext = SetThreadDpiAwarenessContext(new IntPtr(-4));
+        try
+        {
+            using var form = new MainForm();
+            var clientSizeBeforeHandle = form.ClientSize;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(form.IsHandleCreated, Is.False);
+                Assert.That(clientSizeBeforeHandle, Is.EqualTo(new Size(1310, 760)));
+                Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Inherit));
+                Assert.That(form.AutoScaleDimensions, Is.EqualTo(SizeF.Empty));
+            });
+
+            form.Show();
+            Application.DoEvents();
+
+            var scale = form.DeviceDpi / 96F;
+            var expectedClientSize = new Size(
+                (int)Math.Floor(1310F * scale),
+                (int)Math.Floor(760F * scale));
+            var scriptRunGroup = (Control)FindControl(form, "grpScriptRun");
+            var runStopButton = (Control)FindControl(form, "runStopBtn");
+            var expectedScriptRunWidth = (int)Math.Round(228F * scale);
+            var expectedRunButtonWidth = (int)Math.Round(206F * scale);
+            TestContext.Out.WriteLine(
+                $"DPI={form.DeviceDpi}; before={clientSizeBeforeHandle}; after={form.ClientSize}; " +
+                $"auto={form.AutoScaleDimensions}/{form.CurrentAutoScaleDimensions}; " +
+                $"group={scriptRunGroup.Bounds}; run={runStopButton.Bounds}");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(form.IsHandleCreated, Is.True);
+                Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Dpi));
+                Assert.That(form.AutoScaleDimensions, Is.EqualTo(form.CurrentAutoScaleDimensions));
+                Assert.That(form.ClientSize.Width, Is.GreaterThanOrEqualTo(expectedClientSize.Width));
+                Assert.That(form.ClientSize.Height, Is.GreaterThanOrEqualTo(expectedClientSize.Height));
+                Assert.That(scriptRunGroup.Width,
+                    Is.InRange(expectedScriptRunWidth - 2, expectedScriptRunWidth + 2));
+                Assert.That(runStopButton.Width,
+                    Is.InRange(expectedRunButtonWidth - 2, expectedRunButtonWidth + 2));
+            });
+
+            var scaledClientSize = form.ClientSize;
+            var scaledScriptRunSize = scriptRunGroup.Size;
+            var scaledRunButtonSize = runStopButton.Size;
+            RecreateHandle(form);
+            Application.DoEvents();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(form.IsHandleCreated, Is.True);
+                Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Dpi));
+                Assert.That(form.AutoScaleDimensions, Is.EqualTo(form.CurrentAutoScaleDimensions));
+                Assert.That(form.ClientSize, Is.EqualTo(scaledClientSize));
+                Assert.That(scriptRunGroup.Size, Is.EqualTo(scaledScriptRunSize));
+                Assert.That(runStopButton.Size, Is.EqualTo(scaledRunButtonSize));
+            });
+        }
+        finally
+        {
+            if (previousDpiContext != IntPtr.Zero)
+            {
+                SetThreadDpiAwarenessContext(previousDpiContext);
+            }
+        }
     }
 
     [Test]
@@ -2687,6 +2762,17 @@ public class MainFormTests
         target.GetType().GetMethod("OnDropDown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .Invoke(target, [EventArgs.Empty]);
     }
+
+    private static void RecreateHandle(Control control)
+    {
+        typeof(Control).GetMethod(
+                "RecreateHandle",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(control, []);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
 
     private sealed class RestoreAction(Action restore) : IDisposable
     {
