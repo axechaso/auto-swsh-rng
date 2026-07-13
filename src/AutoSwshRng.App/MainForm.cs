@@ -6,6 +6,7 @@ namespace AutoSwshRng.App;
 public sealed class MainForm : Form
 {
     private readonly EasyConTabControl easyConTab = new();
+    private readonly OwoowTabControl owoowTab = new();
     private bool dpiScaleInitialized;
     private readonly ToolStripStatusLabel currentModuleStatusLabel = new()
     {
@@ -26,7 +27,7 @@ public sealed class MainForm : Form
         Text = $"{ProjectInfo.Name} - {ProjectInfo.Description}";
         StartPosition = FormStartPosition.CenterScreen;
 
-        mainTabs.TabPages.Add(CreateControlTab("owoow", new OwoowTabControl(), edgeToEdge: true));
+        mainTabs.TabPages.Add(CreateControlTab("owoow", owoowTab, edgeToEdge: true));
         mainTabs.TabPages.Add(CreateControlTab("伊机控", easyConTab, edgeToEdge: true));
         mainTabs.TabPages.Add(CreateControlTab("自动化流程", new AutomationFlowTabControl()));
         mainTabs.SelectedIndexChanged += (_, _) => UpdateCurrentModuleStatus();
@@ -58,10 +59,28 @@ public sealed class MainForm : Form
         }
 
         var initialWorkingArea = Screen.FromHandle(Handle).WorkingArea;
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
-        dpiScaleInitialized = true;
+        var owoowPage = (TabPage)owoowTab.Parent!;
+        owoowPage.SuspendLayout();
+        owoowPage.Controls.Remove(owoowTab);
+        try
+        {
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            dpiScaleInitialized = true;
+        }
+        finally
+        {
+            owoowPage.Controls.Add(owoowTab);
+            owoowPage.ResumeLayout(true);
+        }
         CenterInitialWindow(initialWorkingArea);
+        PerformLayout();
+        mainTabs.Parent?.PerformLayout();
+        mainTabs.PerformLayout();
+        foreach (TabPage page in mainTabs.TabPages)
+        {
+            page.PerformLayout();
+        }
     }
 
     private void CenterInitialWindow(Rectangle workingArea)

@@ -52,6 +52,14 @@ public class MainFormTests
         try
         {
             using var form = new MainForm();
+            var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+            var owoowPage = mainTabs.TabPages[0];
+            var owoowControl = owoowPage.Controls.Cast<Control>().Single();
+            var canvas = (Panel)FindControl(form, "owoowMainCanvas");
+            var owoowHandleCreated = 0;
+            var owoowHandleDestroyed = 0;
+            owoowControl.HandleCreated += (_, _) => owoowHandleCreated++;
+            owoowControl.HandleDestroyed += (_, _) => owoowHandleDestroyed++;
             var clientSizeBeforeHandle = form.ClientSize;
 
             Assert.Multiple(() =>
@@ -60,6 +68,7 @@ public class MainFormTests
                 Assert.That(clientSizeBeforeHandle, Is.EqualTo(new Size(1310, 760)));
                 Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Inherit));
                 Assert.That(form.AutoScaleDimensions, Is.EqualTo(SizeF.Empty));
+                Assert.That(owoowControl.IsHandleCreated, Is.False);
             });
 
             form.Show();
@@ -71,6 +80,11 @@ public class MainFormTests
                 (int)Math.Floor(760F * scale));
             var scriptRunGroup = (Control)FindControl(form, "grpScriptRun");
             var runStopButton = (Control)FindControl(form, "runStopBtn");
+            var owoowDisplayRectangle = owoowPage.DisplayRectangle;
+            var easyConPage = mainTabs.TabPages[1];
+            var easyConControl = easyConPage.Controls.Cast<Control>().Single();
+            var easyConDisplayRectangleBeforeHandle = easyConPage.DisplayRectangle;
+            var easyConBoundsBeforeHandle = easyConControl.Bounds;
             var expectedScriptRunWidth = (int)Math.Round(228F * scale);
             var expectedRunButtonWidth = (int)Math.Round(206F * scale);
             var workingArea = Screen.FromHandle(form.Handle).WorkingArea;
@@ -110,12 +124,44 @@ public class MainFormTests
                 }
             });
 
-            var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+            var scrollHost = (Panel)FindControl(form, "owoowScrollHost");
+            var owoowScaleDimensions = ((ContainerControl)owoowControl).CurrentAutoScaleDimensions;
+            var expectedCanvasMinimumSize = new Size(
+                (int)Math.Round(1278F * owoowScaleDimensions.Width / 7F),
+                (int)Math.Round(676F * owoowScaleDimensions.Height / 15F));
+            var expectedCanvasSize = new Size(
+                Math.Max(canvas.MinimumSize.Width, scrollHost.ClientSize.Width),
+                Math.Max(canvas.MinimumSize.Height, scrollHost.ClientSize.Height));
+            var owoowHorizontalScrollVisible = scrollHost.HorizontalScroll.Visible;
+
             mainTabs.SelectedIndex = 1;
             Application.DoEvents();
+            var easyConDisplayRectangle = easyConPage.DisplayRectangle;
+            TestContext.Out.WriteLine(
+                $"tabs={mainTabs.DisplayRectangle}; owoowPage={owoowDisplayRectangle}; " +
+                $"owoow={owoowControl.Bounds}/{owoowControl.ClientSize}; " +
+                $"scroll={scrollHost.ClientSize}/H={owoowHorizontalScrollVisible}; " +
+                $"canvas={canvas.Size}/{canvas.MinimumSize}; " +
+                $"easyPage={easyConDisplayRectangle}; easy={easyConControl.Bounds}/{easyConControl.ClientSize}");
 
             Assert.Multiple(() =>
             {
+                Assert.That(owoowControl.IsHandleCreated, Is.True);
+                Assert.That(owoowHandleCreated, Is.EqualTo(1));
+                Assert.That(owoowHandleDestroyed, Is.Zero);
+                Assert.That(owoowPage.Controls.Cast<Control>().Single(), Is.SameAs(owoowControl));
+                Assert.That(owoowControl.Dock, Is.EqualTo(DockStyle.Fill));
+                Assert.That(owoowControl.Bounds, Is.EqualTo(owoowDisplayRectangle));
+                Assert.That(owoowControl.ClientSize, Is.EqualTo(owoowDisplayRectangle.Size));
+                Assert.That(canvas.MinimumSize, Is.EqualTo(expectedCanvasMinimumSize));
+                Assert.That(owoowHorizontalScrollVisible,
+                    Is.EqualTo(canvas.MinimumSize.Width > scrollHost.ClientSize.Width));
+                Assert.That(canvas.Size, Is.EqualTo(expectedCanvasSize));
+                Assert.That(easyConControl.IsHandleCreated, Is.True);
+                Assert.That(easyConControl.Dock, Is.EqualTo(DockStyle.Fill));
+                Assert.That(easyConBoundsBeforeHandle, Is.EqualTo(easyConDisplayRectangleBeforeHandle));
+                Assert.That(easyConControl.Bounds, Is.EqualTo(easyConDisplayRectangle));
+                Assert.That(easyConControl.ClientSize, Is.EqualTo(easyConDisplayRectangle.Size));
                 Assert.That(scriptRunGroup.IsHandleCreated, Is.True);
                 Assert.That(runStopButton.IsHandleCreated, Is.True);
                 Assert.That(scriptRunGroup.Width,
