@@ -25,6 +25,24 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void MainFormUsesDpiAwareReplicaViewport()
+    {
+        using var form = new MainForm();
+        var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+        var owoowTab = mainTabs.TabPages
+            .Cast<TabPage>()
+            .Single(page => page.Text == "owoow");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Dpi));
+            Assert.That(form.ClientSize.Width, Is.GreaterThanOrEqualTo(1278));
+            Assert.That(owoowTab.Padding, Is.EqualTo(Padding.Empty));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void MainFormShowsIntegratedShellStatusForSelectedTopLevelTab()
     {
         using var form = new MainForm();

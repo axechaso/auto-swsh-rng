@@ -19,12 +19,15 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Font = new Font("Microsoft YaHei UI", 9F);
+        MinimumSize = new Size(1040, 680);
+        ClientSize = new Size(1310, 760);
         Text = $"{ProjectInfo.Name} - {ProjectInfo.Description}";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(960, 640);
-        Size = new Size(1120, 720);
 
-        mainTabs.TabPages.Add(CreateControlTab("owoow", new OwoowTabControl()));
+        mainTabs.TabPages.Add(CreateControlTab("owoow", new OwoowTabControl(), edgeToEdge: true));
         mainTabs.TabPages.Add(CreateControlTab("伊机控", easyConTab, edgeToEdge: true));
         mainTabs.TabPages.Add(CreateControlTab("自动化流程", new AutomationFlowTabControl()));
         mainTabs.SelectedIndexChanged += (_, _) => UpdateCurrentModuleStatus();
