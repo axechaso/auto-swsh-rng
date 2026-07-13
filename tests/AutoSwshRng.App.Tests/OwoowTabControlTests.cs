@@ -1129,14 +1129,16 @@ public class OwoowTabControlTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void OwoowMainRestoresPinnedFontScaleContract()
+    public void OwoowMainUsesDpiScaleWithoutFontHeightInflation()
     {
         using var control = new OwoowTabControl();
 
         Assert.Multiple(() =>
         {
-            Assert.That(control.AutoScaleMode, Is.EqualTo(AutoScaleMode.Font));
-            Assert.That(control.AutoScaleDimensions, Is.EqualTo(new SizeF(7F, 15F)));
+            Assert.That(control.AutoScaleMode, Is.EqualTo(AutoScaleMode.Dpi));
+            Assert.That(control.AutoScaleDimensions, Is.EqualTo(control.CurrentAutoScaleDimensions));
+            Assert.That(control.AutoScaleDimensions.Width, Is.EqualTo(control.AutoScaleDimensions.Height));
+            Assert.That(control.AutoScaleDimensions.Width, Is.GreaterThanOrEqualTo(96F));
             Assert.That(FindControl<MenuStrip>(control, "MS_SubWindows").AutoSize, Is.True);
         });
     }
@@ -1256,21 +1258,70 @@ public class OwoowTabControlTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void OwoowMainResultGridMatchesPinnedColumnOrder()
+    public void OwoowRetailControlsKeepVisibleTextInsidePinnedPanel()
     {
         using var control = new OwoowTabControl();
 
-        var headers = FindControl<DataGridView>(control, "DGV_Results")
-            .Columns
-            .Cast<DataGridViewColumn>()
-            .Select(column => column.HeaderText);
+        var generate = FindControl<Button>(control, "B_GenerateRetailPattern");
+        var animations = FindControl<Label>(control, "L_Animations");
+        var advances = FindControl<Label>(control, "L_RetailAdvances");
 
-        Assert.That(headers, Is.EqualTo(new[]
+        Assert.Multiple(() =>
         {
-            "Advances", "Jump", "Step", "Animation", "Species", "Shiny", "Brilliant", "Level",
-            "Ability", "Nature", "Gender", "HP", "Atk", "Def", "SpA", "SpD", "Spe", "Mark",
-            "EC", "PID", "Height", "Item", "Egg Move", "Seed0", "Seed1",
-        }));
+            Assert.That(
+                generate.ClientSize.Width,
+                Is.GreaterThanOrEqualTo(TextRenderer.MeasureText(generate.Text, generate.Font).Width + 4));
+            Assert.That(animations.Text, Is.EqualTo("Anim.:"));
+            Assert.That(advances.Text, Is.EqualTo("Adv.:"));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void OwoowMainResultGridMatchesPinnedColumnOrder()
+    {
+        using var control = new OwoowTabControl();
+        using var host = new Form { ClientSize = new Size(1600, 900) };
+        host.Controls.Add(control);
+        host.Show();
+        Application.DoEvents();
+
+        var grid = FindControl<DataGridView>(control, "DGV_Results");
+        var headers = grid.Columns
+            .Cast<DataGridViewColumn>()
+            .Select(column => column.HeaderText)
+            .ToArray();
+        var baseWidths = new[]
+        {
+            83, 61, 55, 88, 71, 61, 72, 59, 66, 68, 70, 48, 50, 50, 53, 53, 51,
+            59, 46, 50, 68, 56, 85, 63, 63,
+        };
+        var expectedWidths = baseWidths
+            .Select(width => (int)Math.Round(width * (grid.DeviceDpi / 96F)))
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(headers, Is.EqualTo(new[]
+            {
+                "Advances", "Jump", "Step", "Animation", "Species", "Shiny", "Brilliant", "Level",
+                "Ability", "Nature", "Gender", "HP", "Atk", "Def", "SpA", "SpD", "Spe", "Mark",
+                "EC", "PID", "Height", "Item", "Egg Move", "Seed0", "Seed1",
+            }));
+            Assert.That(
+                grid.Columns.Cast<DataGridViewColumn>().Select(column => column.Width),
+                Is.EqualTo(expectedWidths));
+            Assert.That(grid.BackgroundColor, Is.Not.EqualTo(SystemColors.AppWorkspace));
+            Assert.That(grid.AlternatingRowsDefaultCellStyle.BackColor, Is.Not.EqualTo(Color.Empty));
+            Assert.That(grid.EnableHeadersVisualStyles, Is.False);
+        });
+
+        RecreateHandle(grid);
+        Application.DoEvents();
+
+        Assert.That(
+            grid.Columns.Cast<DataGridViewColumn>().Select(column => column.Width),
+            Is.EqualTo(expectedWidths));
     }
 
     [Test]

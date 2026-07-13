@@ -26,6 +26,164 @@ public class MainFormTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void MainFormWrapsExistingModulesInBrandedWorkbenchShell()
+    {
+        using var form = new MainForm();
+
+        var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+        var header = (Control)FindControl(form, "autoSwshHeader");
+        var brand = (Control)FindControl(form, "autoSwshBrandTitle");
+        var owoowNavigation = (RadioButton)FindControl(form, "autoSwshNavOwoow");
+        var easyConNavigation = (RadioButton)FindControl(form, "autoSwshNavEasyCon");
+        var automationNavigation = (RadioButton)FindControl(form, "autoSwshNavAutomation");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(form.Icon, Is.Not.Null);
+            Assert.That(header.BackColor, Is.Not.EqualTo(SystemColors.Control));
+            Assert.That(GetProperty<string>(brand, "Text"), Is.EqualTo("AUTO · SWSH RNG"));
+            Assert.That(mainTabs.Appearance, Is.EqualTo(TabAppearance.FlatButtons));
+            Assert.That(mainTabs.ItemSize.Height, Is.EqualTo(1));
+            Assert.That(owoowNavigation.AccessibleRole, Is.EqualTo(AccessibleRole.PageTab));
+            Assert.That(easyConNavigation.AccessibleRole, Is.EqualTo(AccessibleRole.PageTab));
+            Assert.That(automationNavigation.AccessibleRole, Is.EqualTo(AccessibleRole.PageTab));
+            Assert.That(owoowNavigation.Checked, Is.True);
+            Assert.That(easyConNavigation.Checked, Is.False);
+            Assert.That(automationNavigation.Checked, Is.False);
+            Assert.That(owoowNavigation.FlatAppearance.CheckedBackColor, Is.EqualTo(owoowNavigation.BackColor));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void MainFormModuleNavigationKeepsDpiScaledFontMetricsWhenSelectionChanges()
+    {
+        using var form = new MainForm();
+        form.Show();
+        Application.DoEvents();
+        var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+        var navigation = new[]
+        {
+            (ButtonBase)FindControl(form, "autoSwshNavOwoow"),
+            (ButtonBase)FindControl(form, "autoSwshNavEasyCon"),
+            (ButtonBase)FindControl(form, "autoSwshNavAutomation"),
+        };
+        var scaledFontSizes = navigation.Select(button => button.Font.SizeInPoints).ToArray();
+        var scaledFontHeights = navigation.Select(button => button.Font.Height).ToArray();
+
+        mainTabs.SelectedIndex = 1;
+        Application.DoEvents();
+
+        Assert.That(
+            navigation.Select(button => button.Font.SizeInPoints),
+            Is.EqualTo(scaledFontSizes).Within(0.01F));
+        Assert.That(
+            navigation.Select(button => button.Font.Height),
+            Is.EqualTo(scaledFontHeights));
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void MainFormModuleNavigationSupportsArrowKeys()
+    {
+        using var form = new MainForm();
+        form.Show();
+        Application.DoEvents();
+        var mainTabs = (TabControl)FindControl(form, "autoSwshMainTabs");
+        var owoowNavigation = (RadioButton)FindControl(form, "autoSwshNavOwoow");
+        var easyConNavigation = (RadioButton)FindControl(form, "autoSwshNavEasyCon");
+
+        owoowNavigation.Focus();
+        typeof(Control).GetMethod(
+                "OnKeyDown",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(owoowNavigation, [new KeyEventArgs(Keys.Right)]);
+        Application.DoEvents();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(mainTabs.SelectedIndex, Is.EqualTo(1));
+            Assert.That(easyConNavigation.Focused, Is.True);
+            Assert.That(easyConNavigation.Checked, Is.True);
+        });
+    }
+
+    [Test]
+    public void MainFormClampsOversizedInitialWindowToWorkingArea()
+    {
+        var method = typeof(MainForm).GetMethod(
+            "CalculateInitialBounds",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        Assert.That(method, Is.Not.Null);
+        var workingArea = new Rectangle(0, 0, 1366, 728);
+        var bounds = (Rectangle)method!.Invoke(null, [new Size(1987, 1196), workingArea])!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(workingArea.Left));
+            Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(workingArea.Top));
+            Assert.That(bounds.Right, Is.LessThanOrEqualTo(workingArea.Right));
+            Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(workingArea.Bottom));
+            Assert.That(bounds.Width, Is.LessThan(1987));
+            Assert.That(bounds.Height, Is.LessThan(1196));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void MainFormFitsBoundsAndMinimumSizeToSmallWorkingArea()
+    {
+        using var form = new MainForm();
+        var method = typeof(MainForm).GetMethod(
+            "FitInitialWindow",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var workingArea = new Rectangle(100, 80, 1366, 728);
+        var desiredSize = form.Size;
+        var initialMinimumSize = form.MinimumSize;
+        var available = new Rectangle(
+            workingArea.Left + 12,
+            workingArea.Top + 12,
+            workingArea.Width - 24,
+            workingArea.Height - 24);
+        var expectedSize = new Size(
+            Math.Min(desiredSize.Width, available.Width),
+            Math.Min(desiredSize.Height, available.Height));
+        var expectedBounds = new Rectangle(
+            available.Left + ((available.Width - expectedSize.Width) / 2),
+            available.Top + ((available.Height - expectedSize.Height) / 2),
+            expectedSize.Width,
+            expectedSize.Height);
+        var expectedMinimumSize = new Size(
+            Math.Min(initialMinimumSize.Width, expectedBounds.Width),
+            Math.Min(initialMinimumSize.Height, expectedBounds.Height));
+
+        Assert.That(method, Is.Not.Null);
+        method!.Invoke(form, [workingArea]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(form.Bounds, Is.EqualTo(expectedBounds));
+            Assert.That(form.MinimumSize, Is.EqualTo(expectedMinimumSize));
+            Assert.That(workingArea.Contains(form.Bounds), Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void EasyConClearLogButtonHasVisibleContent()
+    {
+        using var form = new MainForm();
+
+        var clearLog = (Button)FindControl(form, "clsLogBtn");
+
+        Assert.That(
+            !string.IsNullOrWhiteSpace(clearLog.Text) || clearLog.Image is not null || clearLog.BackgroundImage is not null,
+            Is.True);
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void MainFormUsesDpiAwareReplicaViewport()
     {
         using var form = new MainForm();
@@ -102,10 +260,18 @@ public class MainFormTests
                 Assert.That(form.IsHandleCreated, Is.True);
                 Assert.That(form.AutoScaleMode, Is.EqualTo(AutoScaleMode.Dpi));
                 Assert.That(form.AutoScaleDimensions, Is.EqualTo(form.CurrentAutoScaleDimensions));
-                Assert.That(form.ClientSize.Width,
-                    Is.InRange(expectedClientSize.Width - 2, expectedClientSize.Width + 2));
-                Assert.That(form.ClientSize.Height,
-                    Is.InRange(expectedClientSize.Height - 2, expectedClientSize.Height + 2));
+                Assert.That(form.ClientSize.Width, Is.LessThanOrEqualTo(expectedClientSize.Width + 2));
+                Assert.That(form.ClientSize.Height, Is.LessThanOrEqualTo(expectedClientSize.Height + 2));
+                if (form.Width < workingArea.Width - 24)
+                {
+                    Assert.That(form.ClientSize.Width,
+                        Is.InRange(expectedClientSize.Width - 2, expectedClientSize.Width + 2));
+                }
+                if (form.Height < workingArea.Height - 24)
+                {
+                    Assert.That(form.ClientSize.Height,
+                        Is.InRange(expectedClientSize.Height - 2, expectedClientSize.Height + 2));
+                }
                 Assert.That(scriptRunGroup.Width,
                     Is.InRange(expectedScriptRunWidth - 2, expectedScriptRunWidth + 2));
                 Assert.That(runStopButton.Width,
@@ -125,10 +291,10 @@ public class MainFormTests
             });
 
             var scrollHost = (Panel)FindControl(form, "owoowScrollHost");
-            var owoowScaleDimensions = ((ContainerControl)owoowControl).CurrentAutoScaleDimensions;
+            var owoowDpiScale = owoowControl.DeviceDpi / 96F;
             var expectedCanvasMinimumSize = new Size(
-                (int)Math.Round(1278F * owoowScaleDimensions.Width / 7F),
-                (int)Math.Round(676F * owoowScaleDimensions.Height / 15F));
+                (int)Math.Round(1278F * owoowDpiScale),
+                (int)Math.Round(676F * owoowDpiScale));
             var expectedCanvasSize = new Size(
                 Math.Max(canvas.MinimumSize.Width, scrollHost.ClientSize.Width),
                 Math.Max(canvas.MinimumSize.Height, scrollHost.ClientSize.Height));
@@ -155,10 +321,12 @@ public class MainFormTests
                 Assert.That(owoowControl.ClientSize, Is.EqualTo(owoowDisplayRectangle.Size));
                 Assert.That(canvas.MinimumSize, Is.EqualTo(expectedCanvasMinimumSize));
                 AssertDefaultOwoowHorizontalScroll(
-                    form,
                     scrollHost,
                     canvas,
                     owoowHorizontalScrollVisible);
+                Assert.That(
+                    scrollHost.VerticalScroll.Visible,
+                    Is.EqualTo(canvas.MinimumSize.Height > scrollHost.ClientSize.Height));
                 Assert.That(canvas.Size, Is.EqualTo(expectedCanvasSize));
                 Assert.That(easyConControl.IsHandleCreated, Is.True);
                 Assert.That(easyConControl.Dock, Is.EqualTo(DockStyle.Fill));
@@ -202,7 +370,6 @@ public class MainFormTests
                 Assert.That(owoowControl.Bounds, Is.EqualTo(owoowPage.DisplayRectangle));
                 Assert.That(canvas.MinimumSize, Is.EqualTo(expectedCanvasMinimumSize));
                 AssertDefaultOwoowHorizontalScroll(
-                    form,
                     scrollHost,
                     canvas,
                     scrollHost.HorizontalScroll.Visible);
@@ -226,6 +393,7 @@ public class MainFormTests
         form.Show();
         var mainTabs = FindControl(form, "autoSwshMainTabs");
         var status = FindControl(form, "autoSwshStatusStrip");
+        var easyConNavigation = (RadioButton)FindControl(form, "autoSwshNavEasyCon");
 
         Assert.Multiple(() =>
         {
@@ -234,11 +402,16 @@ public class MainFormTests
             Assert.That(GetProperty<string>(FindToolStripItem(status, "autoSwshCurrentModuleStatusLabel"), "Text"), Is.EqualTo("当前：owoow"));
         });
 
-        SetProperty(mainTabs, "SelectedIndex", 1);
+        easyConNavigation.PerformClick();
 
-        Assert.That(
-            GetProperty<string>(FindToolStripItem(status, "autoSwshCurrentModuleStatusLabel"), "Text"),
-            Is.EqualTo("当前：伊机控"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(GetProperty<int>(mainTabs, "SelectedIndex"), Is.EqualTo(1));
+            Assert.That(
+                GetProperty<string>(FindToolStripItem(status, "autoSwshCurrentModuleStatusLabel"), "Text"),
+                Is.EqualTo("当前：伊机控"));
+            Assert.That(easyConNavigation.Checked, Is.True);
+        });
     }
 
     [Test]
@@ -2874,18 +3047,10 @@ public class MainFormTests
     }
 
     private static void AssertDefaultOwoowHorizontalScroll(
-        Form form,
         Panel scrollHost,
         Panel canvas,
         bool horizontalScrollVisible)
     {
-        if (form.DeviceDpi > 96)
-        {
-            Assert.That(canvas.MinimumSize.Width, Is.LessThanOrEqualTo(scrollHost.ClientSize.Width));
-            Assert.That(horizontalScrollVisible, Is.False);
-            return;
-        }
-
         Assert.That(horizontalScrollVisible,
             Is.EqualTo(canvas.MinimumSize.Width > scrollHost.ClientSize.Width));
     }

@@ -11,6 +11,11 @@ public sealed class OwoowTabControl : UserControl
 {
     private const int CanvasWidth = 1278;
     private const int CanvasHeight = 676;
+    private static readonly int[] ResultColumnWidths =
+    [
+        83, 61, 55, 88, 71, 61, 72, 59, 66, 68, 70, 48, 50, 50, 53, 53, 51,
+        59, 46, 50, 68, 56, 85, 63, 63,
+    ];
     private static readonly IReadOnlyDictionary<string, string> SpecialToolPrefixes =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -64,6 +69,8 @@ public sealed class OwoowTabControl : UserControl
         SuspendLayout();
         Dock = DockStyle.Fill;
         Font = new Font("Segoe UI", 9F);
+        ForeColor = AppVisualTheme.Ink;
+        BackColor = AppVisualTheme.Workspace;
 
         var scrollHost = new Panel
         {
@@ -71,7 +78,7 @@ public sealed class OwoowTabControl : UserControl
             Dock = DockStyle.Fill,
             AutoScroll = true,
             AutoScrollMinSize = new Size(CanvasWidth, CanvasHeight),
-            BackColor = SystemColors.Control,
+            BackColor = AppVisualTheme.Workspace,
         };
 
         var canvas = new Panel
@@ -80,6 +87,7 @@ public sealed class OwoowTabControl : UserControl
             Location = Point.Empty,
             Size = new Size(CanvasWidth, CanvasHeight),
             MinimumSize = new Size(CanvasWidth, CanvasHeight),
+            BackColor = AppVisualTheme.Workspace,
         };
         canvas.Controls.Add(CreateResultsGrid());
         canvas.Controls.Add(CreateSeedControlsContainer());
@@ -91,10 +99,16 @@ public sealed class OwoowTabControl : UserControl
             canvas.Size = new Size(
                 Math.Max(canvas.MinimumSize.Width, scrollHost.ClientSize.Width),
                 Math.Max(canvas.MinimumSize.Height, scrollHost.ClientSize.Height));
+            var seedControls = canvas.Controls["GB_SeedControlsContainer"];
+            if (seedControls is not null)
+            {
+                seedControls.Left = Math.Max(0, (canvas.ClientSize.Width - seedControls.Width) / 2);
+            }
         }
         scrollHost.ClientSizeChanged += (_, _) => ResizeCanvasToViewport();
         scrollHost.HandleCreated += (_, _) => ResizeCanvasToViewport();
         Controls.Add(scrollHost);
+        AppVisualTheme.ApplyOwoowTheme(this);
 
         WireConnectionActions();
         WireEncounterActions();
@@ -103,8 +117,8 @@ public sealed class OwoowTabControl : UserControl
         WireRetailActions();
         WireToolWindowActions();
         this.services.Connection.StatusChanged += ConnectionStatusChanged;
-        AutoScaleDimensions = new SizeF(7F, 15F);
-        AutoScaleMode = AutoScaleMode.Font;
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         ResumeLayout(false);
     }
 
@@ -130,6 +144,15 @@ public sealed class OwoowTabControl : UserControl
         }
 
         base.Dispose(disposing);
+    }
+
+    protected override void OnDpiChangedAfterParent(EventArgs e)
+    {
+        base.OnDpiChangedAfterParent(e);
+        if (Controls.Find("DGV_Results", true).FirstOrDefault() is DataGridView grid)
+        {
+            ApplyResultColumnScale(grid);
+        }
     }
 
     private void WireConnectionActions()
@@ -1377,7 +1400,10 @@ public sealed class OwoowTabControl : UserControl
         {
             Name = "MS_SubWindows",
             Dock = DockStyle.Top,
-            BackColor = SystemColors.ButtonFace,
+            BackColor = AppVisualTheme.Surface,
+            ForeColor = AppVisualTheme.Ink,
+            Font = AppVisualTheme.UiSemiboldFont,
+            Renderer = AppVisualTheme.CreateLightToolStripRenderer(),
             AutoSize = true,
         };
 
@@ -1395,7 +1421,11 @@ public sealed class OwoowTabControl : UserControl
             ("TSMI_XoroshiroTools", "Xoroshiro Tools"),
         })
         {
-            menu.Items.Add(new ToolStripMenuItem(text) { Name = name });
+            menu.Items.Add(new ToolStripMenuItem(text)
+            {
+                Name = name,
+                ForeColor = AppVisualTheme.Ink,
+            });
         }
 
         return menu;
@@ -1624,20 +1654,28 @@ public sealed class OwoowTabControl : UserControl
     private static GroupBox CreateWildViewGroup()
     {
         var group = CreateGroup("GB_WildView", string.Empty, 861, 0, 194, 321);
-        group.Controls.Add(new PictureBox
+        var pokemonSprite = new PictureBox
         {
             Name = "PB_PokemonSprite",
             Location = new Point(64, 203),
             Size = new Size(64, 64),
             SizeMode = PictureBoxSizeMode.CenterImage,
-        });
-        group.Controls.Add(new PictureBox
+            BackColor = AppVisualTheme.AccentSoft,
+            AccessibleName = "宝可梦图像占位",
+        };
+        var markSprite = new PictureBox
         {
             Name = "PB_MarkSprite",
             Location = new Point(127, 219),
             Size = new Size(48, 48),
             SizeMode = PictureBoxSizeMode.CenterImage,
-        });
+            BackColor = AppVisualTheme.SurfaceMuted,
+            AccessibleName = "证章图像占位",
+        };
+        ConfigureSpritePlaceholder(pokemonSprite, "PKM");
+        ConfigureSpritePlaceholder(markSprite, "MARK");
+        group.Controls.Add(pokemonSprite);
+        group.Controls.Add(markSprite);
         group.Controls.Add(new TextBox
         {
             Name = "TB_Wild",
@@ -1646,6 +1684,8 @@ public sealed class OwoowTabControl : UserControl
             Multiline = true,
             ReadOnly = true,
             ScrollBars = ScrollBars.Vertical,
+            Text = "No encounter loaded." + Environment.NewLine +
+                "Connect, then read the current encounter.",
         });
         group.Controls.Add(CreateButton("B_ReadEncounter", "Read Encounter", 4, 267, 183, enabled: false));
         group.Controls.Add(CreateButton("B_CopyToFilter", "Copy to Filter", 4, 294, 183, enabled: false));
@@ -1671,11 +1711,11 @@ public sealed class OwoowTabControl : UserControl
         group.Controls.Add(CreateLabel("L_RetailInitial", "Initial:", 6, 54, 64));
         group.Controls.Add(CreateTextBox("TB_RetailInitial", "0", 74, 51, 132));
         group.Controls.Add(CreateLabel("L_RetailRange", "+", 6, 80, 64));
-        group.Controls.Add(CreateTextBox("TB_RetailRange", "99999", 74, 77, 72));
-        group.Controls.Add(CreateButton("B_GenerateRetailPattern", "Generate", 150, 76, 56));
-        group.Controls.Add(CreateLabel("L_Animations", "Animations:", 6, 106, 64));
+        group.Controls.Add(CreateTextBox("TB_RetailRange", "99999", 74, 77, 58));
+        group.Controls.Add(CreateButton("B_GenerateRetailPattern", "Generate", 136, 76, 70));
+        group.Controls.Add(CreateLabel("L_Animations", "Anim.:", 6, 106, 64));
         group.Controls.Add(CreateTextBox("TB_Animations", string.Empty, 74, 103, 132));
-        group.Controls.Add(CreateLabel("L_RetailAdvances", "Advances:", 6, 132, 64));
+        group.Controls.Add(CreateLabel("L_RetailAdvances", "Adv.:", 6, 132, 64));
         group.Controls.Add(CreateTextBox("TB_RetailAdvances", string.Empty, 74, 129, 132, readOnly: true));
         group.Controls.Add(CreateButton("B_RetailUpdateSeeds", "Update Seeds", 6, 158, 200));
         return group;
@@ -1695,24 +1735,140 @@ public sealed class OwoowTabControl : UserControl
             RowHeadersVisible = false,
             AutoGenerateColumns = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            BackgroundColor = AppVisualTheme.Surface,
+            BorderStyle = BorderStyle.None,
+            CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+            GridColor = AppVisualTheme.Border,
+            EnableHeadersVisualStyles = false,
+            ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single,
+            ColumnHeadersHeight = 30,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = AppVisualTheme.ShellRaised,
+                ForeColor = Color.White,
+                Font = AppVisualTheme.UiSemiboldFont,
+                SelectionBackColor = AppVisualTheme.ShellRaised,
+                SelectionForeColor = Color.White,
+                Padding = new Padding(4, 0, 4, 0),
+            },
+            DefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = AppVisualTheme.Surface,
+                ForeColor = AppVisualTheme.Ink,
+                SelectionBackColor = AppVisualTheme.AccentSoft,
+                SelectionForeColor = AppVisualTheme.Ink,
+                Padding = new Padding(4, 0, 4, 0),
+            },
+            AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = AppVisualTheme.Workspace,
+                ForeColor = AppVisualTheme.Ink,
+                SelectionBackColor = AppVisualTheme.AccentSoft,
+                SelectionForeColor = AppVisualTheme.Ink,
+            },
         };
 
-        foreach (var header in new[]
+        var headers = new[]
         {
             "Advances", "Jump", "Step", "Animation", "Species", "Shiny", "Brilliant", "Level",
             "Ability", "Nature", "Gender", "HP", "Atk", "Def", "SpA", "SpD", "Spe", "Mark",
             "EC", "PID", "Height", "Item", "Egg Move", "Seed0", "Seed1",
-        })
+        };
+        for (var index = 0; index < headers.Length; index++)
         {
+            var header = headers[index];
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = $"Column_{header.Replace(" ", string.Empty)}",
                 HeaderText = header,
                 SortMode = DataGridViewColumnSortMode.Automatic,
+                Width = ResultColumnWidths[index],
             });
         }
 
+        grid.RowTemplate.Height = 27;
+        grid.HandleCreated += (_, _) => ApplyResultColumnScale(grid);
+        grid.Paint += (_, e) => DrawEmptyResultsState(grid, e.Graphics);
+        grid.RowsAdded += (_, _) => grid.Invalidate();
+        grid.RowsRemoved += (_, _) => grid.Invalidate();
+
         return grid;
+    }
+
+    private static void ApplyResultColumnScale(DataGridView grid)
+    {
+        var scale = grid.DeviceDpi / 96F;
+        for (var index = 0; index < grid.Columns.Count && index < ResultColumnWidths.Length; index++)
+        {
+            grid.Columns[index].Width = Math.Max(
+                grid.Columns[index].MinimumWidth,
+                (int)Math.Round(ResultColumnWidths[index] * scale));
+        }
+    }
+
+    private static void DrawEmptyResultsState(DataGridView grid, Graphics graphics)
+    {
+        if (grid.Rows.Count > 0)
+        {
+            return;
+        }
+
+        var content = new Rectangle(
+            0,
+            grid.ColumnHeadersHeight,
+            grid.ClientSize.Width,
+            Math.Max(0, grid.ClientSize.Height - grid.ColumnHeadersHeight));
+        if (content.Width <= 0 || content.Height <= 0)
+        {
+            return;
+        }
+
+        var title = new Rectangle(content.Left, content.Top + (content.Height / 2) - 24, content.Width, 24);
+        var description = new Rectangle(content.Left, title.Bottom + 2, content.Width, 22);
+        TextRenderer.DrawText(
+            graphics,
+            "No results yet",
+            AppVisualTheme.UiSemiboldFont,
+            title,
+            AppVisualTheme.Ink,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(
+            graphics,
+            "Configure a search above to populate this table.",
+            SystemFonts.MessageBoxFont,
+            description,
+            AppVisualTheme.Muted,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+    }
+
+    private static void ConfigureSpritePlaceholder(PictureBox pictureBox, string label)
+    {
+        pictureBox.Paint += (_, e) =>
+        {
+            if (pictureBox.Image is not null)
+            {
+                return;
+            }
+
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var diameter = Math.Min(pictureBox.ClientSize.Width, pictureBox.ClientSize.Height) - 12;
+            var circle = new Rectangle(
+                (pictureBox.ClientSize.Width - diameter) / 2,
+                (pictureBox.ClientSize.Height - diameter) / 2,
+                diameter,
+                diameter);
+            using var border = new Pen(AppVisualTheme.Accent, 1.5F);
+            using var font = new Font("Segoe UI Semibold", pictureBox.Width >= 60 ? 7F : 6F);
+            e.Graphics.DrawEllipse(border, circle);
+            TextRenderer.DrawText(
+                e.Graphics,
+                label,
+                font,
+                pictureBox.ClientRectangle,
+                AppVisualTheme.Accent,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        };
     }
 
     private static GroupBox CreateGroup(string name, string text, int left, int top, int width, int height)

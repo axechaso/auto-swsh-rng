@@ -1603,14 +1603,20 @@ public sealed class EasyConTabControl : UserControl, IControllerAdapter
         {
             Name = "clsLogBtn",
             AccessibleName = "清除日志输出",
+            Text = "×",
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
             BackColor = Color.Transparent,
+            ForeColor = Color.FromArgb(222, 226, 228),
+            Font = new Font("Segoe UI Symbol", 13F, FontStyle.Bold),
             FlatStyle = FlatStyle.Flat,
             Location = new Point(564, 5),
             Size = new Size(30, 30),
+            TextAlign = ContentAlignment.MiddleCenter,
             UseVisualStyleBackColor = false,
         };
         clearLog.FlatAppearance.BorderSize = 0;
+        clearLog.FlatAppearance.MouseOverBackColor = Color.FromArgb(78, 78, 78);
+        clearLog.FlatAppearance.MouseDownBackColor = Color.FromArgb(92, 92, 92);
         clearLog.Click += (_, _) => log.Clear();
 
         logPanel.Controls.Add(clearLog);
