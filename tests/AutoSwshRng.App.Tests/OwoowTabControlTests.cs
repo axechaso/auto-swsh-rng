@@ -472,7 +472,7 @@ public class OwoowTabControlTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
-    public void OwoowProfileManagerScalesChildrenWhenItsHandleIsCreated()
+    public void OwoowProfileManagerCurrentDpiGeometrySmokeStaysStableWhenHandleIsRecreated()
     {
         var previousDpiContext = SetThreadDpiAwarenessContext(new IntPtr(-4));
         try
@@ -495,6 +495,7 @@ public class OwoowTabControlTests
             var addButton = FindControl<Button>(dialog, "B_Add");
             var selectButton = FindControl<Button>(dialog, "B_Select");
             var selectTextHeight = TextRenderer.MeasureText(selectButton.Text, selectButton.Font).Height;
+            AssertInitializedToolWindowScaleContract(dialog);
             TestContext.Out.WriteLine(
                 $"DPI={dialog.DeviceDpi}; current={dialog.CurrentAutoScaleDimensions}; " +
                 $"client={dialog.ClientSize}; list={profileList.Bounds}; add={addButton.Bounds}; " +
@@ -513,6 +514,35 @@ public class OwoowTabControlTests
                     Is.GreaterThanOrEqualTo((int)Math.Floor(25F * verticalScale) - 2));
                 Assert.That(selectButton.ClientSize.Height,
                     Is.GreaterThanOrEqualTo(selectTextHeight + 4));
+            });
+
+            var clientSize = dialog.ClientSize;
+            var profileListBounds = profileList.Bounds;
+            var addButtonBounds = addButton.Bounds;
+            var selectButtonBounds = selectButton.Bounds;
+            var fontName = dialog.Font.Name;
+            var fontSize = dialog.Font.Size;
+            var currentAutoScaleDimensions = dialog.CurrentAutoScaleDimensions;
+            var handleDestroyed = 0;
+            var handleCreated = 0;
+            dialog.HandleDestroyed += (_, _) => handleDestroyed++;
+            dialog.HandleCreated += (_, _) => handleCreated++;
+
+            RecreateHandle(dialog);
+            Application.DoEvents();
+
+            AssertInitializedToolWindowScaleContract(dialog);
+            Assert.Multiple(() =>
+            {
+                Assert.That(handleDestroyed, Is.EqualTo(1));
+                Assert.That(handleCreated, Is.EqualTo(1));
+                Assert.That(dialog.ClientSize, Is.EqualTo(clientSize));
+                Assert.That(profileList.Bounds, Is.EqualTo(profileListBounds));
+                Assert.That(addButton.Bounds, Is.EqualTo(addButtonBounds));
+                Assert.That(selectButton.Bounds, Is.EqualTo(selectButtonBounds));
+                Assert.That(dialog.Font.Name, Is.EqualTo(fontName));
+                Assert.That(dialog.Font.Size, Is.EqualTo(fontSize));
+                Assert.That(dialog.CurrentAutoScaleDimensions, Is.EqualTo(currentAutoScaleDimensions));
             });
         }
         finally
@@ -735,6 +765,7 @@ public class OwoowTabControlTests
         FindControl<Button>(dialog, "B_IDList").PerformClick();
         Application.DoEvents();
         var idDialog = Application.OpenForms.Cast<Form>().Single(form => form.Name == "IDList");
+        AssertInitializedToolWindowScaleContract(idDialog);
         FindControl<TextBox>(idDialog, "TB_ID").Text = "222";
         FindControl<Button>(idDialog, "B_Add").PerformClick();
         idDialog.Close();
@@ -1044,8 +1075,10 @@ public class OwoowTabControlTests
         Application.DoEvents();
         FindControl<Button>(control, "B_RetailSeedFinder").PerformClick();
         using var dialog = opened ?? throw new InvalidOperationException("Retail Seed Finder dialog was not opened.");
+        AssertDeferredToolWindowScaleContract(dialog);
         dialog.Show();
         Application.DoEvents();
+        AssertInitializedToolWindowScaleContract(dialog);
         var observations = string.Concat(Enumerable.Repeat("01", 64));
 
         FindControl<TextBox>(dialog, "TB_InputAnimations").Text = observations;
@@ -1302,6 +1335,37 @@ public class OwoowTabControlTests
             Application.DoEvents();
             Thread.Yield();
         }
+    }
+
+    private static void AssertDeferredToolWindowScaleContract(Form dialog)
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(dialog.IsHandleCreated, Is.False);
+            Assert.That(dialog.AutoScaleMode, Is.EqualTo(AutoScaleMode.Inherit));
+            Assert.That(dialog.AutoScaleDimensions, Is.EqualTo(SizeF.Empty));
+            Assert.That(dialog.Font.Name, Is.EqualTo("Segoe UI"));
+            Assert.That(dialog.Font.Size, Is.EqualTo(9F));
+        });
+    }
+
+    private static void AssertInitializedToolWindowScaleContract(Form dialog)
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(dialog.IsHandleCreated, Is.True);
+            Assert.That(dialog.AutoScaleMode, Is.EqualTo(AutoScaleMode.Font));
+            Assert.That(dialog.AutoScaleDimensions, Is.EqualTo(dialog.CurrentAutoScaleDimensions));
+            Assert.That(dialog.Font.Name, Is.EqualTo("Segoe UI"));
+        });
+    }
+
+    private static void RecreateHandle(Control control)
+    {
+        typeof(Control).GetMethod(
+                "RecreateHandle",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(control, null);
     }
 
     private static ToolStripMenuItem FindMenuItem(MenuStrip menu, string name) =>
