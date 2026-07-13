@@ -1018,6 +1018,64 @@ public class OwoowTabControlTests
 
     [Test]
     [Apartment(ApartmentState.STA)]
+    public void OwoowMainRestoresPinnedFontScaleContract()
+    {
+        using var control = new OwoowTabControl();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(control.AutoScaleMode, Is.EqualTo(AutoScaleMode.Font));
+            Assert.That(control.AutoScaleDimensions, Is.EqualTo(new SizeF(7F, 15F)));
+            Assert.That(FindControl<MenuStrip>(control, "MS_SubWindows").AutoSize, Is.True);
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void OwoowMainCanvasExpandsWithLargeViewport()
+    {
+        using var control = new OwoowTabControl();
+        using var host = new Form { ClientSize = new Size(1600, 900) };
+        host.Controls.Add(control);
+        host.Show();
+        Application.DoEvents();
+
+        var scrollHost = FindControl<Panel>(control, "owoowScrollHost");
+        var canvas = FindControl<Panel>(control, "owoowMainCanvas");
+        var results = FindControl<DataGridView>(control, "DGV_Results");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(canvas.Width, Is.GreaterThanOrEqualTo(scrollHost.ClientSize.Width));
+            Assert.That(canvas.Height, Is.GreaterThanOrEqualTo(scrollHost.ClientSize.Height));
+            Assert.That(results.Right, Is.LessThanOrEqualTo(canvas.ClientSize.Width - 10));
+            Assert.That(results.Bottom, Is.LessThanOrEqualTo(canvas.ClientSize.Height - 12));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
+    public void OwoowWildViewMatchesPinnedDesignerGeometry()
+    {
+        using var control = new OwoowTabControl();
+
+        var pokemonSprite = FindControl<PictureBox>(control, "PB_PokemonSprite");
+        var markSprite = FindControl<PictureBox>(control, "PB_MarkSprite");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(FindControl<TextBox>(control, "TB_Wild").Bounds, Is.EqualTo(new Rectangle(6, 17, 181, 186)));
+            Assert.That(pokemonSprite.Bounds, Is.EqualTo(new Rectangle(64, 203, 64, 64)));
+            Assert.That(markSprite.Bounds, Is.EqualTo(new Rectangle(127, 219, 48, 48)));
+            Assert.That(FindControl<Button>(control, "B_ReadEncounter").Bounds, Is.EqualTo(new Rectangle(4, 267, 183, 25)));
+            Assert.That(FindControl<Button>(control, "B_CopyToFilter").Bounds, Is.EqualTo(new Rectangle(4, 294, 183, 25)));
+            Assert.That(pokemonSprite.SizeMode, Is.EqualTo(PictureBoxSizeMode.CenterImage));
+            Assert.That(markSprite.SizeMode, Is.EqualTo(PictureBoxSizeMode.CenterImage));
+        });
+    }
+
+    [Test]
+    [Apartment(ApartmentState.STA)]
     public void OwoowMainUsesPinnedHorizontalToolMenu()
     {
         using var control = new OwoowTabControl();

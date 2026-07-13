@@ -10,6 +10,7 @@ namespace AutoSwshRng.App.Controls;
 public sealed class OwoowTabControl : UserControl
 {
     private const int CanvasWidth = 1278;
+    private const int CanvasHeight = 676;
     private static readonly IReadOnlyDictionary<string, string> SpecialToolPrefixes =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -60,6 +61,7 @@ public sealed class OwoowTabControl : UserControl
         });
         toolWindowFactory = new OwoowToolWindowFactory(this.services, showMessage);
 
+        SuspendLayout();
         Dock = DockStyle.Fill;
         Font = new Font("Segoe UI", 9F);
 
@@ -68,7 +70,7 @@ public sealed class OwoowTabControl : UserControl
             Name = "owoowScrollHost",
             Dock = DockStyle.Fill,
             AutoScroll = true,
-            AutoScrollMinSize = new Size(CanvasWidth, 680),
+            AutoScrollMinSize = new Size(CanvasWidth, CanvasHeight),
             BackColor = SystemColors.Control,
         };
 
@@ -76,14 +78,22 @@ public sealed class OwoowTabControl : UserControl
         {
             Name = "owoowMainCanvas",
             Location = Point.Empty,
-            Size = new Size(CanvasWidth, 680),
-            MinimumSize = new Size(CanvasWidth, 680),
+            Size = new Size(CanvasWidth, CanvasHeight),
+            MinimumSize = new Size(CanvasWidth, CanvasHeight),
         };
         canvas.Controls.Add(CreateResultsGrid());
         canvas.Controls.Add(CreateSeedControlsContainer());
         canvas.Controls.Add(CreateSubWindowsMenu());
 
         scrollHost.Controls.Add(canvas);
+        void ResizeCanvasToViewport()
+        {
+            canvas.Size = new Size(
+                Math.Max(canvas.MinimumSize.Width, scrollHost.ClientSize.Width),
+                Math.Max(canvas.MinimumSize.Height, scrollHost.ClientSize.Height));
+        }
+        scrollHost.ClientSizeChanged += (_, _) => ResizeCanvasToViewport();
+        scrollHost.HandleCreated += (_, _) => ResizeCanvasToViewport();
         Controls.Add(scrollHost);
 
         WireConnectionActions();
@@ -93,6 +103,9 @@ public sealed class OwoowTabControl : UserControl
         WireRetailActions();
         WireToolWindowActions();
         this.services.Connection.StatusChanged += ConnectionStatusChanged;
+        AutoScaleDimensions = new SizeF(7F, 15F);
+        AutoScaleMode = AutoScaleMode.Font;
+        ResumeLayout(false);
     }
 
     internal OwoowUiServices Services => services;
@@ -1365,8 +1378,7 @@ public sealed class OwoowTabControl : UserControl
             Name = "MS_SubWindows",
             Dock = DockStyle.Top,
             BackColor = SystemColors.ButtonFace,
-            AutoSize = false,
-            Height = 24,
+            AutoSize = true,
         };
 
         foreach (var (name, text) in new[]
@@ -1615,28 +1627,28 @@ public sealed class OwoowTabControl : UserControl
         group.Controls.Add(new PictureBox
         {
             Name = "PB_PokemonSprite",
-            Location = new Point(8, 16),
-            Size = new Size(80, 80),
-            SizeMode = PictureBoxSizeMode.Zoom,
+            Location = new Point(64, 203),
+            Size = new Size(64, 64),
+            SizeMode = PictureBoxSizeMode.CenterImage,
         });
         group.Controls.Add(new PictureBox
         {
             Name = "PB_MarkSprite",
-            Location = new Point(102, 16),
-            Size = new Size(80, 80),
-            SizeMode = PictureBoxSizeMode.Zoom,
+            Location = new Point(127, 219),
+            Size = new Size(48, 48),
+            SizeMode = PictureBoxSizeMode.CenterImage,
         });
         group.Controls.Add(new TextBox
         {
             Name = "TB_Wild",
-            Location = new Point(8, 100),
-            Size = new Size(178, 150),
+            Location = new Point(6, 17),
+            Size = new Size(181, 186),
             Multiline = true,
             ReadOnly = true,
             ScrollBars = ScrollBars.Vertical,
         });
-        group.Controls.Add(CreateButton("B_ReadEncounter", "Read Encounter", 8, 256, 178, enabled: false));
-        group.Controls.Add(CreateButton("B_CopyToFilter", "Copy to Filter", 8, 286, 178, enabled: false));
+        group.Controls.Add(CreateButton("B_ReadEncounter", "Read Encounter", 4, 267, 183, enabled: false));
+        group.Controls.Add(CreateButton("B_CopyToFilter", "Copy to Filter", 4, 294, 183, enabled: false));
         return group;
     }
 
