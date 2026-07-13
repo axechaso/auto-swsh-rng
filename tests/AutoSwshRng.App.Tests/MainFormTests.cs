@@ -154,8 +154,11 @@ public class MainFormTests
                 Assert.That(owoowControl.Bounds, Is.EqualTo(owoowDisplayRectangle));
                 Assert.That(owoowControl.ClientSize, Is.EqualTo(owoowDisplayRectangle.Size));
                 Assert.That(canvas.MinimumSize, Is.EqualTo(expectedCanvasMinimumSize));
-                Assert.That(owoowHorizontalScrollVisible,
-                    Is.EqualTo(canvas.MinimumSize.Width > scrollHost.ClientSize.Width));
+                AssertDefaultOwoowHorizontalScroll(
+                    form,
+                    scrollHost,
+                    canvas,
+                    owoowHorizontalScrollVisible);
                 Assert.That(canvas.Size, Is.EqualTo(expectedCanvasSize));
                 Assert.That(easyConControl.IsHandleCreated, Is.True);
                 Assert.That(easyConControl.Dock, Is.EqualTo(DockStyle.Fill));
@@ -180,6 +183,11 @@ public class MainFormTests
             Application.DoEvents();
             RecreateHandle(form);
             Application.DoEvents();
+            mainTabs.SelectedIndex = 0;
+            Application.DoEvents();
+            var expectedCanvasSizeAfterRecreate = new Size(
+                Math.Max(canvas.MinimumSize.Width, scrollHost.ClientSize.Width),
+                Math.Max(canvas.MinimumSize.Height, scrollHost.ClientSize.Height));
 
             Assert.Multiple(() =>
             {
@@ -190,6 +198,15 @@ public class MainFormTests
                 Assert.That(scriptRunGroup.Size, Is.EqualTo(scaledScriptRunSize));
                 Assert.That(runStopButton.Size, Is.EqualTo(scaledRunButtonSize));
                 Assert.That(form.Location, Is.EqualTo(movedLocation));
+                Assert.That(owoowPage.Controls.Cast<Control>().Single(), Is.SameAs(owoowControl));
+                Assert.That(owoowControl.Bounds, Is.EqualTo(owoowPage.DisplayRectangle));
+                Assert.That(canvas.MinimumSize, Is.EqualTo(expectedCanvasMinimumSize));
+                AssertDefaultOwoowHorizontalScroll(
+                    form,
+                    scrollHost,
+                    canvas,
+                    scrollHost.HorizontalScroll.Visible);
+                Assert.That(canvas.Size, Is.EqualTo(expectedCanvasSizeAfterRecreate));
             });
         }
         finally
@@ -2854,6 +2871,23 @@ public class MainFormTests
                 "RecreateHandle",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .Invoke(control, []);
+    }
+
+    private static void AssertDefaultOwoowHorizontalScroll(
+        Form form,
+        Panel scrollHost,
+        Panel canvas,
+        bool horizontalScrollVisible)
+    {
+        if (form.DeviceDpi > 96)
+        {
+            Assert.That(canvas.MinimumSize.Width, Is.LessThanOrEqualTo(scrollHost.ClientSize.Width));
+            Assert.That(horizontalScrollVisible, Is.False);
+            return;
+        }
+
+        Assert.That(horizontalScrollVisible,
+            Is.EqualTo(canvas.MinimumSize.Width > scrollHost.ClientSize.Width));
     }
 
     [DllImport("user32.dll")]
