@@ -1,0 +1,44 @@
+
+#唤醒手柄
+FOR 5
+    LCLICK 120
+    100
+NEXT
+
+HOME 200
+1500
+A 200
+FOR
+    $1 = @YY
+    IF $1 > 90
+        BREAK
+    ELSE
+        B
+        1000
+    ENDIF
+NEXT
+X 200
+1500
+A 200
+2000
+DOWN 200
+1000
+$1 = 0
+$4 = 128
+FOR $4
+    RCLICK
+    1000
+    $2 = @铁甲物理
+    IF $2 > 80
+        PRINT 0 & \
+        400
+    ELSE
+        PRINT 1 & \
+        650
+        $1 += 1
+    ENDIF
+NEXT
+IF $1 > 125
+    PRINT 种子有问题
+    PRINT 需要重新测种
+ENDIF

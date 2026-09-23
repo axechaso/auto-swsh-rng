@@ -1,0 +1,50 @@
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    100
+NEXT
+
+HOME 200
+WAIT 1200
+X 200
+$3 = 0
+FOR
+    $1 = @YY
+    IF $1 > 90
+        BREAK
+    ELSE
+        A
+        1000
+        $3 += 1    #每秒按一次A键，同时$3的值+1
+        IF $3 > 60    #连A超过60秒判定为掉线
+            PRINT 疑似掉线
+            HOME 200
+            2000
+            X
+            100
+            $3 = 0
+        ENDIF
+    ENDIF
+NEXT
+WAIT 1000
+X 200
+WAIT 1500
+RIGHT 200
+WAIT 400
+A 200
+WAIT 2000
+DOWN 200
+WAIT 1000
+$4 = 128
+FOR $4
+    RCLICK
+    1000
+    $2 = @铁甲物理
+    IF $2 > 80
+        PRINT 0 & \
+        400
+    ELSE
+        PRINT 1 & \
+        650
+    ENDIF
+NEXT
