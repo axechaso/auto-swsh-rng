@@ -51,7 +51,9 @@ jobs:
           python -m unittest discover -s desktop/tests -v
       - name: Publish calculation service
         if: inputs.owoow_commit == ''
-        run: dotnet publish src/AutoSwshRng.Cli/AutoSwshRng.Cli.csproj -c Release --self-contained false --output desktop/backend
+        # EasyCon's project graph can reach the same Avalonia resources through
+        # multiple references. Serialize publishing to avoid writing them twice.
+        run: dotnet publish src/AutoSwshRng.Cli/AutoSwshRng.Cli.csproj -c Release --self-contained false --artifacts-path artifacts --output desktop/backend -m:1 -p:BuildInParallel=false
       - name: Upload desktop preview
         if: inputs.owoow_commit == ''
         uses: actions/upload-artifact@v4
