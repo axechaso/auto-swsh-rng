@@ -108,7 +108,7 @@ def simulate(name, overrides=None, getters=None):
 
 class ScriptLibraryTests(unittest.TestCase):
     def test_all_nine_scripts_compile_and_finish_with_matching_labels(self):
-        paths = list(SCRIPT_DIR.glob("*.ecs"))
+        paths = [p for p in SCRIPT_DIR.glob("*.ecs") if p.stem != "剑盾乱数统合"]
         self.assertEqual(len(paths), 9)
         for path in paths:
             with self.subTest(script=path.name):

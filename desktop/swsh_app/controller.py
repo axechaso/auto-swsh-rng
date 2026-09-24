@@ -116,8 +116,11 @@ class ControllerSession:
                 getters = labels.external_getters(self.frame_provider)
             if self.connected:
                 self.device.reset()
-            program.run(gamepad=self.gamepad if program.has_gamepad_actions else None,
-                        external_getters=getters, output=self.log, cancel_event=self.cancel)
+            result = program.run(gamepad=self.gamepad if program.has_gamepad_actions else None,
+                                 external_getters=getters, output=self.log, cancel_event=self.cancel)
+            from .unified_script import is_unified
+            if is_unified(text) and result == 0:
+                return "aborted"
             return "completed"
         except (ScriptCancelled, DeviceCancelledError):
             return "cancelled"

@@ -5,6 +5,8 @@ import re
 
 from .vendor.easycon import EasyConScriptEngine
 from .vendor.easycon.image_labels import load_image_labels
+from .script_reachability import reachable_metadata
+from . import unified_script
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
 PARAMETER = re.compile(r"^(\s*)(_\w+)(\s*=\s*)([+-]?\d+|填入这里)(\s*(?:#.*)?)$", re.UNICODE)
@@ -64,12 +66,18 @@ def apply_parameters(text, values):
             frames -= effective.get("_雷雨雨天误差", 0)
         if frames < 0:
             raise ValueError("扣除预留帧和天气误差后帧数为负，请调整参数。")
+    if unified_script.is_unified(text):
+        unified_script.validate(effective)
     return "\n".join(lines) + "\n"
 
 
 def inspect_script(text, path=None, label_root=None):
+    if unified_script.is_unified(text):
+        text = apply_parameters(text, {})
     source = str(path or "未命名.ecs")
     program = EasyConScriptEngine().compile(text, source=source, script_dir=Path(path).parent if path else None)
+    if unified_script.is_unified(text):
+        program = reachable_metadata(program)
     roots = [Path(path).parent] if path else []
     if label_root:
         root = Path(label_root)

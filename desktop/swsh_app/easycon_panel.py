@@ -3,7 +3,7 @@ import threading
 
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
-    QFileDialog, QFormLayout, QHBoxLayout, QLayout, QLineEdit, QMessageBox, QPlainTextEdit,
+    QComboBox, QFileDialog, QFormLayout, QHBoxLayout, QLayout, QLineEdit, QMessageBox, QPlainTextEdit,
     QScrollArea, QSplitter, QTabWidget, QVBoxLayout, QWidget,
 )
 
@@ -13,6 +13,11 @@ from .script_library import SCRIPT_DIR, adapted_source, apply_parameters, inspec
 from .tasks import Task
 from .vendor.easycon.device import list_ports
 from .widgets import Card, button, combo, label
+from . import unified_script
+
+
+def parameter_text(field):
+    return str(field.currentData()) if isinstance(field, QComboBox) else field.text()
 
 
 class EasyConPanel(QWidget):
@@ -74,7 +79,8 @@ class EasyConPanel(QWidget):
         layout.setContentsMargins(0, 10, 0, 0)
         split = QSplitter(Qt.Orientation.Horizontal)
         params = Card("脚本库", "载入脚本、填写参数，再检查依赖。")
-        self.library = combo([(path.stem, str(path)) for path in sorted(SCRIPT_DIR.glob("*.ecs"))])
+        unified = SCRIPT_DIR / unified_script.NAME
+        self.library = combo([(unified.stem, str(unified))])
         params.body.addWidget(self.library)
         self.load_button = button("载入所选脚本", self.load_selected)
         params.body.addWidget(self.load_button)
@@ -123,9 +129,10 @@ class EasyConPanel(QWidget):
             row.addWidget(b)
         row.addStretch()
         layout.addLayout(row)
-        self.script_status = label("未运行 · 附带 9 份剑盾脚本", "muted", True)
+        self.script_status = label("未运行 · 九项功能已统合", "muted", True)
         layout.addWidget(self.script_status)
         self.tabs.addTab(page, "脚本库 / 执行")
+        self.load_path(unified)
 
     def refresh_ports(self):
         previous = self.ports.currentData()
@@ -220,26 +227,47 @@ class EasyConPanel(QWidget):
 
     def update_parameters(self, checked=False, *, preserve=False):
         text = self.editor.toPlainText()
-        previous = {p.name: (p.default, self.parameter_inputs[p.name].text())
+        previous = {p.name: (p.default, parameter_text(self.parameter_inputs[p.name]))
                     for p in parameters(self.parameter_source) if p.name in self.parameter_inputs}
         while self.parameters_form.rowCount():
             self.parameters_form.removeRow(0)
         self.parameter_inputs = {}
         for param in parameters(text):
             value = previous.get(param.name)
-            field = QLineEdit(value[1] if preserve and value and value[0] == param.default else param.default)
-            field.setPlaceholderText("必填")
+            selected = value[1] if preserve and value and value[0] == param.default else param.default
+            if unified_script.is_unified(text) and param.name in unified_script.OPTIONS:
+                field = combo(unified_script.OPTIONS[param.name])
+                index = field.findData(selected)
+                if index < 0:
+                    field.addItem(f"无效选项：{selected}", selected)
+                    index = field.count() - 1
+                field.setCurrentIndex(index)
+                field.currentIndexChanged.connect(self.refresh_parameter_visibility)
+            else:
+                field = QLineEdit(selected)
+                field.setPlaceholderText("必填")
             field.setToolTip(param.description)
             field.setAccessibleName(param.name[1:])
             self.parameters_form.addRow(param.name[1:], field)
             self.parameter_inputs[param.name] = field
         self.parameter_source = text
+        self.refresh_parameter_visibility()
+
+    def refresh_parameter_visibility(self, *_):
+        if not unified_script.is_unified(self.parameter_source):
+            return
+        try:
+            visible = unified_script.active_parameters({name: parameter_text(field) for name, field in self.parameter_inputs.items()})
+        except ValueError:
+            visible = set(self.parameter_inputs)
+        for name, field in self.parameter_inputs.items():
+            self.parameters_form.setRowVisible(field, name in visible)
 
     def prepared_text(self):
         text = self.editor.toPlainText()
         if text != self.parameter_source:
             self.update_parameters(preserve=True)
-        return apply_parameters(text, {key: field.text() for key, field in self.parameter_inputs.items()})
+        return apply_parameters(text, {key: parameter_text(field) for key, field in self.parameter_inputs.items()})
 
     def check_script(self):
         try:
@@ -268,7 +296,8 @@ class EasyConPanel(QWidget):
         self.submit(lambda: self.session.run(text, path, cancel=cancel, label_root=label_root), self.script_finished)
 
     def script_finished(self, state):
-        text = "脚本已停止，按键已释放。" if state == "cancelled" else "脚本执行完成，按键已释放。"
+        text = {"cancelled": "脚本已停止，按键已释放。",
+                "aborted": "当前功能未完成，已中止并释放按键；请查看脚本输出。"}.get(state, "脚本执行完成，按键已释放。")
         self.script_status.setText(text)
         self.log_message.emit("\n" + text + "\n")
 
@@ -280,7 +309,7 @@ class EasyConPanel(QWidget):
 
     def can_replace(self):
         changed = self.editor.document().isModified() or any(
-            self.parameter_inputs[p.name].text() != p.default
+            parameter_text(self.parameter_inputs[p.name]) != p.default
             for p in parameters(self.parameter_source) if p.name in self.parameter_inputs)
         return not changed or QMessageBox.question(self, "替换编辑内容", "当前编辑内容或参数尚未保存。要载入另一份脚本吗？") == QMessageBox.StandardButton.Yes
 
