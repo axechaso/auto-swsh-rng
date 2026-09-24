@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +42,8 @@ def validate(root: Path = ROOT):
 
 
 if __name__ == "__main__":
+    # English Windows runners use cp1252 for redirected output by default.
+    sys.stdout.reconfigure(encoding="utf-8")
     try:
         validate()
     except (KeyError, ValueError, OSError, subprocess.CalledProcessError) as exc:

@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
 root = Path(__file__).resolve().parents[1]
 commit = sys.argv[1]
 if os.environ.get("GITHUB_ACTIONS") != "true" or not re.fullmatch(r"[0-9a-f]{40}", commit):

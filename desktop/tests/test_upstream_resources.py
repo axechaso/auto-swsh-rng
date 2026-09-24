@@ -1,8 +1,9 @@
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
-import re
+import subprocess
 import sys
 import unittest
 
@@ -18,6 +19,15 @@ class UpstreamResourcesTests(unittest.TestCase):
         raw = (RESOURCE_ROOT / "owoow.zh-Hans.json").read_bytes()
         self.assertEqual(hashlib.sha256(raw).hexdigest(), BASELINE["localization"]["resourceSha256"])
         self.assertEqual(json.loads(raw)["source"]["commit"], BASELINE["localization"]["commit"])
+
+    def test_checker_logs_on_non_chinese_windows(self):
+        if not (ROOT / ".git").exists():
+            self.skipTest("版本检查需在 Git 检出中运行")
+        environment = {**os.environ, "PYTHONUTF8": "0", "PYTHONIOENCODING": "cp1252"}
+        result = subprocess.run([sys.executable, str(ROOT / "tools/check_owoow.py")],
+                                env=environment, capture_output=True, encoding="utf-8")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("校验通过", result.stdout)
 
     def test_localized_forms_abilities_marks_and_unknown_keys(self):
         for kind, original, expected in [
