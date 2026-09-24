@@ -5,6 +5,11 @@ on:
     branches: [main, 'codex/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      owoow_commit:
+        description: '可选：官方 owoow 的 40 位候选提交，仅测试兼容性，不发布'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -24,16 +29,27 @@ jobs:
           python-version: '3.12'
       - name: Install Qt
         run: python -m pip install -r desktop/requirements.txt
+      - name: Prepare optional upstream compatibility trial
+        if: github.event_name == 'workflow_dispatch' && inputs.owoow_commit != ''
+        env:
+          OWOOW_COMMIT: ${{ inputs.owoow_commit }}
+        run: python tools/prepare_owoow_trial.py "$env:OWOOW_COMMIT"
+      - name: Verify pinned core and Chinese resources
+        run: python tools/check_owoow.py
       - name: Test calculation bridge
         run: dotnet test tests/AutoSwshRng.Cli.Tests/AutoSwshRng.Cli.Tests.csproj --artifacts-path artifacts --verbosity minimal
+      - name: Test upstream adapters
+        run: dotnet test tests/AutoSwshRng.Upstream.Tests/AutoSwshRng.Upstream.Tests.csproj --artifacts-path artifacts --filter FullyQualifiedName~Owoow --verbosity minimal
       - name: Test desktop interactions
         shell: pwsh
         run: |
           $env:SWSH_RNG_BACKEND = Join-Path $PWD 'artifacts/bin/AutoSwshRng.Cli/debug/AutoSwshRng.Cli.exe'
           python -m unittest discover -s desktop/tests -v
       - name: Publish calculation service
+        if: inputs.owoow_commit == ''
         run: dotnet publish src/AutoSwshRng.Cli/AutoSwshRng.Cli.csproj -c Release --self-contained false --output desktop/backend
       - name: Upload desktop preview
+        if: inputs.owoow_commit == ''
         uses: actions/upload-artifact@v4
         with:
           name: swsh-pyside6-preview-windows

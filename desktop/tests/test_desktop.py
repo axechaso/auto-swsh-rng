@@ -104,6 +104,19 @@ class WindowTests(unittest.TestCase):
         self.assertFalse(self.window.stop_button.isEnabled())
         self.assertIn("无法启动", self.window.error_label.text())
 
+    def test_chinese_selection_keeps_original_request_keys(self):
+        self.window.initializing = True
+        self.window.catalog_loaded({"areas": ["Route 1"], "area": "Route 1",
+                                    "weathers": ["Normal Weather"], "weather": "Normal Weather",
+                                    "species": ["Skwovet"]})
+        self.window.species.setCurrentIndex(1)
+        self.window.load_example()
+        request = self.window.search_request()
+        self.assertEqual(self.window.species.currentText(), "贪心栗鼠")
+        self.assertNotEqual(self.window.area.currentText(), "Route 1")
+        self.assertEqual((request["species"], request["area"], request["weather"]),
+                         ("Skwovet", "Route 1", "Normal Weather"))
+
 
 @unittest.skipUnless(find_backend(), "Set SWSH_RNG_BACKEND to the built CLI for integration tests")
 class IntegrationTests(WindowTests):

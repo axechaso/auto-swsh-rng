@@ -19,7 +19,8 @@ from .backend import JsonJob, find_backend
 from .capture import FrameStore
 from .easycon_panel import EasyConPanel
 from .ocr_panel import OcrPanel
-from .storage import HEADERS, NATURES, WEATHER_ZH, SettingsStore, export_csv, result_values, seed_hex
+from .storage import HEADERS, NATURES, SettingsStore, export_csv, result_values, seed_hex
+from .localization import BASELINE, translate
 from .widgets import STYLE, Card, button, combo, form, label, spin
 
 PAGES = [
@@ -436,6 +437,10 @@ class SwshWindow(QMainWindow):
         self.backend_path.setReadOnly(True)
         form(card, [("乱数服务路径", self.backend_path)], 1)
         card.body.addWidget(button("选择计算服务", self.choose_backend))
+        card.body.addWidget(label(
+            f"owoow 验证基线：{BASELINE['algorithm']['commit'][:12]}\n"
+            f"汉化资源：{BASELINE['localization']['commit'][:12]} · PKHeX {BASELINE['localization']['pkhexVersion']}\n"
+            f"计算协议：{BASELINE['protocolVersion']}", "muted", True))
         layout.addWidget(card)
         card = Card("设备准备", "伊机控页面管理共享串口会话；采集画面页面管理共享视频源。")
         self.port_list = self.easycon_panel.ports
@@ -526,9 +531,9 @@ class SwshWindow(QMainWindow):
 
     def catalog_loaded(self, data):
         species = self.species.currentData()
-        self.fill(self.area, data["areas"], data["area"])
-        self.fill(self.weather, [(WEATHER_ZH.get(w, w), w) for w in data["weathers"]], data["weather"])
-        options = [(s, s) for s in data["species"]]
+        self.fill(self.area, [(translate(a, "area"), a) for a in data["areas"]], data["area"])
+        self.fill(self.weather, [(translate(w, "ui"), w) for w in data["weathers"]], data["weather"])
+        options = [(translate(s, "species"), s) for s in data["species"]]
         if self.kind.currentData() != "Static":
             options.insert(0, ("不限宝可梦", None))
         self.fill(self.species, options, species)
@@ -601,7 +606,7 @@ class SwshWindow(QMainWindow):
         self.first_advance.setText("—")
         self.export_button.setEnabled(False)
         self.detail.setText("正在搜索。")
-        context = f"{self.game.currentText()} · {request['area']} · {self.weather.currentText()} · {request['start']:,}～{request['end']:,}"
+        context = f"{self.game.currentText()} · {self.area.currentText()} · {self.weather.currentText()} · {request['start']:,}～{request['end']:,}"
         self.result_context.setText(context)
         self.status.setText("正在搜索，可随时停止。")
         self.log(f"开始搜索：{context}；TID={request['tid']} SID={request['sid']}")
@@ -643,7 +648,7 @@ class SwshWindow(QMainWindow):
         row = self.selected_row()
         self.copy_button.setEnabled(row is not None)
         if row is not None:
-            self.detail.setText(f"推进 {row['advance']:,} · {row['species']} · IV {' / '.join(map(str, row['ivs']))}\n"
+            self.detail.setText(f"推进 {row['advance']:,} · {translate(row['species'], 'species')} · IV {' / '.join(map(str, row['ivs']))}\n"
                                 f"EC {row['ec']}   PID {row['pid']}\nSeed 0  {row['seed0']}\nSeed 1  {row['seed1']}")
 
     def copy_target(self):

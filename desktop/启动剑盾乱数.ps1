@@ -27,6 +27,8 @@ $env:TMP = $env:TEMP
 New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
 if (Test-Path -LiteralPath $localDotnet) { $env:DOTNET_ROOT = Split-Path -Parent $localDotnet }
 if (-not $SkipBuild) {
+    & $Python (Join-Path $projectRoot 'tools\check_owoow.py')
+    if ($LASTEXITCODE -ne 0) { throw 'owoow 版本检查失败，请检查上方输出。' }
     & $dotnetExe build $buildProject --artifacts-path $artifactRoot --verbosity quiet
     if ($LASTEXITCODE -ne 0) { throw '计算服务构建失败，请检查上方输出。' }
 }

@@ -12,6 +12,16 @@ namespace AutoSwshRng.Cli;
 /// <summary>One read-only desktop request per process; stdout is UTF-8 JSON lines.</summary>
 public static class DesktopJsonCommand
 {
+    public const int ProtocolVersion = 1;
+    private static readonly string AlgorithmCommit = ReadAlgorithmCommit();
+
+    private static string ReadAlgorithmCommit()
+    {
+        using var stream = typeof(DesktopJsonCommand).Assembly.GetManifestResourceStream("DesktopUpstream.json")!;
+        using var manifest = JsonDocument.Parse(stream);
+        return manifest.RootElement.GetProperty("algorithm").GetProperty("commit").GetString()!;
+    }
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() },
@@ -24,13 +34,15 @@ public static class DesktopJsonCommand
             var line = await input.ReadLineAsync() ?? throw new ArgumentException("请求为空。");
             var request = JsonSerializer.Deserialize<DesktopRequest>(line, Json)
                 ?? throw new ArgumentException("请求为空。");
+            if (request.ProtocolVersion != ProtocolVersion)
+                throw new ArgumentException($"计算协议版本不兼容：需要 {ProtocolVersion}，收到 {request.ProtocolVersion}。请更新桌面与计算服务。");
             var result = await ExecuteAsync(request, new JsonProgress(output));
-            await output.WriteLineAsync(JsonSerializer.Serialize(new { type = "result", data = result }, Json));
+            await output.WriteLineAsync(JsonSerializer.Serialize(new { type = "result", protocolVersion = ProtocolVersion, algorithmCommit = AlgorithmCommit, data = result }, Json));
             return 0;
         }
         catch (Exception exception)
         {
-            await output.WriteLineAsync(JsonSerializer.Serialize(new { type = "error", message = exception.Message }, Json));
+            await output.WriteLineAsync(JsonSerializer.Serialize(new { type = "error", protocolVersion = ProtocolVersion, message = exception.Message }, Json));
             return 1;
         }
     }
@@ -114,7 +126,7 @@ public static class DesktopJsonCommand
     {
         public void Report(OperationProgress value)
         {
-            output.WriteLine(JsonSerializer.Serialize(new { type = "progress", value.Completed, value.Total }, Json));
+            output.WriteLine(JsonSerializer.Serialize(new { type = "progress", protocolVersion = ProtocolVersion, value.Completed, value.Total }, Json));
             output.Flush();
         }
     }
@@ -122,6 +134,7 @@ public static class DesktopJsonCommand
 
 public sealed record DesktopRequest
 {
+    public int ProtocolVersion { get; init; } = DesktopJsonCommand.ProtocolVersion;
     public string Operation { get; init; } = "";
     public GameVersion Game { get; init; }
     public EncounterKind Kind { get; init; } = EncounterKind.Symbol;

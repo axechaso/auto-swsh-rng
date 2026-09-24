@@ -7,13 +7,10 @@ import os
 import tempfile
 from pathlib import Path
 
+from .localization import nature_options, translate
 
-NATURES = list(zip(
-    "勤奋 怕寂寞 勇敢 固执 顽皮 大胆 坦率 悠闲 淘气 乐天 胆小 急躁 认真 爽朗 天真 内敛 慢吞吞 冷静 害羞 马虎 温和 温顺 自大 慎重 浮躁".split(),
-    "Hardy Lonely Brave Adamant Naughty Bold Docile Relaxed Impish Lax Timid Hasty Serious Jolly Naive Modest Mild Quiet Bashful Rash Calm Gentle Sassy Careful Quirky".split(),
-))
-NATURE_ZH = {value: title for title, value in NATURES}
-WEATHER_ZH = {"Normal": "晴天", "Normal Weather": "晴天", "Overcast": "阴天", "Raining": "雨天", "Thunderstorm": "雷雨", "Intense Sun": "大晴天", "Snowing": "下雪", "Snowstorm": "暴雪", "Sandstorm": "沙暴", "Heavy Fog": "大雾", "All Weather": "全天气"}
+
+NATURES = nature_options()
 HEADERS = ["推进数", "宝可梦", "等级", "闪光", "性格", "特性", "性别", "HP", "攻击", "防御", "特攻", "特防", "速度", "证章", "气场", "身高", "EC", "PID", "Seed 0", "Seed 1"]
 
 
@@ -25,11 +22,11 @@ def seed_hex(value: str) -> str:
 
 
 def result_values(row: dict) -> list:
-    return [row["advance"], row["species"], row["level"],
+    return [row["advance"], translate(row["species"], "species"), row["level"],
             {"None": "否", "No": "否", "Star": "星闪", "Square": "方闪"}.get(row["shiny"], row["shiny"]),
-            NATURE_ZH.get(row["nature"], row["nature"]), row["ability"],
+            translate(row["nature"], "nature"), translate(row["ability"], "ability"),
             {"Male": "♂", "Female": "♀", "Genderless": "—"}.get(row["gender"], row["gender"]),
-            *row["ivs"], row["mark"], "有" if row["brilliantAura"] else "—", row["height"], row["ec"], row["pid"], row["seed0"], row["seed1"]]
+            *row["ivs"], translate(row["mark"], "mark"), "有" if row["brilliantAura"] else "—", row["height"], row["ec"], row["pid"], row["seed0"], row["seed1"]]
 
 
 def export_csv(path: Path, rows: list[dict]):

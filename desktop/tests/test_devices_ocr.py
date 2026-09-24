@@ -87,8 +87,9 @@ class CaptureAndOcrTests(unittest.TestCase):
         import cv2
         import numpy as np
         from swsh_app.vendor.easycon.tesseract import read_tesseract
-        frame = np.full((120, 500, 3), 255, dtype=np.uint8)
-        cv2.putText(frame, "123", (30, 85), cv2.FONT_HERSHEY_SIMPLEX, 2.5, (0, 0, 0), 4)
+        # Fixed pixels: font/rasterizer versions must not change the OCR input.
+        data = np.fromfile(Path(__file__).parent / "fixtures/ocr-digits.png", dtype=np.uint8)
+        frame = cv2.imdecode(data, cv2.IMREAD_COLOR)
         text, confidence = read_tesseract(frame)
         self.assertIn("123", text)
         self.assertGreater(confidence, 0.8)

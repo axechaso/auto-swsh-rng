@@ -26,6 +26,7 @@ Actions 下载包附带 `desktop/backend` 时会自动找到服务。
 - 击败数量、暗雷步数、内部 TID / SID、闪耀护符和证章护符。
 - 异步搜索、取消、排序、详情、复制及 UTF-8 BOM CSV 导出。
 - Xoroshiro128+ 前进 / 回退、多存档和 Qt 采集卡视频预览。
+- 使用 owoow 汉化版的地区、天气、宝可梦／形态、性格、特性和证章名称，结果复制及 CSV 同步汉化。
 
 先在「存档管理」填写内部 16 位 TID / SID（0～65535），再输入种子。
 示例种子仅用于体验。单次搜索最多 100,000 帧，显示 / 导出前 10,000 个匹配。
@@ -76,6 +77,12 @@ python desktop/run_pyside6_gui.py --page easycon --screenshot desktop/artifacts/
 测试覆盖计算服务对照、64 位种子往返、Qt 搜索 / 取消 / 排序、存档、手柄协议、组合输入和释放、脚本模拟、共享帧、ROI 坐标及 OCR 结果解析。
 本机已用真实 PaddleOCR 模型识别测试图像；串口、采集卡及游戏流程仍需实机验证。
 
+## owoow 更新
+
+算法子模块与汉化资源分别固定提交；共通设置显示基线版本。构建前检查子模块及资源校验值，前后端检查协议与算法版本。
+Actions 运行固定种子结果回归、适配层测试及汉化覆盖检查，也支持手动填入候选 owoow SHA 试跑，候选试跑不会发布。
+具体升级和导入汉化版资源的方法见 [更新说明](../docs/owoow-updates.md)。
+
 ## 来源与许可
 
 桌面适配代码遵循 GPL-3.0-or-later，完整许可见 `LICENSE.txt`。
@@ -83,3 +90,4 @@ Native EasyCon 代码来源和精确版本见 `swsh_app/vendor/easycon/NOTICE.md
 手柄几何布局参考同一工作区的火叶项目 `pyside_app/controller_layout.py`。
 OCR 原生资源的来源与许可见 `easycon_native/NOTICE.md`。
 附带脚本保留用户提供原稿中的作者署名。
+owoow 汉化版与 PKHeX 游戏文本的精确来源见 [资源说明](resources/NOTICE.md)。

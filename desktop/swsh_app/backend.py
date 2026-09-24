@@ -7,6 +7,17 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, Signal
 
+from .localization import BASELINE
+
+PROTOCOL_VERSION = 1
+
+
+def validate_event(event: dict):
+    if not isinstance(event, dict) or event.get("protocolVersion") != PROTOCOL_VERSION:
+        raise ValueError("计算协议版本不兼容，请使用配套计算服务")
+    if event.get("type") == "result" and event.get("algorithmCommit") != BASELINE["algorithm"]["commit"]:
+        raise ValueError("owoow 版本与桌面验证基线不同，请使用同一发布包中的计算服务")
+
 
 def find_backend(explicit: str | None = None) -> Path | None:
     root = Path(__file__).resolve().parents[1]
@@ -32,7 +43,7 @@ class JsonJob(QObject):
 
     def __init__(self, executable: Path, request: dict, parent=None):
         super().__init__(parent)
-        self.request = request
+        self.request = {**request, "protocolVersion": PROTOCOL_VERSION}
         self.cancelled = False
         self.settled = False
         self.payload = None
@@ -75,6 +86,7 @@ class JsonJob(QObject):
                 continue
             try:
                 event = json.loads(line.decode("utf-8-sig"))
+                validate_event(event)
                 if event["type"] == "progress":
                     self.progress.emit(event["completed"], event["total"])
                 elif event["type"] == "result":
