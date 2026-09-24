@@ -1,0 +1,771 @@
+# 剑盾乱数统合脚本 · ECS v1
+# 由用户提供的九份旧脚本重写。光速 / 原地过帧原作者：未来的未来。
+# 使用当前 Native EasyCon 的 FUNC / CALL / RETURN、显式 WAIT 和有名局部变量。
+# 修改本区参数后运行一次所选功能；测种完成后先计算目标推进数，再选过帧功能。
+# 功能：0说明 1测种 2启动后测种 3卡对战bug 4光速过帧 5原地过帧
+#       6自行车 7雷雨自行车 8精准过帧 9迷人身躯换位
+_功能 = 0
+_过帧数 = 0                 # 功能4/5/8必填；功能8先扣除预留及天气误差
+_自行车次数 = 0             # 功能6/7必填，沿用旧脚本的乘5规则
+_推进后测种 = 1             # 功能4/5/6/7：1自动读128位，0停在能力页
+_测种判定 = 80              # 大于该匹配分数记0，否则记1；旧普通自行车用85，可自行改
+_识别次数上限 = 120         # 每个搜图等待的最大尝试次数；失败中止当前功能
+
+_光速延迟 = 30
+_光速按键基准 = 120         # 沿用所给旧脚本；按设备与联机状态校准
+_光速判定间隔 = 50
+_光速判定等待 = 500
+_原地移动延迟 = 530
+_原地上移延迟 = 110
+
+_同步月 = 10                # 网络同步后的系统日期，运行前核对
+_同步日 = 12
+_当前月 = 11                # 普通天气的目标日期
+_当前日 = 15
+_雷雨月 = 8                 # 雷雨目标日期，必须适用于当前地点
+_雷雨日 = 15
+
+_撞帧方向 = 1               # 功能8：0不撞帧 1前 2后 3左 4右
+_需要保存 = 1               # 功能8：1执行原脚本保存操作，0跳过
+_需要预留 = 0
+_预留帧数 = 40
+_雷雨雨天乱数 = 0           # 功能8：1扣天气误差并切换到雷雨日期
+_雷雨雨天误差 = 4
+_迷人身躯 = 4               # 功能9：目标宝可梦的队伍位置1～6
+
+FUNC 校验参数(): INT
+    IF _功能 < 0 or _功能 > 9
+        PRINT "功能编号必须为0～9。"
+        RETURN 0
+    ENDIF
+    IF _功能 == 4 or _功能 == 5 or _功能 == 8
+        IF _过帧数 < 1 or _过帧数 > 100000000
+            PRINT "请填写1～100000000范围内的过帧数。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    IF _功能 == 6 or _功能 == 7
+        IF _自行车次数 < 1 or _自行车次数 > 1000000
+            PRINT "请填写1～1000000范围内的自行车次数。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    IF _识别次数上限 < 1 or _识别次数上限 > 3600
+        PRINT "识别次数上限必须为1～3600。"
+        RETURN 0
+    ENDIF
+    IF _测种判定 < 0 or _测种判定 > 100
+        PRINT "测种判定必须为0～100。"
+        RETURN 0
+    ENDIF
+    IF _推进后测种 < 0 or _推进后测种 > 1
+        PRINT "推进后测种只能为0或1。"
+        RETURN 0
+    ENDIF
+    IF _功能 == 4
+        IF _光速延迟 < 1 or _光速延迟 > 60000 or _光速按键基准 < 1 or _光速按键基准 > 60000 or _光速判定间隔 < 1 or _光速判定间隔 > 1000000 or _光速判定等待 < 1 or _光速判定等待 > 60000
+            PRINT "光速延迟须为1～60000毫秒，判定间隔须为1～1000000。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    IF _功能 == 5
+        IF _原地移动延迟 < 1 or _原地移动延迟 > 60000 or _原地上移延迟 < 1 or _原地上移延迟 > 60000
+            PRINT "原地过帧延迟必须为1～60000毫秒。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    IF _功能 == 6 or _功能 == 7 or (_功能 == 8 and _雷雨雨天乱数 == 1)
+        IF _同步月 < 1 or _同步月 > 12 or _当前月 < 1 or _当前月 > 12 or _雷雨月 < 1 or _雷雨月 > 12
+            PRINT "月份必须为1～12。"
+            RETURN 0
+        ENDIF
+        IF _同步日 < 1 or _同步日 > 31 or _当前日 < 1 or _当前日 > 31 or _雷雨日 < 1 or _雷雨日 > 31
+            PRINT "日期必须为1～31，请另行核对实际年月。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    IF _功能 == 8
+        IF _撞帧方向 < 0 or _撞帧方向 > 4 or _需要保存 < 0 or _需要保存 > 1 or _需要预留 < 0 or _需要预留 > 1 or _雷雨雨天乱数 < 0 or _雷雨雨天乱数 > 1
+            PRINT "精准过帧的方向或开关参数无效。"
+            RETURN 0
+        ENDIF
+        IF _预留帧数 < 0 or _预留帧数 > 100000000 or _雷雨雨天误差 < 0 or _雷雨雨天误差 > 100000000
+            PRINT "预留帧数与天气误差必须为0～100000000。"
+            RETURN 0
+        ENDIF
+        $有效帧 = _过帧数 - _需要预留 * _预留帧数 - _雷雨雨天乱数 * _雷雨雨天误差
+        IF $有效帧 < 0
+            PRINT "扣除预留和天气误差后为负数，未执行按键。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    IF _功能 == 9
+        IF _迷人身躯 < 1 or _迷人身躯 > 6
+            PRINT "迷人身躯位置必须为1～6。"
+            RETURN 0
+        ENDIF
+    ENDIF
+    RETURN 1
+ENDFUNC
+
+FUNC 唤醒()
+    FOR 5
+        LCLICK 120
+        WAIT 100
+    NEXT
+ENDFUNC
+
+FUNC 等待游戏(): INT
+    FOR _识别次数上限
+        IF @YY > 90
+            RETURN 1
+        ENDIF
+        B
+        WAIT 1000
+    NEXT
+    PRINT "未识别到YY，停止当前功能，请检查画面与标签。"
+    RETURN 0
+ENDFUNC
+
+FUNC 打开能力页()
+    X 200
+    WAIT 1500
+    A 200
+    WAIT 2000
+    DOWN 200
+    WAIT 1000
+ENDFUNC
+
+FUNC 读128位()
+    $序列 = ""
+    $一的数量 = 0
+    FOR 128
+        RCLICK
+        WAIT 1000
+        IF @铁甲物理 > _测种判定
+            $序列 = $序列 & "0"
+            WAIT 400
+        ELSE
+            $序列 = $序列 & "1"
+            $一的数量 += 1
+            WAIT 650
+        ENDIF
+    NEXT
+    PRINT "测种序列（128位）："
+    PRINT $序列
+    IF $一的数量 > 125
+        PRINT "识别结果几乎全为1，请检查铁甲物理标签和能力页后重新测种。"
+    ENDIF
+ENDFUNC
+
+FUNC 推进结束()
+    IF _推进后测种 == 1
+        CALL 读128位()
+    ELSE
+        PRINT "已停在能力页，可手动测种。"
+    ENDIF
+ENDFUNC
+
+FUNC 测种(): INT
+    HOME 200
+    IF _功能 == 2
+        WAIT 1200
+        X 200
+        $启动次数 = 0
+        $已进入 = 0
+        FOR _识别次数上限
+            IF @YY > 90
+                $已进入 = 1
+                BREAK
+            ENDIF
+            A
+            WAIT 1000
+            $启动次数 += 1
+            IF $启动次数 == 60
+                PRINT "仍未进入游戏，尝试恢复菜单。"
+                HOME 200
+                WAIT 2000
+                X
+                WAIT 100
+                $启动次数 = 0
+            ENDIF
+        NEXT
+        IF $已进入 == 0
+            PRINT "启动等待超过上限，停止测种。"
+            RETURN 0
+        ENDIF
+        WAIT 1000
+        X 200
+        WAIT 1500
+        RIGHT 200
+        WAIT 400
+        A 200
+        WAIT 2000
+        DOWN 200
+        WAIT 1000
+    ELSE
+        WAIT 1500
+        A 200
+        IF 等待游戏() == 0
+            RETURN 0
+        ENDIF
+        CALL 打开能力页()
+    ENDIF
+    CALL 读128位()
+    RETURN 1
+ENDFUNC
+
+FUNC 卡对战(): INT
+    B
+    WAIT 1500
+    B
+    IF 等待游戏() == 0
+        RETURN 0
+    ENDIF
+    WAIT 500
+    Y
+    WAIT 1500
+    FOR 3
+        DOWN
+        WAIT 200
+    NEXT
+    PLUS
+    $就绪 = 0
+    FOR _识别次数上限
+        IF @联网 > 95
+            $就绪 = 1
+            BREAK
+        ENDIF
+        WAIT 1000
+    NEXT
+    IF $就绪 == 0
+        PRINT "联网等待超时，停止。"
+        RETURN 0
+    ENDIF
+    PRINT "联网成功。"
+    WAIT 500
+    $就绪 = 0
+    FOR _识别次数上限
+        $得分 = @匹配中
+        A
+        WAIT 100
+        IF $得分 > 95
+            $就绪 = 1
+            BREAK
+        ENDIF
+        WAIT 900
+    NEXT
+    IF $就绪 == 0
+        PRINT "未进入匹配，停止。"
+        RETURN 0
+    ENDIF
+    WAIT 500
+    $就绪 = 0
+    FOR _识别次数上限
+        IF @匹配成功 > 95
+            $就绪 = 1
+            BREAK
+        ENDIF
+        WAIT 1000
+    NEXT
+    IF $就绪 == 0
+        PRINT "未匹配到对手，停止。"
+        RETURN 0
+    ENDIF
+    WAIT 500
+    PRINT "匹配成功，执行旧脚本的断网 / HOME操作，请核对主机状态。"
+    HOME DOWN
+    WAIT 1000
+    HOME UP
+    WAIT 500
+    A
+    WAIT 500
+    FOR 50
+        HOME
+        WAIT 100
+    NEXT
+    RETURN 1
+ENDFUNC
+
+FUNC 进入日期设置()
+    HOME 50
+    WAIT 1000
+    DOWN 100
+    WAIT 200
+    FOR 7
+        RIGHT 50
+        WAIT 50
+    NEXT
+    A 50
+    WAIT 1000
+    LS DOWN,2000
+    WAIT 400
+    RIGHT 200
+    WAIT 200
+    LS DOWN,700
+    WAIT 200
+    A 50
+    WAIT 200
+ENDFUNC
+
+FUNC 选择日期项()
+    LS DOWN,550
+    WAIT 200
+ENDFUNC
+
+FUNC 日期数值($差: INT, $间隔: INT)
+    IF $差 > 0
+        FOR $差
+            DOWN $间隔
+            WAIT $间隔
+        NEXT
+    ELIF $差 < 0
+        $次数 = -$差
+        FOR $次数
+            UP $间隔
+            WAIT $间隔
+        NEXT
+    ENDIF
+ENDFUNC
+
+# 从日期设置页面开始；传入实际起点和目标，避免反向恢复时重复取反。
+FUNC 调整日期($从月: INT, $从日: INT, $到月: INT, $到日: INT)
+    CALL 选择日期项()
+    A 200
+    WAIT 500
+    RIGHT 200
+    WAIT 200
+    CALL 日期数值($从月 - $到月, 200)
+    WAIT 500
+    RIGHT 200
+    WAIT 500
+    CALL 日期数值($从日 - $到日, 200)
+    LS RIGHT,800
+    WAIT 400
+    A 200
+    WAIT 400
+ENDFUNC
+
+FUNC 返回游戏()
+    HOME 200
+    WAIT 2000
+    A 200
+    WAIT 2500
+ENDFUNC
+
+FUNC 恢复日期菜单(): INT
+    IF @现在的日期与时间 >= 90
+        RETURN 1
+    ENDIF
+    $已关闭同步 = 0
+    FOR _识别次数上限
+        A 200
+        WAIT 1000
+        IF @同步时间 < 90
+            $已关闭同步 = 1
+            BREAK
+        ENDIF
+    NEXT
+    IF $已关闭同步 == 0
+        PRINT "无法关闭时间同步，停止过帧。"
+        RETURN 0
+    ENDIF
+    IF @时区 < 90
+        DOWN 200
+        WAIT 1000
+        A 200
+        WAIT 2000
+        $已找到时区 = 0
+        $恢复次数 = 0
+        FOR _识别次数上限
+            IF @时区2 > 90
+                $已找到时区 = 1
+                BREAK
+            ENDIF
+            DOWN 200
+            WAIT 1000
+            $恢复次数 += 1
+            IF $恢复次数 == 10
+                B 200
+                WAIT 1000
+                UP 200
+                WAIT 500
+                UP 200
+                WAIT 500
+                DOWN 200
+                WAIT 1500
+                A 200
+                WAIT 2000
+                $恢复次数 = 0
+            ENDIF
+        NEXT
+        IF $已找到时区 == 0
+            PRINT "找不到时区，停止过帧。"
+            RETURN 0
+        ENDIF
+        A 200
+        WAIT 1000
+    ENDIF
+    DOWN 200
+    WAIT 400
+    DOWN 200
+    WAIT 400
+    RETURN 1
+ENDFUNC
+
+FUNC 过帧前准备(): INT
+    FOR 5
+        A
+        WAIT 1000
+    NEXT
+    IF 等待游戏() == 0
+        RETURN 0
+    ENDIF
+    WAIT 1500
+    CALL 进入日期设置()
+    RETURN 1
+ENDFUNC
+
+FUNC 光速过帧(): INT
+    IF 过帧前准备() == 0
+        RETURN 0
+    ENDIF
+    WAIT 600
+    $已关闭 = 0
+    FOR _识别次数上限
+        IF @同步时间 < 90
+            $已关闭 = 1
+            BREAK
+        ENDIF
+        A
+        WAIT 1000
+    NEXT
+    IF $已关闭 == 0
+        PRINT "时间同步未关闭，停止。"
+        RETURN 0
+    ENDIF
+    WAIT 300
+    CALL 选择日期项()
+    A 50
+    WAIT 200
+    LS RIGHT,1000
+    WAIT 200
+    A 50
+    WAIT 200
+    $余量 = _过帧数 - 1
+    $已过 = 0
+    $本批 = 0
+    $按键等待 = _光速按键基准 + _光速延迟
+    WHILE $已过 < $余量
+        A 50
+        WAIT $按键等待
+        LS LEFT
+        WAIT _光速延迟
+        RS LEFT
+        WAIT _光速延迟
+        LEFT DOWN
+        WAIT _光速延迟
+        LS UP
+        WAIT _光速延迟
+        RIGHT DOWN
+        WAIT _光速延迟
+        LS RIGHT
+        WAIT _光速延迟
+        RS RIGHT
+        WAIT _光速延迟
+        LEFT UP
+        RIGHT UP
+        A 50
+        WAIT $按键等待
+        $已过 += 1
+        $本批 += 1
+        PRINT "循环推进：" & $已过
+        IF $本批 == _光速判定间隔 and $已过 < $余量
+            WAIT _光速判定等待
+            LS RESET
+            RS RESET
+            IF 恢复日期菜单() == 0
+                RETURN 0
+            ENDIF
+            $本批 = 0
+        ENDIF
+    END
+    LS RESET
+    RS RESET
+    CALL 返回游戏()
+    IF 等待游戏() == 0
+        RETURN 0
+    ENDIF
+    CALL 打开能力页()
+    CALL 推进结束()
+    RETURN 1
+ENDFUNC
+
+FUNC 原地过帧(): INT
+    IF 过帧前准备() == 0
+        RETURN 0
+    ENDIF
+    CALL 选择日期项()
+    A 50
+    WAIT 400
+    LS DOWN,6000
+    WAIT 400
+    LS RIGHT
+    WAIT _原地移动延迟
+    A 50
+    WAIT 400
+    $余量 = _过帧数 - 1
+    $已过 = 0
+    $本批 = 0
+    WHILE $已过 < $余量
+        A
+        WAIT _原地上移延迟
+        LS LEFT
+        RS LEFT
+        WAIT _原地移动延迟
+        LS UP
+        WAIT _原地上移延迟
+        LS RIGHT
+        RS RIGHT
+        WAIT _原地移动延迟
+        A
+        WAIT _原地上移延迟
+        $已过 += 1
+        $本批 += 1
+        PRINT "循环推进：" & $已过
+        IF $本批 == 60 and $已过 < $余量
+            LS RESET
+            RS RESET
+            A
+            WAIT _原地上移延迟
+            LS LEFT,900
+            WAIT 200
+            LS DOWN,6000
+            WAIT 500
+            LS RIGHT,900
+            WAIT 200
+            A 200
+            WAIT 500
+            IF 恢复日期菜单() == 0
+                RETURN 0
+            ENDIF
+            $本批 = 0
+        ENDIF
+    END
+    LS RESET
+    RS RESET
+    CALL 返回游戏()
+    IF 等待游戏() == 0
+        RETURN 0
+    ENDIF
+    CALL 打开能力页()
+    CALL 推进结束()
+    RETURN 1
+ENDFUNC
+
+FUNC 骑车($次数: INT)
+    FOR $次数
+        PLUS
+        WAIT 700
+        PLUS
+        WAIT 700
+    NEXT
+ENDFUNC
+
+FUNC 普通自行车(): INT
+    CALL 进入日期设置()
+    A 200
+    WAIT 500
+    A 200
+    WAIT 500
+    CALL 调整日期(_同步月, _同步日, _当前月, _当前日)
+    CALL 返回游戏()
+    IF 等待游戏() == 0
+        RETURN 0
+    ENDIF
+    $次数 = _自行车次数 * 5 - 2
+    CALL 骑车($次数)
+    PRINT "自行车推进完成。"
+    CALL 打开能力页()
+    CALL 推进结束()
+    RETURN 1
+ENDFUNC
+
+FUNC 雷雨自行车(): INT
+    B 200
+    WAIT 2500
+    B 200
+    WAIT 1500
+    X 200
+    WAIT 2500
+    DOWN 200
+    WAIT 200
+    A 200
+    WAIT 400
+    $已结束 = 0
+    FOR _识别次数上限
+        B
+        WAIT 1000
+        IF @结束露营 > 90
+            A
+            WAIT 1000
+            $已结束 = 1
+            BREAK
+        ENDIF
+    NEXT
+    IF $已结束 == 0
+        PRINT "结束露营识别超时，停止。"
+        RETURN 0
+    ENDIF
+    IF 等待游戏() == 0
+        RETURN 0
+    ENDIF
+    WAIT 500
+    X 200
+    WAIT 2500
+    UP 200
+    WAIT 200
+    B 200
+    WAIT 2500
+    CALL 进入日期设置()
+    A 200
+    WAIT 500
+    A 200
+    WAIT 500
+    CALL 调整日期(_同步月, _同步日, _雷雨月, _雷雨日)
+    CALL 返回游戏()
+    WAIT 1500
+    $次数 = _自行车次数 * 5
+    CALL 骑车($次数)
+    WAIT 1000
+    CALL 打开能力页()
+    CALL 进入日期设置()
+    CALL 调整日期(_雷雨月, _雷雨日, _当前月, _当前日)
+    CALL 返回游戏()
+    B 200
+    WAIT 1500
+    B 200
+    WAIT 2500
+    CALL 打开能力页()
+    CALL 推进结束()
+    RETURN 1
+ENDFUNC
+
+FUNC 精准过帧(): INT
+    $有效帧 = _过帧数 - _需要预留 * _预留帧数 - _雷雨雨天乱数 * _雷雨雨天误差
+    PRINT "开始精准推进：" & $有效帧
+    FOR $有效帧
+        RCLICK
+        WAIT 100
+    NEXT
+    IF _雷雨雨天乱数 == 1
+        B 200
+        WAIT 2500
+        CALL 进入日期设置()
+        CALL 调整日期(_当前月, _当前日, _雷雨月, _雷雨日)
+        CALL 返回游戏()
+        B
+        WAIT 500
+    ELIF _撞帧方向 > 0
+        B
+        WAIT 1500
+        B
+        WAIT 500
+    ENDIF
+    IF _撞帧方向 == 1
+        LS UP,400
+    ELIF _撞帧方向 == 2
+        LS DOWN,400
+    ELIF _撞帧方向 == 3
+        LS LEFT,400
+    ELIF _撞帧方向 == 4
+        LS RIGHT,400
+    ENDIF
+    IF _撞帧方向 > 0
+        LS RESET
+        WAIT 200
+        X
+        WAIT 2000
+        PRINT "已尝试刷出宝可梦，请手动检查。"
+    ENDIF
+    IF _需要保存 == 1
+        WAIT 500
+        R
+        WAIT 2000
+        A
+        WAIT 200
+    ENDIF
+    RETURN 1
+ENDFUNC
+
+FUNC 迷人身躯换位(): INT
+    WAIT 1000
+    IF _迷人身躯 > 1
+        $下移 = _迷人身躯 - 2
+        FOR $下移
+            DOWN
+            WAIT 200
+        NEXT
+        WAIT 1000
+        Y 200
+        WAIT 1000
+        $上移 = _迷人身躯 - 1
+        FOR $上移
+            UP
+            WAIT 200
+        NEXT
+        A
+        WAIT 800
+        DOWN
+        WAIT 400
+    ENDIF
+    RETURN 1
+ENDFUNC
+
+
+FUNC 主流程(): INT
+    IF _功能 == 0
+        PRINT "选择功能后运行：1测种、2启动后测种、3卡对战bug、4光速过帧、5原地过帧。"
+        PRINT "6自行车、7雷雨自行车、8精准过帧、9迷人身躯换位。"
+        PRINT "测种后请先计算目标推进数，再填写过帧数；不会自动串联不同菜单起点。"
+        PRINT "图像标签由使用者补齐；所选阶段需要的标签会在执行按键前检查。"
+        RETURN 1
+    ELSE
+        $合法 = 校验参数()
+        IF $合法 == 1
+            CALL 唤醒()
+            $成功 = 0
+            IF _功能 == 1 or _功能 == 2
+                $成功 = 测种()
+            ELIF _功能 == 3
+                $成功 = 卡对战()
+            ELIF _功能 == 4
+                $成功 = 光速过帧()
+            ELIF _功能 == 5
+                $成功 = 原地过帧()
+            ELIF _功能 == 6
+                $成功 = 普通自行车()
+            ELIF _功能 == 7
+                $成功 = 雷雨自行车()
+            ELIF _功能 == 8
+                $成功 = 精准过帧()
+            ELIF _功能 == 9
+                $成功 = 迷人身躯换位()
+            ENDIF
+            LS RESET
+            RS RESET
+            LEFT UP
+            RIGHT UP
+            HOME UP
+            IF $成功 == 1
+                PRINT "当前功能完成。"
+            ELSE
+                PRINT "当前功能已中止，请核对最后的画面后重新选择阶段。"
+            ENDIF
+            RETURN $成功
+        ENDIF
+        RETURN 0
+    ENDIF
+ENDFUNC
+
+$运行结果 = 主流程()

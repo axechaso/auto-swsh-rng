@@ -4,6 +4,12 @@ using AutoSwshRng.Upstream;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+if (args is ["desktop-json"])
+{
+    Environment.ExitCode = await DesktopJsonCommand.RunAsync(Console.In, Console.Out);
+    return;
+}
+
 if (args.Length > 0)
 {
     Environment.ExitCode = await HeadlessCliCommand.RunAsync(

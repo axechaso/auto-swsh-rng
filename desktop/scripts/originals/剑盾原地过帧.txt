@@ -1,0 +1,186 @@
+#【剑盾雷雨雨天原地过帧v1.3】by 未来的未来
+#主要用来乱雷雨和雨天证原地过帧不炸档
+#效率是改日期过帧的一半因为移动的距离是2倍
+#卡完时间bug直接运行就行
+
+_延迟 = 530			#移动不到年份那就加延迟	
+_延迟2 = 110      		#往上跑飞就加延迟
+_过多少次 = 填入这里 
+# 过多少次就填多少
+
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    100
+NEXT
+
+$1 = _延迟
+$2 = _延迟2
+$3 = _过多少次
+
+FOR 5
+    A
+    1000
+NEXT
+FOR
+    B
+    1000
+    IF @YY > 90
+        BREAK
+    ENDIF
+NEXT
+WAIT 1500
+HOME 50
+WAIT 1000
+DOWN 100
+WAIT 200
+FOR 7
+    RIGHT 50
+    WAIT 50
+NEXT
+A 50
+WAIT 1000
+LS DOWN,2000	#移动到主机位置
+WAIT 400
+RIGHT 200
+WAIT 200
+LS DOWN,700	#移动到日期位置
+WAIT 200
+A 50
+WAIT 200
+LS DOWN,550
+WAIT 200
+PRINT 开始改时间过帧
+A 50
+WAIT 400
+LS DOWN,6000
+WAIT 400
+LS RIGHT
+WAIT $1
+A 50
+WAIT 400
+$3 -= 1
+#开始改年份
+FOR
+    $4 = 0
+    FOR $3
+        A
+        WAIT $2
+        LS LEFT
+        RS LEFT
+        WAIT $1
+        LS UP
+        WAIT $2
+        LS RIGHT
+        RS RIGHT
+        WAIT $1
+        A
+        WAIT $2
+        $4 += 1
+        $5 += 1
+        PRINT 已过 & $5 & 帧
+        IF $4 = 60
+            BREAK
+        ENDIF
+        IF $5 = $3
+            BREAK 2
+        ENDIF
+    NEXT
+    #同步时间
+    LS RESET
+    RS RESET
+    A
+    WAIT $2
+    LS LEFT,900
+    200
+    LS DOWN,6000
+    500
+    LS RIGHT,900
+    200
+    A 200
+    500
+    $6 = @现在的日期与时间
+    IF $6 < 90
+        FOR
+            A 200
+            1000
+            $6 = @同步时间
+            IF $6 < 90
+                BREAK
+            ENDIF
+            PRINT 同步时间
+        NEXT
+        $1 = 0
+        1000
+        $6 = @时区
+        IF $6 < 90
+            DOWN 200
+            1000
+            A 200
+            2000
+            PRINT 时区
+            $1 += 1
+            IF $1 = 30
+                B 200
+                500
+                UP 200
+                500
+                UP 200
+                500
+            ENDIF
+            $1 = 0
+            1000
+            FOR
+                $6 = @时区2
+                IF $6 > 90
+                    BREAK
+                ENDIF
+                DOWN 200
+                1000
+                PRINT 选择时区
+                $1 += 1
+                IF $1 = 10
+                    500
+                	B 200
+                	1000
+                    UP 200
+                    500
+                    UP 200
+                    500
+                    DOWN 200
+                    1500
+                    A 200
+                    2000
+                ENDIF
+            NEXT
+            A 200
+            1000
+        ENDIF
+        DOWN 200
+        400
+        DOWN 200
+        400
+    ENDIF
+NEXT
+2000
+LS RESET
+RS RESET
+1000
+HOME 200
+1500
+A 200
+FOR
+    $1 = @YY
+    IF $1 > 90
+        BREAK
+    ELSE
+        B
+        1000
+    ENDIF
+NEXT
+X 200
+1500
+A 200
+2000
+DOWN 200
+1000

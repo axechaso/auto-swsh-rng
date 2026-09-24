@@ -1,0 +1,251 @@
+﻿# PySide6 兼容版：原稿保存在 originals/，改动见 README.md
+
+_上下次数 = 填入这里
+
+
+#上下自行车次数，这个数字默认会乘5
+
+_同步月 = 10
+_同步日 = 12
+#雷雨天气才改下面的或者你其他位置想改也行
+_当前月 = 11
+_当前日 = 15
+_雷雨月 = 8
+_雷雨日 = 15
+
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    WAIT 100
+NEXT
+
+$3 = _同步月
+$4 = _同步日
+$5 = _上下次数
+$6 = _当前月
+$7 = _雷雨月
+$8 = _当前日
+$9 = _雷雨日
+
+
+B 200
+WAIT 2500
+B 200
+WAIT 1500
+X 200
+WAIT 2500
+DOWN 200
+WAIT 200
+A 200
+WAIT 400
+FOR
+    B
+    WAIT 1000
+    $1 = @结束露营
+    IF $1 > 90
+        A
+        WAIT 1000
+        BREAK
+    ENDIF
+NEXT
+FOR
+    $1 = @YY
+    IF $1 > 95
+        WAIT 500
+        BREAK
+    ENDIF
+NEXT
+X 200
+WAIT 2500
+UP 200
+WAIT 200
+B 200
+WAIT 2500
+HOME 50
+WAIT 1000
+DOWN 100
+WAIT 200
+FOR 7
+    RIGHT 50
+    WAIT 50
+NEXT
+A 50
+WAIT 1000
+LS DOWN,2000    #移动到主机位置
+WAIT 400
+RIGHT 200
+WAIT 200
+LS DOWN,700 #移动到日期位置
+WAIT 200
+A 50
+WAIT 200
+A 200
+WAIT 500
+A 200
+WAIT 500
+$3 -= $6
+$4 -= $8
+# 已同步到指定日期，以同步月日计算下一段差值
+$6 = _同步月
+$8 = _同步日
+LS DOWN,550
+WAIT 200
+A 200
+WAIT 500
+RIGHT 200
+WAIT 200
+$6 -= $7
+IF $6 > 0
+    FOR $6
+        DOWN 200
+        WAIT 200
+    NEXT
+ENDIF
+IF $6 < 0
+    $6 = -$6
+    FOR $6
+        UP 200
+        WAIT 200
+    NEXT
+    $6 = -$6
+ENDIF
+WAIT 500
+RIGHT 200
+WAIT 500
+$8 -= $9
+IF $8 > 0
+    FOR $8
+        DOWN 200
+        WAIT 200
+    NEXT
+ENDIF
+IF $8 < 0
+    $8 = -$8
+    FOR $8
+        UP 200
+        WAIT 200
+    NEXT
+    $8 = -$8
+ENDIF
+LS RIGHT,800
+WAIT 400
+A 200
+WAIT 400
+HOME 100
+WAIT 3000
+A 100
+WAIT 4000
+$5 *= 5
+FOR $5
+    PLUS
+    WAIT 700
+    PLUS
+    WAIT 700
+NEXT
+WAIT 1000
+X 200
+WAIT 1500
+A 200
+WAIT 2000
+DOWN 200
+WAIT 1000
+HOME 50
+WAIT 1000
+DOWN 100
+WAIT 200
+FOR 7
+    RIGHT 50
+    WAIT 50
+NEXT
+A 50
+WAIT 1000
+LS DOWN,2000    #移动到主机位置
+WAIT 400
+RIGHT 200
+WAIT 200
+LS DOWN,700 #移动到日期位置
+WAIT 200
+A 50
+WAIT 200
+LS DOWN,550
+WAIT 200
+A 50
+WAIT 400
+RIGHT 200
+WAIT 400
+IF $3 > 0
+    $6 -= $3
+ENDIF
+IF $3 < 0
+    $6 += $3
+ENDIF
+IF $4 > 0
+    $8 -= $4
+ENDIF
+IF $4 < 0
+    $8 += $4
+ENDIF
+IF $6 > 0
+    FOR $6
+        UP 200
+        WAIT 200
+    NEXT
+ENDIF
+IF $6 < 0
+    $6 = -$6
+    FOR $6
+        DOWN 200
+        WAIT 200
+    NEXT
+    $6 = -$6
+ENDIF
+WAIT 400
+RIGHT 200
+WAIT 400
+IF $8 > 0
+    FOR $8
+        UP 200
+        WAIT 200
+    NEXT
+ENDIF
+IF $8 < 0
+    $8 = -$8
+    FOR $8
+        DOWN 200
+        WAIT 200
+    NEXT
+    $8 = -$8
+ENDIF
+LS RIGHT,800
+WAIT 400
+A 200
+WAIT 400
+HOME 100
+WAIT 2000
+A 200
+WAIT 2500
+B 200
+WAIT 1500
+B 200
+WAIT 2500
+X 200
+WAIT 2500
+A 200
+WAIT 1500
+DOWN 200
+WAIT 400
+$2 = 128
+$测种序列 = ""
+FOR $2
+    RCLICK
+    WAIT 1000
+    $1 = @铁甲物理
+    IF $1 > 80
+        $测种序列 = $测种序列 & "0"
+        WAIT 400
+    ELSE
+        $测种序列 = $测种序列 & "1"
+        WAIT 650
+    ENDIF
+NEXT
+PRINT $测种序列  # 一次输出完整 128 位，避免旧版续行差异
