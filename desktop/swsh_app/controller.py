@@ -6,6 +6,31 @@ from .vendor.easycon import ScriptCancelled
 from .vendor.easycon.device import DeviceCancelledError, NintendoSwitchDevice, NativeGamePadAdapter, SwitchReport, to_ec_key
 
 
+class ControllerTaskLease:
+    """Exclusive ownership of the controller for one multi-stage task."""
+
+    def __init__(self, session, token):
+        self._session = session
+        self._token = token
+        self._released = False
+
+    @property
+    def released(self):
+        return self._released
+
+    def release(self):
+        if not self._released:
+            self._session._release_task_lease(self)
+
+    def __enter__(self):
+        if self._released:
+            raise RuntimeError("伊机控任务租约已经释放。")
+        return self
+
+    def __exit__(self, *_):
+        self.release()
+
+
 def manual_report(keys):
     """A complete snapshot preserves combinations and cancels opposing axes."""
     report = SwitchReport()
@@ -35,18 +60,60 @@ class ControllerSession:
         self.frame_provider = frame_provider
         self.log = log or (lambda text: None)
         self.gate = threading.Lock()
+        self.lease_lock = threading.Lock()
+        self.active_lease = None
         self.cancel = threading.Event()
 
     @property
     def connected(self):
         return self.device.is_connected
 
-    def _acquire(self):
+    def _acquire(self, lease=None):
         if not self.gate.acquire(blocking=False):
             raise RuntimeError("伊机控正在执行其他操作，请先停止或等待完成。")
+        try:
+            with self.lease_lock:
+                active = self.active_lease
+                if active is not None and (lease is None or lease._token is not active):
+                    raise RuntimeError("自动任务占用伊机控；请先停止自动任务。")
+                if lease is not None and (
+                    lease._session is not self
+                    or lease._released
+                    or lease._token is not active
+                ):
+                    raise RuntimeError("伊机控任务租约无效或已经释放。")
+        except Exception:
+            self.gate.release()
+            raise
 
-    def connect(self, port):
+    def acquire_task_lease(self):
         self._acquire()
+        try:
+            token = object()
+            lease = ControllerTaskLease(self, token)
+            with self.lease_lock:
+                if self.active_lease is not None:
+                    raise RuntimeError("已有自动任务占用伊机控。")
+                self.active_lease = token
+            return lease
+        finally:
+            self.gate.release()
+
+    def _release_task_lease(self, lease):
+        self._acquire(lease)
+        try:
+            if self.connected:
+                self.device.reset(wait=True)
+            with self.lease_lock:
+                if self.active_lease is not lease._token:
+                    raise RuntimeError("伊机控任务租约已被其他任务替换。")
+                self.active_lease = None
+                lease._released = True
+        finally:
+            self.gate.release()
+
+    def connect(self, port, *, lease=None):
+        self._acquire(lease)
         try:
             if str(port).lower() in ("mock", "memory", "none"):
                 raise ValueError("请选择真实串口。模拟传输仅用于自动化测试。")
@@ -61,8 +128,8 @@ class ControllerSession:
         finally:
             self.gate.release()
 
-    def disconnect(self):
-        self._acquire()
+    def disconnect(self, *, lease=None):
+        self._acquire(lease)
         try:
             if not self.device.disconnect(release=True, timeout=2):
                 raise RuntimeError("伊机控释放或断开失败，请检查设备连接。")
@@ -70,8 +137,8 @@ class ControllerSession:
         finally:
             self.gate.release()
 
-    def press(self, key, duration=100):
-        self._acquire()
+    def press(self, key, duration=100, *, lease=None):
+        self._acquire(lease)
         try:
             if not self.connected:
                 raise RuntimeError("请先连接伊机控。")
@@ -98,8 +165,8 @@ class ControllerSession:
         finally:
             self.gate.release()
 
-    def run(self, text, path=None, *, cancel=None, label_root=None):
-        self._acquire()
+    def run(self, text, path=None, *, cancel=None, label_root=None, lease=None):
+        self._acquire(lease)
         self.cancel = cancel if cancel is not None else threading.Event()
         try:
             if self.cancel.is_set():

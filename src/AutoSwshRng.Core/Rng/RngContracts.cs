@@ -19,9 +19,11 @@ public sealed record XoroshiroRequest
             throw new ArgumentOutOfRangeException(nameof(operation));
         }
 
-        if (amount == 0)
+        if (amount == 0 && operation is XoroshiroOperation.NextInteger or XoroshiroOperation.FindInitial)
         {
-            throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be positive.");
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                "A positive amount is required for this operation.");
         }
 
         State = state;
@@ -36,7 +38,7 @@ public sealed record XoroshiroRequest
 
 public sealed record XoroshiroResult(
     RngState State,
-    ulong Distance,
+    ulong? Distance,
     ulong? Value,
     bool Found);
 
@@ -266,3 +268,177 @@ public interface IRetailSeedService
         ReidentifySeedRequest request,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Adds explicit observation-boundary semantics to the upstream retail seed
+/// calculation and provides complete, bounded animation relocation.
+/// </summary>
+public interface IRetailSeedObservationService
+{
+    Task<RetailSeedObservationResult> SolveObservationAsync(
+        RetailSeedRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<AnimationVerificationResult> VerifyObservationsAsync(
+        AnimationVerificationRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<AnimationRelocationResult> LocateAsync(
+        AnimationRelocationRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public enum SeedObservationBoundary
+{
+    StateBeforeFirstObservation,
+    StateAfterLastObservation,
+}
+
+/// <summary>
+/// The raw upstream result is the state after the last supplied animation
+/// output. The before-state is recovered by undoing exactly ObservationCount
+/// calls.
+/// </summary>
+public sealed record RetailSeedObservationResult(
+    RngState RawAlgorithmState,
+    RngState StateBeforeObservations,
+    RngState StateAfterObservations,
+    int ObservationCount,
+    SeedObservationBoundary RawStateBoundary,
+    string BoundarySemanticsVersion);
+
+public sealed record AnimationVerificationRequest
+{
+    public AnimationVerificationRequest(RngState stateBeforeObservations, string observations)
+    {
+        RetailSeedRequest.ValidateBinary(observations, 1, 4096, nameof(observations));
+        StateBeforeObservations = stateBeforeObservations;
+        Observations = observations;
+    }
+
+    public RngState StateBeforeObservations { get; }
+    public string Observations { get; }
+}
+
+public sealed record AnimationVerificationResult(
+    bool Matches,
+    string PredictedObservations,
+    int FirstMismatchIndex,
+    RngState StateAfterObservations);
+
+/// <summary>
+/// Searches inclusive candidate starts. The range describes the position of
+/// the first observed bit relative to AnchorState.
+/// </summary>
+public sealed record AnimationRelocationRequest
+{
+    public const int MaximumObservationLength = 4096;
+    public const ulong MaximumWindowStarts = 1_000_000;
+
+    public AnimationRelocationRequest(
+        RngState anchorState,
+        ulong minimumStartAdvance,
+        ulong maximumStartAdvance,
+        string observations)
+    {
+        RetailSeedRequest.ValidateBinary(
+            observations,
+            1,
+            MaximumObservationLength,
+            nameof(observations));
+        if (maximumStartAdvance < minimumStartAdvance)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumStartAdvance),
+                "Maximum candidate start cannot be less than minimum candidate start.");
+        }
+
+        var startCount = checked(maximumStartAdvance - minimumStartAdvance + 1);
+        if (startCount > MaximumWindowStarts)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumStartAdvance),
+                $"A relocation window may contain at most {MaximumWindowStarts:N0} candidate starts.");
+        }
+
+        _ = checked(maximumStartAdvance + (ulong)observations.Length);
+        AnchorState = anchorState;
+        MinimumStartAdvance = minimumStartAdvance;
+        MaximumStartAdvance = maximumStartAdvance;
+        Observations = observations;
+    }
+
+    public RngState AnchorState { get; }
+    public ulong MinimumStartAdvance { get; }
+    public ulong MaximumStartAdvance { get; }
+    public string Observations { get; }
+}
+
+public sealed record AnimationRelocationCandidate(
+    ulong FirstObservedAdvance,
+    ulong StateAfterObservedAdvance,
+    RngState StateBeforeObservations,
+    RngState StateAfterObservations);
+
+public sealed class AnimationRelocationResult
+{
+    private readonly IReadOnlyList<AnimationRelocationCandidate> candidates;
+
+    public AnimationRelocationResult(
+        ulong windowStart,
+        ulong windowEnd,
+        int observationLength,
+        IEnumerable<AnimationRelocationCandidate> candidates,
+        bool complete)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        WindowStart = windowStart;
+        WindowEnd = windowEnd;
+        ObservationLength = observationLength;
+        this.candidates = Array.AsReadOnly(candidates.ToArray());
+        Complete = complete;
+    }
+
+    public ulong WindowStart { get; }
+    public ulong WindowEnd { get; }
+    public int ObservationLength { get; }
+    public IReadOnlyList<AnimationRelocationCandidate> Candidates => candidates;
+    public bool Complete { get; }
+}
+
+public interface IRngStatePositionService
+{
+    Task<RngState> AdvanceAsync(
+        RngState state,
+        ulong amount,
+        CancellationToken cancellationToken = default);
+
+    Task<RngDistanceResult> MeasureDistanceAsync(
+        RngDistanceRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record RngDistanceRequest
+{
+    public const uint MaximumSupportedDistance = 1_000_000;
+
+    public RngDistanceRequest(RngState before, RngState after, uint maximumDistance)
+    {
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(
+            maximumDistance,
+            MaximumSupportedDistance);
+        Before = before;
+        After = after;
+        MaximumDistance = maximumDistance;
+    }
+
+    public RngState Before { get; }
+    public RngState After { get; }
+    public uint MaximumDistance { get; }
+}
+
+public sealed record RngDistanceResult(
+    bool Found,
+    uint? Distance,
+    uint MaximumDistance,
+    RngState VerifiedEndState);

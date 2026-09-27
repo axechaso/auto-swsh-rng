@@ -17,6 +17,13 @@ from swsh_app.capture import FrameStore
 from swsh_app.controller import ControllerSession
 from swsh_app.ocr_panel import RegionPreview
 from swsh_app.ocr_worker import crop_bounds, parse_prediction
+from swsh_app.automation import (
+    AnimationFramePhase,
+    AnimationFrameScore,
+    AutomationStageExecutor,
+    SeedObserver,
+    StageOutcome,
+)
 from swsh_app.vendor.easycon import EasyConScriptEngine
 from swsh_app.vendor.easycon.device import NintendoSwitchDevice, SwitchButton, SwitchReport
 
@@ -80,6 +87,48 @@ class ControllerTests(unittest.TestCase):
             self.session.run("A")
         self.assertEqual(self.session.run('PRINT "offline"'), "completed")
 
+    def test_task_lease_blocks_manual_and_competing_controller_actions(self):
+        lease = self.session.acquire_task_lease()
+        try:
+            with self.assertRaisesRegex(RuntimeError, "自动任务占用"):
+                self.session.press("B", 10)
+            with self.assertRaisesRegex(RuntimeError, "自动任务占用"):
+                self.session.acquire_task_lease()
+            self.assertEqual(
+                self.session.run('PRINT "leased"', lease=lease),
+                "completed",
+            )
+        finally:
+            lease.release()
+
+        self.session.press("A", 10)
+        self.assertEqual(self.device.get_report(), SwitchReport())
+
+    def test_stage_executor_returns_identity_and_frame_boundaries(self):
+        frames = FrameStore()
+        image = QImage(4, 4, QImage.Format.Format_RGB32)
+        image.fill(QColor(10, 20, 30))
+        before = frames.put(image)
+        executor = AutomationStageExecutor(
+            self.session,
+            run_id="run-1",
+            epoch_id="epoch-2",
+            context_revision=3,
+            frames=frames,
+        )
+        executor.acquire()
+        try:
+            result = executor.execute("diagnostic", 'PRINT "stage"')
+        finally:
+            executor.release()
+
+        self.assertEqual(result.outcome, StageOutcome.COMPLETED)
+        self.assertEqual((result.run_id, result.epoch_id, result.context_revision), ("run-1", "epoch-2", 3))
+        self.assertEqual(result.stage_id, "diagnostic")
+        self.assertEqual(result.start_frame_id, before.frame_id)
+        self.assertEqual(result.end_frame_id, before.frame_id)
+        self.assertGreaterEqual(result.finished_at_ns, result.started_at_ns)
+
 
 class CaptureAndOcrTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "The bundled EasyCon DLL targets Windows")
@@ -107,6 +156,94 @@ class CaptureAndOcrTests(unittest.TestCase):
         frames.updated -= 3
         with self.assertRaisesRegex(RuntimeError, "新鲜画面"):
             frames.snapshot()
+
+    def test_frame_snapshots_have_new_ids_and_detached_images(self):
+        frames = FrameStore(history_size=2)
+        image = QImage(4, 2, QImage.Format.Format_RGB32)
+        image.fill(QColor(20, 40, 60))
+        first = frames.put(image)
+        self.assertIsNotNone(first)
+        first_copy = frames.snapshot_frame()
+        self.assertEqual(first_copy.frame_id, first.frame_id)
+        self.assertGreater(first_copy.captured_at_ns, 0)
+        first_copy.image().fill(QColor(255, 0, 0))
+        self.assertEqual(frames.snapshot().pixelColor(0, 0), QColor(20, 40, 60))
+        with self.assertRaisesRegex(RuntimeError, "动作之后的新采集帧"):
+            frames.snapshot_frame(after_frame_id=first.frame_id)
+
+        image.fill(QColor(80, 100, 120))
+        second = frames.put(image)
+        image.fill(QColor(140, 160, 180))
+        third = frames.put(image)
+        self.assertGreater(second.frame_id, first.frame_id)
+        self.assertGreater(third.frame_id, second.frame_id)
+        self.assertEqual(
+            [frame.frame_id for frame in frames.frames_after(0)],
+            [second.frame_id, third.frame_id],
+        )
+        self.assertEqual(
+            frames.frames_after(first.frame_id, limit=1)[0].frame_id,
+            third.frame_id,
+        )
+
+    def test_seed_observer_uses_only_new_complete_and_nonfrozen_animations(self):
+        frames = FrameStore()
+        idle = QImage(4, 4, QImage.Format.Format_RGB32)
+        idle.fill(QColor(0, 0, 0))
+        frames.put(idle)
+
+        def classify(snapshot):
+            red = snapshot.image().pixelColor(0, 0).red()
+            if red == 200:
+                return AnimationFrameScore(AnimationFramePhase.ANIMATION, 0.1, 0.95, 0.6)
+            if red == 100:
+                return AnimationFrameScore(AnimationFramePhase.ANIMATION, 0.95, 0.1, 0.6)
+            return AnimationFrameScore(AnimationFramePhase.IDLE)
+
+        observer = SeedObserver(
+            frames,
+            classify,
+            timeout_seconds=0.04,
+            poll_seconds=0.001,
+            minimum_animation_frames=2,
+        )
+
+        def trigger_one():
+            animation = QImage(4, 4, QImage.Format.Format_RGB32)
+            animation.fill(QColor(200, 0, 0))
+            frames.put(animation)
+            frames.put(animation)
+            frames.put(idle)
+
+        sample = observer.observe_bit(trigger_one)
+        self.assertEqual(sample.bit, 1)
+        self.assertEqual(sample.frame_ids, (2, 3))
+
+        stale = observer.observe_bit(lambda: None, timeout_seconds=0.01)
+        self.assertIsNone(stale.bit)
+        self.assertEqual(stale.reason, "animation_not_seen")
+
+        def trigger_frozen():
+            animation = QImage(4, 4, QImage.Format.Format_RGB32)
+            animation.fill(QColor(100, 0, 0))
+            frames.put(animation)
+            frames.put(animation)
+            frames.put(idle)
+
+        frozen_classifier = lambda snapshot: (
+            AnimationFrameScore(AnimationFramePhase.ANIMATION, 0.95, 0.1, 0.0)
+            if snapshot.image().pixelColor(0, 0).red() == 100
+            else AnimationFrameScore(AnimationFramePhase.IDLE)
+        )
+        frozen = SeedObserver(
+            frames,
+            frozen_classifier,
+            timeout_seconds=0.04,
+            poll_seconds=0.001,
+            minimum_animation_frames=2,
+        ).observe_bit(trigger_frozen)
+        self.assertIsNone(frozen.bit)
+        self.assertEqual(frozen.reason, "frozen_animation")
 
     def test_region_mapping_and_validation(self):
         self.assertEqual(crop_bounds([0.25, 0.25, 0.5, 0.5], 1920, 1080), (480, 270, 1440, 810))

@@ -5,6 +5,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -116,6 +117,18 @@ class WindowTests(unittest.TestCase):
         self.assertNotEqual(self.window.area.currentText(), "Route 1")
         self.assertEqual((request["species"], request["area"], request["weather"]),
                          ("Skwovet", "Route 1", "Normal Weather"))
+
+    def test_late_calculation_result_is_discarded_after_context_change(self):
+        self.window.context_revision = 5
+        stale = SimpleNamespace(request={"requestId": "stale-request", "contextRevision": 4})
+        current = SimpleNamespace(request={"requestId": "current-request", "contextRevision": 5})
+        delivered = []
+
+        self.window.deliver_backend_result(stale, delivered.append, "old")
+        self.window.deliver_backend_result(current, delivered.append, "new")
+
+        self.assertEqual(delivered, ["new"])
+        self.assertIn("stale-request", self.window.log_view.toPlainText())
 
 
 @unittest.skipUnless(find_backend(), "Set SWSH_RNG_BACKEND to the built CLI for integration tests")

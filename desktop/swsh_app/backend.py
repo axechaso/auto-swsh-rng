@@ -3,18 +3,31 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, Signal
 
 from .localization import BASELINE
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
+IDENTITY_FIELDS = ("requestId", "runId", "epochId", "contextRevision")
 
 
-def validate_event(event: dict):
+def validate_event(event: dict, expected_context: dict | None = None):
     if not isinstance(event, dict) or event.get("protocolVersion") != PROTOCOL_VERSION:
         raise ValueError("计算协议版本不兼容，请使用配套计算服务")
+    for field in IDENTITY_FIELDS[:3]:
+        value = event.get(field)
+        if not isinstance(value, str) or not value or len(value) > 128:
+            raise ValueError(f"计算服务返回了无效的请求身份：{field}")
+    revision = event.get("contextRevision")
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 0:
+        raise ValueError("计算服务返回了无效的请求身份：contextRevision")
+    if expected_context is not None:
+        for field in IDENTITY_FIELDS:
+            if event.get(field) != expected_context.get(field):
+                raise ValueError(f"计算服务返回了过期或串线的请求：{field}")
     if event.get("type") == "result" and event.get("algorithmCommit") != BASELINE["algorithm"]["commit"]:
         raise ValueError("owoow 版本与桌面验证基线不同，请使用同一发布包中的计算服务")
 
@@ -43,7 +56,14 @@ class JsonJob(QObject):
 
     def __init__(self, executable: Path, request: dict, parent=None):
         super().__init__(parent)
-        self.request = {**request, "protocolVersion": PROTOCOL_VERSION}
+        self.request = {
+            **request,
+            "protocolVersion": PROTOCOL_VERSION,
+            "requestId": request.get("requestId") or uuid.uuid4().hex,
+            "runId": request.get("runId") or uuid.uuid4().hex,
+            "epochId": request.get("epochId") or uuid.uuid4().hex,
+            "contextRevision": request.get("contextRevision", 0),
+        }
         self.cancelled = False
         self.settled = False
         self.payload = None
@@ -69,7 +89,13 @@ class JsonJob(QObject):
 
     def start(self):
         self.process.start()
-        self.timer.start(180_000 if self.request.get("operation") == "search" else 30_000)
+        self.timer.start(
+            180_000
+            if self.request.get("operation") in (
+                "search", "encounter.search", "encounter.reverse", "attempt.plan",
+            )
+            else 30_000
+        )
 
     def _write_request(self):
         self.process.write((json.dumps(self.request, ensure_ascii=False) + "\n").encode("utf-8"))
@@ -86,7 +112,7 @@ class JsonJob(QObject):
                 continue
             try:
                 event = json.loads(line.decode("utf-8-sig"))
-                validate_event(event)
+                validate_event(event, self.request)
                 if event["type"] == "progress":
                     self.progress.emit(event["completed"], event["total"])
                 elif event["type"] == "result":

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "protocolVersion": 1,
+  "protocolVersion": 2,
   "algorithm": {
     "repository": "https://github.com/LegoFigure11/owoow",
     "commit": "a8514d654ae6c7c4ad87c3647c9911a05f6ef42a"

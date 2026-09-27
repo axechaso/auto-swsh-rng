@@ -78,6 +78,7 @@ class SwshWindow(QMainWindow):
         self.jobs = set()
         self.catalog_job = None
         self.active_job = None
+        self.context_revision = 0
         self.closing = False
         self.initializing = True
         self.camera = None
@@ -479,9 +480,17 @@ class SwshWindow(QMainWindow):
         if not self.backend:
             self.fail("尚未找到乱数服务。请运行启动脚本构建，或在共通设置中选择 AutoSwshRng.Cli.exe。")
             return None
-        job = JsonJob(self.backend, request, self)
+        request_context = {
+            **request,
+            "contextRevision": request.get("contextRevision", self.context_revision),
+        }
+        job = JsonJob(self.backend, request_context, self)
         self.jobs.add(job)
-        job.result.connect(result)
+        job.result.connect(
+            lambda data, active_job=job, callback=result: self.deliver_backend_result(
+                active_job, callback, data
+            )
+        )
         job.failed.connect(self.fail)
         job.done.connect(lambda: self.job_done(job))
         if not catalog:
@@ -493,6 +502,12 @@ class SwshWindow(QMainWindow):
             job.progress.connect(lambda n, total: self.progress.setValue(int(n * 1000 / max(total, 1))))
         job.start()
         return job
+
+    def deliver_backend_result(self, job, callback, data):
+        if job.request["contextRevision"] != self.context_revision:
+            self.log(f"已丢弃过期计算结果：{job.request['requestId']}")
+            return
+        callback(data)
 
     def job_done(self, job):
         self.jobs.discard(job)
@@ -545,6 +560,7 @@ class SwshWindow(QMainWindow):
         self.status.setText("遭遇表已载入。" if self.catalog_ready else "当前条件没有可用的遭遇表。")
 
     def invalidate(self, *_):
+        self.context_revision += 1
         if hasattr(self, "model") and self.model.rows:
             self.result_context.setText("条件已修改，下方保留上次搜索结果；请重新搜索。")
 

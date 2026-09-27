@@ -8,7 +8,7 @@ PySide6 使用 `AutoSwshRng.Cli desktop-json` 调用现有 owoow 适配层。算
 
 - 算法：官方 `LegoFigure11/owoow`，提交 `a8514d654ae6c7c4ad87c3647c9911a05f6ef42a`。
 - 汉化：`axechaso/owoow`，提交 `c2e48d94b94e34837a3946c22be58a45b07d3319`，使用其 PKHeX.Core 26.5.5 简体中文字符串。
-- JSON 协议：1。服务端嵌入编译时的算法验证基线，结果返回 `protocolVersion`、`algorithmCommit` 和 `data`；Qt 拒绝不匹配的协议或算法基线。独立更新翻译不要求重编译算法。
+- JSON 协议：2。服务端嵌入编译时的算法验证基线，所有有效事件回传 `requestId`、`runId`、`epochId` 和 `contextRevision`；Qt 拒绝不匹配的协议、请求身份或算法基线。协议 2 增加测种边界、独立验证、完整重定位及有界状态距离接口。独立更新翻译不要求重编译算法。
 
 共通设置显示这些版本。**“验证基线”来自编译清单，不是运行时对整个二进制的认证**；源码构建和发布前必须运行 `python tools/check_owoow.py`，防止清单与实际子模块不同。启动脚本和 Actions 已执行此检查。直接 `dotnet build` 的开发者也应先执行它。
 

@@ -15,6 +15,9 @@ from swsh_app.storage import result_values
 
 
 class UpstreamResourcesTests(unittest.TestCase):
+    def test_protocol_version_matches_the_lock_file(self):
+        self.assertEqual(BASELINE["protocolVersion"], PROTOCOL_VERSION)
+
     def test_resource_provenance_and_hash(self):
         raw = (RESOURCE_ROOT / "owoow.zh-Hans.json").read_bytes()
         self.assertEqual(hashlib.sha256(raw).hexdigest(), BASELINE["localization"]["resourceSha256"])
@@ -81,12 +84,18 @@ class UpstreamResourcesTests(unittest.TestCase):
 
     def test_rejects_mixed_backend_versions(self):
         valid = {"type": "result", "protocolVersion": PROTOCOL_VERSION,
-                 "algorithmCommit": BASELINE["algorithm"]["commit"]}
+                 "algorithmCommit": BASELINE["algorithm"]["commit"],
+                 "requestId": "request-1", "runId": "run-1", "epochId": "epoch-1",
+                 "contextRevision": 4}
         validate_event(valid)
-        for invalid in [{"type": "result"}, {**valid, "protocolVersion": 99},
-                        {**valid, "algorithmCommit": "0" * 40}, []]:
+        for invalid in [{"type": "result"}, {**valid, "protocolVersion": 99}, [],
+                        {**valid, "algorithmCommit": "0" * 40}]:
             with self.assertRaisesRegex(ValueError, "版本"):
                 validate_event(invalid)
+        with self.assertRaisesRegex(ValueError, "过期或串线"):
+            validate_event({**valid, "requestId": "another-request"}, valid)
+        with self.assertRaisesRegex(ValueError, "请求身份"):
+            validate_event({**valid, "contextRevision": -1})
 
 
 if __name__ == "__main__":

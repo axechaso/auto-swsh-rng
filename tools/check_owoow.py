@@ -18,7 +18,7 @@ def git(repo: Path, *args: str) -> str:
 def validate(root: Path = ROOT):
     resources = root / "desktop/resources"
     lock = json.loads((resources / "upstream.json").read_text(encoding="utf-8"))
-    if lock["schemaVersion"] != 1 or lock["protocolVersion"] != 1:
+    if lock["schemaVersion"] != 1 or lock["protocolVersion"] != 2:
         raise ValueError("不支持的版本清单，请检查桌面桥接协议。")
     expected = lock["algorithm"]["commit"]
     if not re.fullmatch(r"[0-9a-f]{40}", expected):
