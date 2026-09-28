@@ -651,10 +651,17 @@ class SwshWindow(QMainWindow):
                 max_epochs=1,
                 execution_mode="simulation",
             )
+            fault_choice = self.workflow_panel.simulation_fault.currentData()
+            faults = {
+                "none": {},
+                "preflight": {"preflight": True},
+                "drop_first_frame": {"drop_next_frame_id": 2},
+            }[fault_choice]
             session = DesktopSimulationSession(
                 config,
                 on_event=self.workflow_panel.run_event.emit,
                 backend=self.backend,
+                faults=faults,
             )
             self.workflow_panel.start_simulation(session)
         except (OSError, ValueError, KeyError) as exc:

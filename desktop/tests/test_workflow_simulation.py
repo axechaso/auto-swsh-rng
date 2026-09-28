@@ -83,6 +83,48 @@ class WorkflowSimulationTests(unittest.TestCase):
             APP.processEvents()
             window.deleteLater()
 
+    def test_preflight_fault_stops_before_seed_measurement_and_releases_run_controls(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            window = self.make_window(Path(temporary))
+            window.workflow_panel.simulation_fault.setCurrentIndex(
+                window.workflow_panel.simulation_fault.findData("preflight")
+            )
+            window.workflow_panel.simulation_start_button.click()
+
+            wait_until(lambda: window.workflow_panel.simulation_task is None)
+
+            result = window.workflow_panel.simulation_result
+            self.assertIsNotNone(result)
+            self.assertEqual(result.status, "needs_attention")
+            self.assertEqual(result.epochs, ())
+            self.assertIn("PREFLIGHT_FAILED", result.reason)
+            self.assertTrue(window.workflow_panel.simulation_start_button.isEnabled())
+            self.assertFalse(window.workflow_panel.simulation_stop_button.isEnabled())
+            self.assertFalse(window.workflow_panel.formal_start_button.isEnabled())
+            window.close()
+            APP.processEvents()
+            window.deleteLater()
+
+    def test_lost_seed_frame_is_reported_unknown_instead_of_verified(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            window = self.make_window(Path(temporary))
+            window.workflow_panel.simulation_fault.setCurrentIndex(
+                window.workflow_panel.simulation_fault.findData("drop_first_frame")
+            )
+            window.workflow_panel.simulation_start_button.click()
+
+            wait_until(lambda: window.workflow_panel.simulation_task is None)
+
+            result = window.workflow_panel.simulation_result
+            self.assertIsNotNone(result)
+            self.assertEqual(result.status, "needs_attention")
+            self.assertEqual(result.epochs, ())
+            self.assertIn("SEED_OBSERVATION_UNKNOWN", result.reason)
+            self.assertFalse(window.workflow_panel.formal_start_button.isEnabled())
+            window.close()
+            APP.processEvents()
+            window.deleteLater()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,7 +17,7 @@ from .synthetic_replay import build_synthetic_seed_replay
 class DesktopSimulationSession:
     """Build internally consistent synthetic observations, then run M2 as-is."""
 
-    def __init__(self, config: AutomationConfig, backend, *, on_event=None):
+    def __init__(self, config: AutomationConfig, backend, *, on_event=None, faults=None):
         if not isinstance(config, AutomationConfig):
             raise TypeError("config must be an AutomationConfig")
         if config.execution_mode != "simulation":
@@ -25,6 +25,7 @@ class DesktopSimulationSession:
         self.config = config
         self.calculator = DesktopJsonCalculator(backend)
         self.on_event = on_event
+        self.faults = dict(faults or {})
         self.cancel_event = threading.Event()
         self.runner: AutomationRunner | None = None
 
@@ -69,7 +70,7 @@ class DesktopSimulationSession:
                 replay_id=f"synthetic-{self.config.run_id}",
             )
             try:
-                device = SimulationDevicePort(frame_source=replay)
+                device = SimulationDevicePort(frame_source=replay, faults=self.faults)
                 observer = SeedObserver(
                     replay,
                     classify,

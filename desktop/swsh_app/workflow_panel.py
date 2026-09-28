@@ -83,6 +83,12 @@ class WorkflowPanel(QWidget):
         row.addWidget(self.simulation_stop_button)
         row.addStretch()
         card.body.addLayout(row)
+        self.simulation_fault = combo([
+            ("不注入故障", "none"),
+            ("预检失败", "preflight"),
+            ("测种首帧丢失", "drop_first_frame"),
+        ])
+        form(card, [("故障注入（仅模拟）", self.simulation_fault)], 1)
         self.simulation_status = label(
             "尚未运行模拟。模拟结果仅验证测种 / 搜索框架，不代表画面识别或实机结果。",
             "muted", True,
