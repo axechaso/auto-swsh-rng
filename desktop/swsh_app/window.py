@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import uuid
 
 from PySide6.QtCore import (
     QAbstractTableModel, QModelIndex, QProcess, QSignalBlocker, QSortFilterProxyModel,
@@ -19,12 +20,16 @@ from .backend import JsonJob, find_backend
 from .capture import FrameStore
 from .easycon_panel import EasyConPanel
 from .ocr_panel import OcrPanel
+from .workflow_panel import WorkflowPanel
 from .storage import HEADERS, NATURES, SettingsStore, export_csv, result_values, seed_hex
 from .localization import BASELINE, translate
 from .widgets import STYLE, Card, button, combo, form, label, spin
+from .automation import AutomationConfig
+from .automation.simulation_session import DesktopSimulationSession
 
 PAGES = [
-    ("search", "◆", "野生 / 静态", "按种子预测遭遇，筛选你的目标宝可梦。"),
+    ("workflow", "◇", "自动流程", "查看场景验收、证据和录像回放。"),
+    ("search", "◆", "手动搜索", "按种子预测遭遇，筛选你的目标宝可梦。"),
     ("seed", "◎", "种子工具", "计算 Xoroshiro128+ 的前进与回退状态。"),
     ("monitor", "▣", "采集画面", "查看采集卡画面，准备实机操作。"),
     ("easycon", "◈", "伊机控", "共享串口连接，执行本地脚本和手动按键。"),
@@ -103,7 +108,7 @@ class SwshWindow(QMainWindow):
         if active in self.saved["profiles"]:
             self.profile_list.setCurrentText(active)
             self.load_profile()
-        self.select_page("search")
+        self.select_page("workflow")
         self.update_profile_chip()
         self.backend_path.setText(str(self.backend or ""))
         self.backend_status.setText("●  计算服务待检测" if self.backend else "○  计算服务未配置")
@@ -169,9 +174,13 @@ class SwshWindow(QMainWindow):
         profile_page = self.build_profiles()
         self.easycon_panel = EasyConPanel(self.frames, self.saved, self.log, self.fail, self)
         self.ocr_panel = OcrPanel(self.frames, self.saved, self.persist, self.log, self.fail, self)
+        self.workflow_panel = WorkflowPanel(self.log, self)
+        self.workflow_panel.simulation_requested.connect(self.start_workflow_simulation)
+        self.workflow_panel.simulation_task_stopped.connect(self.workflow_task_stopped)
         page_widgets = {"profiles": profile_page, "search": self.build_search(), "seed": self.build_seed(),
                         "monitor": self.build_monitor(), "logs": self.build_logs(), "settings": self.build_settings(),
-                        "easycon": self.easycon_panel, "ocr": self.scroll(self.ocr_panel)}
+                        "easycon": self.easycon_panel, "ocr": self.scroll(self.ocr_panel),
+                        "workflow": self.scroll(self.workflow_panel)}
         for key, *_ in PAGES:
             self.indices[key] = self.pages.addWidget(page_widgets[key])
         self.progress = QProgressBar()
@@ -591,9 +600,10 @@ class SwshWindow(QMainWindow):
             if self.sender() is self.game:
                 self.refresh_catalog()
 
-    def search_request(self):
-        s0, s1 = seed_hex(self.seed0.text()), seed_hex(self.seed1.text())
-        if int(s0, 16) == int(s1, 16) == 0:
+    def search_request(self, *, validate_seed=True):
+        s0 = seed_hex(self.seed0.text()) if validate_seed else "0000000000000001"
+        s1 = seed_hex(self.seed1.text()) if validate_seed else "0000000000000002"
+        if validate_seed and int(s0, 16) == int(s1, 16) == 0:
             raise ValueError("两个 Seed 不能同时为零。")
         start, end = self.start.value(), self.end.value()
         if end < start or end - start >= 100_000:
@@ -607,6 +617,53 @@ class SwshWindow(QMainWindow):
                 "shiny": self.shiny.currentData(), "nature": self.nature.currentData(), "gender": self.gender.currentData(),
                 "mark": self.mark.currentData(), "knockouts": self.knockouts.value(),
                 "hiddenStep": self.hidden_step.value() if self.kind.currentData() == "Hidden" else 0}
+
+    def start_workflow_simulation(self):
+        if self.active_job or not self.catalog_ready:
+            self.workflow_panel.simulation_status.setText("先载入遭遇表；可前往手动搜索页等待遭遇条件加载。")
+            return
+        if not self.backend:
+            self.workflow_panel.simulation_status.setText("未找到乱数计算服务；请先在共通设置中配置后端。")
+            return
+        try:
+            request = self.search_request(validate_seed=False)
+            min_advance, max_advance = request["start"], request["end"]
+            search_request = {
+                key: value for key, value in request.items()
+                if key not in {"operation", "seed0", "seed1", "start", "end"}
+            }
+            scenario_id = (
+                self.workflow_panel.store.load()["scenarioId"]
+                if self.workflow_panel.store is not None
+                else "desktop-simulation"
+            )
+            run_id = uuid.uuid4().hex
+            config = AutomationConfig(
+                run_id=run_id,
+                context_revision=self.context_revision,
+                scenario_id=scenario_id,
+                min_advance=min_advance,
+                max_advance=max_advance,
+                search_request=search_request,
+                chunk_size=100_000,
+                max_seed_rounds=1,
+                search_retries=1,
+                max_epochs=1,
+                execution_mode="simulation",
+            )
+            session = DesktopSimulationSession(
+                config,
+                on_event=self.workflow_panel.run_event.emit,
+                backend=self.backend,
+            )
+            self.workflow_panel.start_simulation(session)
+        except (OSError, ValueError, KeyError) as exc:
+            self.workflow_panel.simulation_status.setText(f"无法开始模拟：{exc}")
+            self.log(f"无法开始离线模拟：{exc}")
+
+    def workflow_task_stopped(self):
+        if self.closing and not self.jobs:
+            QTimer.singleShot(0, self.close)
 
     def search(self):
         if self.active_job or not self.catalog_ready:
@@ -858,6 +915,7 @@ class SwshWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.closing = True
+        workflow_ready = self.workflow_panel.shutdown()
         self.stop_camera()
         controller_ready = self.easycon_panel.shutdown()
         ocr_ready = self.ocr_panel.worker.process.state() == QProcess.ProcessState.NotRunning
@@ -866,7 +924,7 @@ class SwshWindow(QMainWindow):
         if self.jobs:
             for job in list(self.jobs):
                 job.cancel()
-        if self.jobs or not controller_ready or not ocr_ready:
+        if self.jobs or not controller_ready or not ocr_ready or not workflow_ready:
             event.ignore()
             return
         self.ocr_panel.workspace.cleanup()

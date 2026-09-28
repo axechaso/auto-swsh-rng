@@ -81,6 +81,15 @@ class WindowTests(unittest.TestCase):
         self.window.search()
         self.assertIn("个体值", self.window.error_label.text())
 
+    def test_automation_workspace_is_default_and_seed_tool_returns_to_manual_search(self):
+        self.assertTrue(self.window.nav["workflow"].isChecked())
+        self.window.rng_result = {"seed0": "0000000000000001", "seed1": "0000000000000002"}
+
+        self.window.apply_rng()
+
+        self.assertEqual(self.window.seed0.text(), "0000000000000001")
+        self.assertTrue(self.window.nav["search"].isChecked())
+
     def test_profile_save_and_explicit_reload(self):
         self.window.profile_name.setText("我的存档")
         self.window.tid.setValue(65535)
