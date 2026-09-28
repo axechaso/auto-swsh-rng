@@ -25,6 +25,7 @@ from .storage import HEADERS, NATURES, SettingsStore, export_csv, result_values,
 from .localization import BASELINE, translate
 from .widgets import STYLE, Card, button, combo, form, label, spin
 from .automation import AutomationConfig
+from .automation.desktop_calibration_diagnostic import DesktopNpcCalibrationDiagnostic
 from .automation.simulation_session import DesktopSimulationSession
 
 PAGES = [
@@ -176,6 +177,7 @@ class SwshWindow(QMainWindow):
         self.ocr_panel = OcrPanel(self.frames, self.saved, self.persist, self.log, self.fail, self)
         self.workflow_panel = WorkflowPanel(self.log, self)
         self.workflow_panel.simulation_requested.connect(self.start_workflow_simulation)
+        self.workflow_panel.npc_calibration_requested.connect(self.start_npc_calibration_diagnostic)
         self.workflow_panel.simulation_task_stopped.connect(self.workflow_task_stopped)
         page_widgets = {"profiles": profile_page, "search": self.build_search(), "seed": self.build_seed(),
                         "monitor": self.build_monitor(), "logs": self.build_logs(), "settings": self.build_settings(),
@@ -667,6 +669,31 @@ class SwshWindow(QMainWindow):
         except (OSError, ValueError, KeyError) as exc:
             self.workflow_panel.simulation_status.setText(f"无法开始模拟：{exc}")
             self.log(f"无法开始离线模拟：{exc}")
+
+    def start_npc_calibration_diagnostic(self):
+        if self.active_job:
+            self.workflow_panel.npc_calibration_status.setText("等待当前计算任务结束后再运行 NPC 诊断。")
+            return
+        if not self.backend:
+            self.workflow_panel.npc_calibration_status.setText("未找到乱数计算服务；请先在共通设置中配置后端。")
+            return
+        try:
+            scenario_id = (
+                self.workflow_panel.store.load()["scenarioId"]
+                if self.workflow_panel.store is not None
+                else "desktop-synthetic-diagnostic"
+            )
+            diagnostic = DesktopNpcCalibrationDiagnostic(
+                self.backend,
+                run_id=uuid.uuid4().hex,
+                context_revision=self.context_revision,
+                game=self.game.currentData(),
+                scenario_id=scenario_id,
+            )
+            self.workflow_panel.start_npc_calibration(diagnostic)
+        except (OSError, ValueError, KeyError) as exc:
+            self.workflow_panel.npc_calibration_status.setText(f"无法开始 NPC 诊断：{exc}")
+            self.log(f"无法开始 NPC 校准诊断：{exc}")
 
     def workflow_task_stopped(self):
         if self.closing and not self.jobs:

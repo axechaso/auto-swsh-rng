@@ -53,6 +53,7 @@ class WorkflowPanel(QWidget):
     simulation_requested = Signal()
     simulation_task_stopped = Signal()
     run_event = Signal(object)
+    npc_calibration_requested = Signal()
 
     def __init__(self, log, parent=None):
         super().__init__(parent)
@@ -68,6 +69,10 @@ class WorkflowPanel(QWidget):
         self.simulation_result = None
         self.simulation_config = None
         self.simulation_script_revision = None
+        self.npc_calibration_runner = None
+        self.npc_calibration_task = None
+        self.npc_calibration_result = None
+        self.npc_calibration_report = None
         self._build()
         self.run_event.connect(self._show_run_event)
 
@@ -103,6 +108,28 @@ class WorkflowPanel(QWidget):
             "muted", True,
         )
         card.body.addWidget(self.simulation_status)
+        outer.addWidget(card)
+
+        card = Card(
+            "NPC 校准诊断",
+            "用独立合成状态演练候选收敛与复验。素材由同一计算后端生成，仅验证校准流程；不连设备、不写入校准缓存。",
+        )
+        row = QHBoxLayout()
+        self.npc_calibration_start_button = button(
+            "运行合成 NPC 校准", self.npc_calibration_requested.emit, True,
+        )
+        self.npc_calibration_report_button = button(
+            "导出 NPC 诊断报告", self.choose_npc_calibration_report_path,
+        )
+        self.npc_calibration_report_button.setEnabled(False)
+        row.addWidget(self.npc_calibration_start_button)
+        row.addWidget(self.npc_calibration_report_button)
+        row.addStretch()
+        card.body.addLayout(row)
+        self.npc_calibration_status = label(
+            "尚未运行。合成校准通过不代表真实 NPC 参数已确认。", "muted", True,
+        )
+        card.body.addWidget(self.npc_calibration_status)
         outer.addWidget(card)
 
         card = Card("场景验收", "读取场景证据清单，并核对框架、实机状态及文件完整性。")
@@ -456,7 +483,7 @@ class WorkflowPanel(QWidget):
         self.log("正式自动开始被阻止：PySide6 桌面工作流执行器尚未集成。")
 
     def start_simulation(self, runner, run_callable=None):
-        if self.simulation_task is not None and self.simulation_task.isRunning():
+        if self._workflow_task_running():
             return False
         self.simulation_result = None
         self.simulation_config = getattr(runner, "config", None)
@@ -469,6 +496,7 @@ class WorkflowPanel(QWidget):
         task.finished.connect(lambda active=task: self._simulation_thread_stopped(active))
         self.simulation_task = task
         self.simulation_start_button.setEnabled(False)
+        self.npc_calibration_start_button.setEnabled(False)
         self.simulation_stop_button.setEnabled(True)
         self.simulation_report_button.setEnabled(False)
         self.simulation_status.setText("正在测种并完整搜索当前范围……")
@@ -476,13 +504,48 @@ class WorkflowPanel(QWidget):
         task.start()
         return True
 
+    def start_npc_calibration(self, diagnostic):
+        if self._workflow_task_running():
+            return False
+        self.npc_calibration_runner = diagnostic
+        self.npc_calibration_result = None
+        self.npc_calibration_report = None
+        task = Task(diagnostic.run, self)
+        task.result.connect(self._npc_calibration_finished)
+        task.failed.connect(self._npc_calibration_failed)
+        task.finished.connect(lambda active=task: self._npc_calibration_thread_stopped(active))
+        self.npc_calibration_task = task
+        self.simulation_start_button.setEnabled(False)
+        self.npc_calibration_start_button.setEnabled(False)
+        self.simulation_stop_button.setEnabled(True)
+        self.npc_calibration_report_button.setEnabled(False)
+        self.npc_calibration_status.setText("正在生成独立合成探测样本并运行 NPC 候选校准……")
+        self.log("开始合成 NPC 校准诊断；运行训练和独立复验，不连接设备且不保存校准缓存。")
+        task.start()
+        return True
+
+    def _workflow_task_running(self):
+        return any(
+            task is not None and task.isRunning()
+            for task in (self.simulation_task, self.npc_calibration_task)
+        )
+
     def stop_simulation(self):
-        if self.simulation_runner is None:
+        if self.simulation_runner is not None:
+            self.simulation_runner.cancel()
+            status = self.simulation_status
+            message = "已请求停止；正在等待计算终止并释放模拟租约……"
+            log_message = "请求停止离线模拟；等待 runner 完成清理和租约释放。"
+        elif self.npc_calibration_runner is not None:
+            self.npc_calibration_runner.cancel()
+            status = self.npc_calibration_status
+            message = "已请求停止；正在等待计算进程终止……"
+            log_message = "请求停止 NPC 校准诊断；等待计算进程结束。"
+        else:
             return
-        self.simulation_runner.cancel()
         self.simulation_stop_button.setEnabled(False)
-        self.simulation_status.setText("已请求停止；正在等待计算终止并释放模拟租约……")
-        self.log("请求停止离线模拟；等待 runner 完成清理和租约释放。")
+        status.setText(message)
+        self.log(log_message)
 
     def _show_run_event(self, event):
         candidate_count = event.details.get("candidateCount")
@@ -513,6 +576,43 @@ class WorkflowPanel(QWidget):
     def _simulation_failed(self, message):
         self.simulation_status.setText(f"模拟失败：{message}")
         self.log(f"离线模拟失败：{message}")
+
+    def _npc_calibration_finished(self, result):
+        self.npc_calibration_result = result
+        self.npc_calibration_report = result.as_report()
+        self.npc_calibration_report_button.setEnabled(True)
+        report = self.npc_calibration_report
+        candidate = report.get("candidate") or {}
+        detail = (
+            f"状态：{report['status']} · 训练 {len(report['trainingExperimentIds'])} 组 · "
+            f"独立复验 {len(report['independentValidationExperimentIds'])} 组 · "
+            f"候选 NPC 推进 {candidate.get('interferenceAdvances', '—')} · "
+            f"实机状态 {report['hardwareStatus']}"
+        )
+        self.npc_calibration_status.setText(
+            f"合成诊断完成。{detail}\n素材与候选由同一计算后端生成；结果只验证校准流程，不代表真实参数。"
+        )
+        self.log(f"NPC 校准诊断结束：{report['status']}；实机状态保持 {report['hardwareStatus']}。")
+
+    def _npc_calibration_failed(self, message):
+        if "cancel" in message.lower():
+            self.npc_calibration_status.setText("NPC 校准诊断已停止；未生成校准报告。")
+            self.npc_calibration_report = None
+            self.npc_calibration_report_button.setEnabled(False)
+            self.log("NPC 校准诊断已停止；未生成校准报告。")
+            return
+        self.npc_calibration_status.setText(f"NPC 校准诊断失败：{message}")
+        self.log(f"NPC 校准诊断失败：{message}")
+
+    def _npc_calibration_thread_stopped(self, task):
+        if self.npc_calibration_task is task:
+            self.npc_calibration_task = None
+            self.npc_calibration_runner = None
+        task.deleteLater()
+        self.simulation_start_button.setEnabled(True)
+        self.npc_calibration_start_button.setEnabled(True)
+        self.simulation_stop_button.setEnabled(False)
+        self.simulation_task_stopped.emit()
 
     def simulation_report_data(self):
         result = self.simulation_result
@@ -611,12 +711,45 @@ class WorkflowPanel(QWidget):
             if temporary.exists():
                 temporary.unlink()
 
+    def choose_npc_calibration_report_path(self):
+        report = self.npc_calibration_report
+        if report is None:
+            return
+        default_name = f"{self.npc_calibration_runner.run_id if self.npc_calibration_runner else 'npc'}-calibration-report.json"
+        path, _ = QFileDialog.getSaveFileName(self, "保存 NPC 诊断报告", default_name, "JSON (*.json)")
+        if path:
+            self.save_npc_calibration_report(path, report)
+
+    def save_npc_calibration_report(self, path, report=None):
+        report = report or self.npc_calibration_report
+        if report is None:
+            self._set_error("当前没有可导出的 NPC 诊断报告。")
+            return False
+        destination = Path(path).expanduser().resolve()
+        temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            temporary.write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(temporary, destination)
+            self.log(f"保存 NPC 诊断报告：{destination}")
+            return True
+        except OSError as exc:
+            self._set_error(f"NPC 诊断报告保存失败：{exc}")
+            return False
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+
     def _simulation_thread_stopped(self, task):
         if self.simulation_task is task:
             self.simulation_task = None
             self.simulation_runner = None
         task.deleteLater()
         self.simulation_start_button.setEnabled(True)
+        self.npc_calibration_start_button.setEnabled(True)
         self.simulation_stop_button.setEnabled(False)
         self.simulation_task_stopped.emit()
 
@@ -644,7 +777,7 @@ class WorkflowPanel(QWidget):
         self.scenario_status.setText("目录已更改；请读取已有清单或创建新清单。")
 
     def shutdown(self):
-        if self.simulation_task is not None and self.simulation_task.isRunning():
+        if self._workflow_task_running():
             self.stop_simulation()
             self.close_replay()
             return False

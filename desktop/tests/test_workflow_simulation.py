@@ -100,6 +100,38 @@ class WorkflowSimulationTests(unittest.TestCase):
             APP.processEvents()
             window.deleteLater()
 
+    def test_synthetic_npc_calibration_runs_training_validation_and_exports_pending_report(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            window = self.make_window(Path(temporary))
+
+            window.workflow_panel.npc_calibration_start_button.click()
+
+            wait_until(lambda: window.workflow_panel.npc_calibration_task is None)
+
+            result = window.workflow_panel.npc_calibration_result
+            self.assertIsNotNone(result, window.workflow_panel.npc_calibration_status.text())
+            self.assertEqual(result.status, "CalibratedOffline")
+            self.assertEqual(result.candidate["interferenceAdvances"], 3)
+            self.assertEqual(len(result.training_experiment_ids), 3)
+            self.assertEqual(len(result.validation_experiment_ids), 2)
+            self.assertEqual(len(result.accounting), 5)
+            self.assertTrue(all(entry.source_kind == "synthetic" for entry in result.accounting))
+            self.assertTrue(all(not entry.evidence_ids for entry in result.accounting))
+            report = window.workflow_panel.npc_calibration_report
+            schema = json.loads((Path(__file__).resolve().parents[2] / "docs/schemas/npc-calibration-report.schema.json").read_text(encoding="utf-8"))
+            self.assertTrue(set(schema["required"]).issubset(report))
+            self.assertEqual(report["schema"], "auto-swsh-npc-calibration-report")
+            self.assertEqual(report["hardwareStatus"], "PendingHardwareValidation")
+            report_path = Path(temporary) / "npc-calibration-report.json"
+            self.assertTrue(window.workflow_panel.save_npc_calibration_report(report_path, report))
+            self.assertEqual(json.loads(report_path.read_text(encoding="utf-8")), report)
+            self.assertFalse(window.workflow_panel.formal_start_button.isEnabled())
+            self.assertTrue(window.workflow_panel.simulation_start_button.isEnabled())
+            self.assertTrue(window.workflow_panel.npc_calibration_start_button.isEnabled())
+            window.close()
+            APP.processEvents()
+            window.deleteLater()
+
     def test_preflight_fault_stops_before_seed_measurement_and_releases_run_controls(self):
         with tempfile.TemporaryDirectory() as temporary:
             window = self.make_window(Path(temporary))

@@ -76,6 +76,7 @@ from .npc_calibration import (
     ProbeExperiment,
     build_probe_candidates,
 )
+from .desktop_calibration_diagnostic import DesktopNpcCalibrationDiagnostic
 from .attempt_planner import (
     AttemptPlanResult,
     AttemptPlanner,
@@ -224,6 +225,7 @@ __all__ += [
     "M2M4WorkflowError",
     "M2M4WorkflowNeedsAttention",
     "NpcCalibrationOutcome",
+    "DesktopNpcCalibrationDiagnostic",
     "ReplayAttemptActionPort",
     "CaptureActionPort",
     "CaptureAttemptCoordinator",
