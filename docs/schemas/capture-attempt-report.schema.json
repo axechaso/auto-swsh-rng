@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/capture-attempt-report.schema.json",
+  "title": "Auto SWSH RNG capture attempt report",
+  "type": "object",
+  "required": [
+    "reportSchema", "reportVersion", "status", "attemptId", "workflow",
+    "identity", "observations", "reverseLookup", "targetVerification",
+    "saveCommit", "hardwareStatus", "canStartFormalAutomation", "reasonCode", "reason"
+  ],
+  "properties": {
+    "reportSchema": { "const": "auto-swsh-capture-attempt" },
+    "reportVersion": { "const": 1 },
+    "status": { "enum": ["SAVED_SUCCESS", "NEEDS_ATTENTION", "CANCELLED"] },
+    "attemptId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "workflow": { "type": "object" },
+    "identity": { "type": ["object", "null"] },
+    "observations": { "type": "object", "additionalProperties": { "type": "object" } },
+    "reverseLookup": { "type": ["object", "null"] },
+    "targetVerification": { "type": ["object", "null"] },
+    "saveCommit": { "type": ["object", "null"] },
+    "hardwareStatus": { "const": "PendingHardwareValidation" },
+    "canStartFormalAutomation": { "const": false },
+    "reasonCode": { "type": ["string", "null"] },
+    "reason": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

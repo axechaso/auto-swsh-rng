@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/npc-calibration-report.schema.json",
+  "title": "Auto SWSH RNG NPC calibration report",
+  "type": "object",
+  "required": [
+    "schema", "schemaVersion", "status", "candidateIds", "candidate",
+    "trainingExperimentIds", "independentValidationExperimentIds", "accounting",
+    "contextKey", "hardwareStatus", "reason"
+  ],
+  "properties": {
+    "schema": { "const": "auto-swsh-npc-calibration-report" },
+    "schemaVersion": { "const": 1 },
+    "status": {
+      "enum": [
+        "NeedsMoreExperiments", "Ambiguous", "ModelMismatch",
+        "UniqueAwaitingIndependentValidation", "IndependentValidationFailed", "CalibratedOffline"
+      ]
+    },
+    "candidateIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "candidate": { "type": ["object", "null"] },
+    "trainingExperimentIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "independentValidationExperimentIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "accounting": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "experimentId", "role", "sourceKind", "startingState", "observedAfterProbe",
+          "candidatePredictedProbeAdvances", "observationAdvances", "evidenceIds", "actionLog"
+        ],
+        "properties": {
+          "experimentId": { "type": "string", "minLength": 1 },
+          "role": { "enum": ["training", "independent-validation"] },
+          "sourceKind": { "enum": ["synthetic", "replay", "real"] },
+          "startingState": { "$ref": "#/$defs/state" },
+          "observedAfterProbe": { "$ref": "#/$defs/state" },
+          "candidatePredictedProbeAdvances": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          },
+          "observationAdvances": { "type": "integer", "minimum": 0 },
+          "evidenceIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "actionLog": { "type": "array", "items": { "type": "object" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "contextKey": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "hardwareStatus": { "const": "PendingHardwareValidation" },
+    "reason": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "state": {
+      "type": "object",
+      "required": ["seed0", "seed1"],
+      "properties": {
+        "seed0": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "seed1": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

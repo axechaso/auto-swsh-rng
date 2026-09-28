@@ -1,0 +1,223 @@
+﻿# PySide6 兼容版：原稿保存在 originals/，改动见 README.md
+#【剑盾光速过帧稳定版】未来的未来
+
+# 这里帧数你是实际要过的帧数,要过多少填多少
+_帧数 = 填入这里
+
+_判定 = 50             #多少次进行一次跑飞判定
+_等待判定时间 = 500  #判定不到就多加 500
+# 这里是延迟，如果默认30的情况下依然跑飞，建议每次增加10%左右，也就是增加3，然后尝试
+_延迟 = 30
+# 如果联机将下面的90改为120
+$4 = 120
+
+$3 = _延迟
+$4 += _延迟
+$7 = _帧数
+$8 = _等待判定时间
+$7 -= 1
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    WAIT 100
+NEXT
+
+FOR 5
+    A
+    WAIT 1000
+NEXT
+FOR
+    B
+    WAIT 1000
+    IF @YY > 90
+        BREAK
+    ENDIF
+NEXT
+WAIT 1500
+HOME 50
+WAIT 1000
+DOWN 100
+WAIT 200
+FOR 7
+    RIGHT 50
+    WAIT 50
+NEXT
+A 50
+WAIT 1000
+LS DOWN,2000    #移动到主机位置
+WAIT 400
+RIGHT 200
+WAIT 200
+LS DOWN,700 #移动到日期位置
+WAIT 200
+A 50
+WAIT 800
+FOR
+    $6 = @同步时间
+    IF $6 < 90
+        BREAK
+    ENDIF
+    A
+    WAIT 1000
+NEXT
+WAIT 300
+LS DOWN,550
+WAIT 200
+A 50
+WAIT 200
+LS RIGHT,1000
+WAIT 200
+A 50
+WAIT 200
+$5 = 0
+$9 = 0
+
+FOR $7
+    $1 = 0
+    FOR
+        A 50
+        WAIT $4
+        LS LEFT
+        WAIT $3
+        RS LEFT
+        WAIT $3
+        LEFT DOWN
+        WAIT $3
+        LS UP
+        WAIT $3
+        RIGHT DOWN
+        WAIT $3
+        LS RIGHT
+        WAIT $3
+        RS RIGHT
+        WAIT $3
+        LEFT UP
+        RIGHT UP
+        A 50
+        WAIT $4
+        $1 += 1
+        $5 += 1
+        $9 += 1
+        PRINT 过了 & $5 & 帧
+        IF $9 = $7
+            BREAK 2
+        ENDIF
+        IF $1 = _判定
+            BREAK
+        ENDIF
+    NEXT
+    WAIT $8
+    LS RESET
+    RS RESET
+    $6 = @现在的日期与时间
+    IF $6 < 90
+        FOR
+            A 200
+            WAIT 1000
+            $6 = @同步时间
+            IF $6 < 90
+                BREAK
+            ENDIF
+            PRINT 同步时间
+        NEXT
+        $1 = 0
+        $6 = @时区
+        IF $6 < 90
+            WAIT 1000
+            DOWN 200
+            WAIT 1000
+            A 200
+            WAIT 2000
+            $1 += 1
+            PRINT 时区
+            IF $1 = 10
+                B 200
+                WAIT 500
+                UP 200
+                WAIT 500
+                UP 200
+                WAIT 500
+            ENDIF
+            $1 = 0
+            FOR
+                $6 = @时区2
+                IF $6 > 90
+                    BREAK
+                ENDIF
+                DOWN 200
+                WAIT 1000
+                PRINT 选择时区
+                $1 += 1
+                IF $1 = 10
+                    UP 200
+                    WAIT 500
+                    UP 200
+                    WAIT 500
+                    DOWN 200
+                    WAIT 1500
+                    A 200
+                    WAIT 2000
+                ENDIF
+            NEXT
+            A 200
+            WAIT 1000
+        ENDIF
+        DOWN 200
+        WAIT 400
+        DOWN 200
+        WAIT 400
+    ENDIF
+NEXT
+WAIT 2000
+LS RESET
+RS RESET
+WAIT 1000
+HOME 200
+WAIT 1500
+A 200
+FOR
+    $1 = @YY
+    IF $1 > 90
+        BREAK
+    ELSE
+        B
+        WAIT 1000
+    ENDIF
+NEXT
+A 200
+FOR
+    $1 = @YY
+    IF $1 > 90
+        BREAK
+    ELSE
+        B
+        WAIT 1000
+    ENDIF
+NEXT
+X 200
+WAIT 1500
+A 200
+WAIT 2000
+DOWN 200
+WAIT 1000
+$1 = 0
+$4 = 128
+$测种序列 = ""
+FOR $4
+    RCLICK
+    WAIT 1000
+    $2 = @铁甲物理
+    IF $2 > 80
+        $测种序列 = $测种序列 & "0"
+        WAIT 400
+    ELSE
+        $测种序列 = $测种序列 & "1"
+        WAIT 650
+        $1 += 1
+    ENDIF
+NEXT
+PRINT $测种序列  # 一次输出完整 128 位，避免旧版续行差异
+IF $1 > 125
+    PRINT 种子有问题
+    PRINT 需要重新测种
+ENDIF

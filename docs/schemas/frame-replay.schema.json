@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/frame-replay.schema.json",
+  "title": "Auto SWSH RNG frame replay manifest",
+  "type": "object",
+  "required": ["schema", "schemaVersion", "replayId", "scenarioId", "sourceKind", "baselineFrameId", "source", "actions"],
+  "properties": {
+    "schema": { "const": "auto-swsh-frame-replay" },
+    "schemaVersion": { "const": 1 },
+    "replayId": { "type": "string", "minLength": 1 },
+    "scenarioId": { "type": "string", "minLength": 1 },
+    "sourceKind": { "enum": ["real", "synthetic"] },
+    "baselineFrameId": { "type": "integer", "minimum": 1 },
+    "source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "frames"],
+          "properties": {
+            "type": { "const": "images" },
+            "frames": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["frameId", "sourceTimestampNs", "path", "sha256"],
+                "properties": {
+                  "frameId": { "type": "integer", "minimum": 1 },
+                  "sourceTimestampNs": { "type": "integer", "minimum": 0 },
+                  "path": { "type": "string", "minLength": 1 },
+                  "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "path", "sha256", "fps", "baselineFrameIndex"],
+          "properties": {
+            "type": { "const": "video" },
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+            "fps": { "type": "number", "minimum": 1, "maximum": 240 },
+            "baselineFrameIndex": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["purpose", "index", "frameIds"],
+        "properties": {
+          "purpose": { "type": "string", "minLength": 1 },
+          "index": { "type": "integer", "minimum": 0 },
+          "frameIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 600,
+            "items": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/attempt-plan.schema.json",
+  "title": "Auto SWSH RNG attempt plan",
+  "type": "object",
+  "required": [
+    "reportSchema", "reportVersion", "generatedAtUtc", "status", "targetSnapshotId",
+    "targetRequestDigest", "currentAdvance", "boundary", "probeCandidateId", "evaluationCount",
+    "underBudgetPositionCount", "targetStatuses", "plans", "reason", "hardwareStatus",
+    "canStartFormalAutomation"
+  ],
+  "properties": {
+    "reportSchema": { "const": "auto-swsh-attempt-plan" },
+    "reportVersion": { "const": 1 },
+    "generatedAtUtc": { "type": "string", "format": "date-time" },
+    "status": {
+      "enum": ["Feasible", "InsufficientExecutionBudget", "NoFeasibleTriggerPosition", "TargetAlreadyPassed"]
+    },
+    "targetSnapshotId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "targetRequestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "currentAdvance": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+    "boundary": {
+      "type": "object",
+      "required": ["boundaryId", "offset", "modelVersion", "revision"],
+      "properties": {
+        "boundaryId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "offset": { "type": "integer", "minimum": -100000, "maximum": 100000 },
+        "modelVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "revision": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "probeCandidateId": { "type": "string", "minLength": 1 },
+    "evaluationCount": { "type": "integer", "minimum": 0, "maximum": 100000 },
+    "underBudgetPositionCount": { "type": "integer", "minimum": 0 },
+    "targetStatuses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidateId", "status"],
+        "properties": {
+          "candidateId": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": ["Feasible", "InsufficientExecutionBudget", "NoFeasibleTriggerPosition", "TargetAlreadyPassed", "NoTriggerRange"]
+          },
+          "reason": { "type": "string" },
+          "feasiblePlanCount": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "plans": { "type": "array", "items": { "$ref": "#/$defs/plan" } },
+    "reason": { "type": ["string", "null"] },
+    "hardwareStatus": { "const": "PendingHardwareValidation" },
+    "canStartFormalAutomation": { "const": false }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "plan": {
+      "type": "object",
+      "required": [
+        "targetCandidateId", "targetGenerationAdvance", "triggerAdvance", "modeledPreTriggerAdvances",
+        "predictedGenerationAdvance", "boundaryId", "boundaryOffset", "boundaryModelVersion",
+        "boundaryRevision", "probeCandidateId", "probeActions", "coarseTargetAdvance", "coarseAdvances",
+        "relocationReserve", "preciseReserve", "coarseBatches", "checkpointRequiredAfterEachBatch"
+      ],
+      "properties": {
+        "targetCandidateId": { "type": "string", "minLength": 1 },
+        "targetGenerationAdvance": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "triggerAdvance": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "modeledPreTriggerAdvances": { "type": "integer", "minimum": 0 },
+        "predictedGenerationAdvance": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "boundaryId": { "type": "string", "minLength": 1 },
+        "boundaryOffset": { "type": "integer", "minimum": -100000, "maximum": 100000 },
+        "boundaryModelVersion": { "type": "string", "minLength": 1 },
+        "boundaryRevision": { "type": "integer", "minimum": 0 },
+        "probeCandidateId": { "type": "string", "minLength": 1 },
+        "probeActions": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "object" } },
+        "coarseTargetAdvance": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "coarseAdvances": { "type": "integer", "minimum": 0 },
+        "relocationReserve": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "preciseReserve": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "coarseBatches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["startAdvance", "requestedAdvances", "plannedEndAdvance", "requiresRelocationBeforeNextBatch"],
+            "properties": {
+              "startAdvance": { "type": "integer", "minimum": 0 },
+              "requestedAdvances": { "type": "integer", "minimum": 1 },
+              "plannedEndAdvance": { "type": "integer", "minimum": 0 },
+              "requiresRelocationBeforeNextBatch": { "const": true }
+            },
+            "additionalProperties": false
+          }
+        },
+        "checkpointRequiredAfterEachBatch": { "const": true }
+      },
+      "additionalProperties": false
+    }
+  }
+}

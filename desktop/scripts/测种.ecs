@@ -1,0 +1,47 @@
+﻿# PySide6 兼容版：原稿保存在 originals/，改动见 README.md
+
+#唤醒手柄
+FOR 5
+    LCLICK 120
+    WAIT 100
+NEXT
+
+HOME 200
+WAIT 1500
+A 200
+FOR
+    $1 = @YY
+    IF $1 > 90
+        BREAK
+    ELSE
+        B
+        WAIT 1000
+    ENDIF
+NEXT
+X 200
+WAIT 1500
+A 200
+WAIT 2000
+DOWN 200
+WAIT 1000
+$1 = 0
+$4 = 128
+$测种序列 = ""
+FOR $4
+    RCLICK
+    WAIT 1000
+    $2 = @铁甲物理
+    IF $2 > 80
+        $测种序列 = $测种序列 & "0"
+        WAIT 400
+    ELSE
+        $测种序列 = $测种序列 & "1"
+        WAIT 650
+        $1 += 1
+    ENDIF
+NEXT
+PRINT $测种序列  # 一次输出完整 128 位，避免旧版续行差异
+IF $1 > 125
+    PRINT 种子有问题
+    PRINT 需要重新测种
+ENDIF

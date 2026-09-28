@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/capture-workflow-report.schema.json",
+  "title": "Auto SWSH RNG capture workflow report",
+  "type": "object",
+  "required": [
+    "reportSchema", "reportVersion", "attemptId", "phase", "status",
+    "captureSucceeded", "identityConfirmed", "identityKey", "sceneMatch",
+    "targetVerified", "ballThrows", "events"
+  ],
+  "properties": {
+    "reportSchema": { "const": "auto-swsh-capture-workflow" },
+    "reportVersion": { "const": 1 },
+    "attemptId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "phase": {
+      "enum": [
+        "battle_entry", "opponent_display", "action_menu", "move_or_item",
+        "ball_selection", "ball_animation", "post_capture_prompts",
+        "entity_identification", "summary_observation", "reverse_lookup",
+        "target_verification", "save_commit", "completed", "needs_attention"
+      ]
+    },
+    "status": { "enum": ["pending", "needs_attention", "completed"] },
+    "captureSucceeded": { "type": "boolean" },
+    "identityConfirmed": { "type": "boolean" },
+    "identityKey": { "type": ["string", "null"] },
+    "sceneMatch": { "type": "boolean" },
+    "targetVerified": { "type": "boolean" },
+    "ballThrows": { "type": "integer", "minimum": 0 },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["attemptId", "sequence", "from", "to", "event", "evidenceIds", "details"],
+        "properties": {
+          "attemptId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "event": { "type": "string", "minLength": 1 },
+          "evidenceIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "details": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

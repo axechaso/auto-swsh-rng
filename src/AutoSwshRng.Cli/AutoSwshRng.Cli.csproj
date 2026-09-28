@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <EmbeddedResource Include="..\..\desktop\resources\upstream.json" LogicalName="DesktopUpstream.json" />
     <ProjectReference Include="..\AutoSwshRng.Core\AutoSwshRng.Core.csproj" />
     <ProjectReference Include="..\AutoSwshRng.Upstream\AutoSwshRng.Upstream.csproj" />
   </ItemGroup>

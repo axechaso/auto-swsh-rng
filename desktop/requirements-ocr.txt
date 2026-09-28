@@ -1,0 +1,4 @@
+# Same CPU OCR stack and mobile model family as auto-bdsp-rng.
+paddlepaddle>=3.2,<3.3
+paddleocr>=3,<4
+paddlex[ocr]>=3.5,<3.6

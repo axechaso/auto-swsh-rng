@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/attempt-execution-report.schema.json",
+  "title": "Auto SWSH RNG attempt execution report",
+  "type": "object",
+  "required": [
+    "reportSchema", "reportVersion", "status", "attemptId", "runId", "epochId",
+    "contextRevision", "currentAdvance", "targetCandidateId", "targetGenerationAdvance",
+    "triggerAdvance", "targetSnapshotId", "targetRequestDigest", "hardwareStatus",
+    "canStartFormalAutomation", "reasonCode", "reason", "events"
+  ],
+  "properties": {
+    "reportSchema": { "const": "auto-swsh-attempt-execution" },
+    "reportVersion": { "const": 1 },
+    "status": { "enum": ["TRIGGER_EXECUTED_PENDING_SCENE_CONFIRMATION", "NEEDS_ATTENTION", "CANCELLED"] },
+    "attemptId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "epochId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "contextRevision": { "type": "integer", "minimum": 0 },
+    "currentAdvance": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+    "targetCandidateId": { "type": ["string", "null"] },
+    "targetGenerationAdvance": { "type": ["integer", "null"], "minimum": 0, "maximum": 1000000000 },
+    "triggerAdvance": { "type": ["integer", "null"], "minimum": 0, "maximum": 1000000000 },
+    "targetSnapshotId": { "type": ["string", "null"] },
+    "targetRequestDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+    "hardwareStatus": { "const": "PendingHardwareValidation" },
+    "canStartFormalAutomation": { "const": false },
+    "reasonCode": { "type": ["string", "null"] },
+    "reason": { "type": ["string", "null"] },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["attemptId", "sequence", "event", "details"],
+        "properties": {
+          "attemptId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "event": { "type": "string", "minLength": 1 },
+          "details": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

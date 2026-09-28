@@ -1,0 +1,16 @@
+{
+  "schema": "auto-swsh-evidence-manifest",
+  "schemaVersion": 1,
+  "scenarioId": "replace-with-scenario-id",
+  "scenarioRevision": 1,
+  "frameworkStatus": "NotImplemented",
+  "hardwareStatus": "PendingHardwareValidation",
+  "algorithmCommit": "0000000000000000000000000000000000000000",
+  "scriptRevision": "pending",
+  "deviceProfile": null,
+  "requiredCases": ["seed", "npc", "advance", "capture", "reverse", "feedback", "save"],
+  "frameworkValidationCases": [],
+  "evidence": [],
+  "reviewedAtUtc": null,
+  "reviewedBy": null
+}

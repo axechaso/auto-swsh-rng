@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "M2 to M4 Closed Loop Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reportSchema",
+    "reportVersion",
+    "status",
+    "runId",
+    "search",
+    "calibration",
+    "currentAdvanceAfterCalibration",
+    "attempt",
+    "capture",
+    "hardwareStatus",
+    "canStartFormalAutomation",
+    "reason"
+  ],
+  "properties": {
+    "reportSchema": { "const": "auto-swsh-m2-m4-closed-loop" },
+    "reportVersion": { "const": 1 },
+    "status": {
+      "enum": [
+        "ATTEMPT_TRIGGERED_PENDING_CAPTURE",
+        "SUCCESS_SAVED",
+        "NEEDS_ATTENTION",
+        "CANCELLED",
+        "FAILED"
+      ]
+    },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "search": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "phase",
+            "targetSnapshotId",
+            "targetRequestDigest",
+            "candidateCount",
+            "reason"
+          ],
+          "properties": {
+            "status": {
+              "enum": ["targets_found", "cancelled", "needs_attention", "failed"]
+            },
+            "phase": { "type": "string" },
+            "targetSnapshotId": { "type": ["string", "null"] },
+            "targetRequestDigest": {
+              "type": ["string", "null"],
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "candidateCount": { "type": "integer", "minimum": 0 },
+            "reason": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "calibration": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["schema", "schemaVersion", "status", "hardwareStatus"],
+          "properties": {
+            "schema": { "const": "auto-swsh-npc-calibration-report" },
+            "schemaVersion": { "const": 1 },
+            "status": { "type": "string" },
+            "hardwareStatus": { "const": "PendingHardwareValidation" }
+          }
+        }
+      ]
+    },
+    "currentAdvanceAfterCalibration": { "type": ["integer", "null"], "minimum": 0 },
+    "attempt": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": [
+            "reportSchema",
+            "reportVersion",
+            "status",
+            "attemptId",
+            "targetSnapshotId",
+            "targetRequestDigest",
+            "hardwareStatus",
+            "canStartFormalAutomation"
+          ],
+          "properties": {
+            "reportSchema": { "const": "auto-swsh-attempt-execution" },
+            "reportVersion": { "const": 1 },
+            "status": { "type": "string" },
+            "attemptId": { "type": "string", "minLength": 1 },
+            "targetSnapshotId": { "type": ["string", "null"] },
+            "targetRequestDigest": { "type": ["string", "null"] },
+            "hardwareStatus": { "const": "PendingHardwareValidation" },
+            "canStartFormalAutomation": { "const": false }
+          }
+        }
+      ]
+    },
+    "capture": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["reportSchema", "reportVersion", "status", "attemptId", "hardwareStatus", "canStartFormalAutomation"],
+          "properties": {
+            "reportSchema": { "const": "auto-swsh-capture-attempt" },
+            "reportVersion": { "const": 1 },
+            "status": { "enum": ["SAVED_SUCCESS", "NEEDS_ATTENTION", "CANCELLED"] },
+            "attemptId": { "type": "string", "minLength": 1 },
+            "hardwareStatus": { "const": "PendingHardwareValidation" },
+            "canStartFormalAutomation": { "const": false }
+          }
+        }
+      ]
+    },
+    "hardwareStatus": { "const": "PendingHardwareValidation" },
+    "canStartFormalAutomation": { "const": false },
+    "reason": { "type": ["string", "null"] }
+  }
+}

@@ -1,0 +1,130 @@
+﻿# PySide6 兼容版：原稿保存在 originals/，改动见 README.md
+_上下次数 = 填入这里
+
+_同步月 = 10
+_同步日 = 12
+_当前月 = 11
+_当前日 = 15
+
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    WAIT 100
+NEXT
+
+$2 = _上下次数
+$5 = _同步月
+$6 = _同步日
+$7 = _当前月
+$8 = _当前日
+
+HOME 100
+WAIT 1000
+DOWN 100
+WAIT 200
+FOR 7
+    RIGHT 50
+    WAIT 50
+NEXT
+A 50
+WAIT 1000
+LS DOWN,2000    #移动到主机位置
+WAIT 400
+RIGHT 200
+WAIT 200
+LS DOWN,700 #移动到日期位置
+WAIT 200
+A 50
+WAIT 200
+A 200
+WAIT 500
+A 200
+WAIT 500
+LS DOWN,550
+WAIT 200
+A 200
+WAIT 500
+$5 -= $7
+$6 -= $8
+RIGHT 200
+WAIT 200
+IF $5 > 0
+    FOR $5
+        DOWN 200
+        WAIT 200
+    NEXT
+ENDIF
+IF $5 < 0
+    $5 = -$5
+    FOR $5
+        UP 50
+        WAIT 50
+    NEXT
+ENDIF
+WAIT 200
+RIGHT 200
+WAIT 200
+IF $6 > 0
+    FOR $6
+        DOWN 200
+        WAIT 200
+    NEXT
+ENDIF
+IF $6 < 0
+    $6 = -$6
+    FOR $6
+        UP 50
+        WAIT 50
+    NEXT
+    $6 = -$6
+ENDIF
+WAIT 500
+LS RIGHT,900
+WAIT 400
+A 200
+WAIT 500
+HOME 100
+WAIT 3000
+A 100
+B
+WAIT 1500
+B
+FOR
+    $6 = @YY
+    IF $6 > 95
+        BREAK
+    ELSE
+        B
+        WAIT 1000
+    ENDIF
+NEXT
+$2 *= 5
+$2 -= 2
+FOR $2
+    PLUS
+    WAIT 700
+    PLUS
+    WAIT 700
+NEXT
+PRINT 自行车过帧完成，开始测种
+X
+WAIT 1600
+A
+WAIT 1500
+DOWN
+WAIT 1000
+$3 = 128
+$测种序列 = ""
+FOR $3
+    RCLICK
+    WAIT 1000
+    $2 = @铁甲物理
+    IF $2 > 85
+        $测种序列 = $测种序列 & "0"
+        WAIT 400
+    ELSE
+        $测种序列 = $测种序列 & "1"
+        WAIT 650
+    ENDIF
+NEXT
+PRINT $测种序列  # 一次输出完整 128 位，避免旧版续行差异

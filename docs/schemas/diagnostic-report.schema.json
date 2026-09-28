@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/diagnostic-report.schema.json",
+  "title": "Auto SWSH RNG diagnostic report",
+  "type": "object",
+  "required": ["reportSchema", "reportVersion", "generatedAtUtc", "operation", "sourceKind", "evidenceStatus", "evidenceIds", "frameworkStatus", "hardwareStatus", "canStartFormalAutomation"],
+  "properties": {
+    "reportSchema": { "const": "auto-swsh-diagnostic-report" },
+    "reportVersion": { "const": 1 },
+    "generatedAtUtc": { "type": "string", "format": "date-time" },
+    "operation": { "enum": ["calibration.probe.evaluate", "encounter.reverse", "seed.solve", "seed.verify"] },
+    "runId": { "type": ["string", "null"] },
+    "epochId": { "type": ["string", "null"] },
+    "contextRevision": { "type": "integer", "minimum": 0 },
+    "sourceKind": { "enum": ["synthetic", "replay", "real", "unknown"] },
+    "evidenceStatus": { "enum": ["PendingEvidence", "EvidenceReferenced"] },
+    "evidenceIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "frameworkStatus": { "const": "FrameworkDiagnosticComplete" },
+    "hardwareStatus": { "const": "PendingHardwareValidation" },
+    "canStartFormalAutomation": { "const": false }
+  }
+}

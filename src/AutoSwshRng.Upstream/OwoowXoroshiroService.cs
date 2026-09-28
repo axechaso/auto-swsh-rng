@@ -5,7 +5,7 @@ using OwoowUtil = owoow.Core.RNG.Util;
 
 namespace AutoSwshRng.Upstream;
 
-public sealed class OwoowXoroshiroService : IXoroshiroService
+public sealed class OwoowXoroshiroService : IXoroshiroService, IRngStatePositionService
 {
     public Task<XoroshiroResult> CalculateAsync(
         XoroshiroRequest request,
@@ -16,7 +16,7 @@ public sealed class OwoowXoroshiroService : IXoroshiroService
 
         var state = request.State;
         ulong? value = null;
-        var distance = request.Amount;
+        ulong? distance = request.Amount;
         var found = true;
 
         switch (request.Operation)
@@ -25,23 +25,32 @@ public sealed class OwoowXoroshiroService : IXoroshiroService
                 state = Map(OwoowUtil.XoroshiroJump(state.Seed0, state.Seed1, request.Amount));
                 break;
             case XoroshiroOperation.Previous:
-                state = Map(
-                    OwoowUtil.XoroshiroLongJump(
-                        state.Seed0,
-                        state.Seed1,
-                        UInt128.MaxValue - request.Amount));
+                if (request.Amount > 0)
+                {
+                    state = Map(
+                        OwoowUtil.XoroshiroLongJump(
+                            state.Seed0,
+                            state.Seed1,
+                            UInt128.MaxValue - request.Amount));
+                }
                 break;
             case XoroshiroOperation.NextInteger:
             {
                 var rng = new Xoroshiro128Plus(state.Seed0, state.Seed1);
                 value = rng.NextInt(request.Amount);
                 var next = rng.GetState();
-                distance = OwoowUtil.GetAdvancesPassed(
+                var measuredDistance = OwoowUtil.GetAdvancesPassed(
                     state.Seed0,
                     state.Seed1,
                     next.s0,
                     next.s1,
                     0xFFFF);
+                var measuredEnd = OwoowUtil.XoroshiroJump(
+                    state.Seed0,
+                    state.Seed1,
+                    measuredDistance);
+                found = measuredEnd.s0 == next.s0 && measuredEnd.s1 == next.s1;
+                distance = found ? measuredDistance : null;
                 state = new RngState(next.s0, next.s1);
                 break;
             }
@@ -68,6 +77,11 @@ public sealed class OwoowXoroshiroService : IXoroshiroService
                     }
                 }
 
+                if (!found)
+                {
+                    distance = null;
+                }
+
                 break;
             }
             default:
@@ -78,6 +92,69 @@ public sealed class OwoowXoroshiroService : IXoroshiroService
         }
 
         return Task.FromResult(new XoroshiroResult(state, distance, value, found));
+    }
+
+    public Task<RngState> AdvanceAsync(
+        RngState state,
+        ulong amount,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (amount == 0)
+        {
+            return Task.FromResult(state);
+        }
+
+        var advanced = OwoowUtil.XoroshiroJump(state.Seed0, state.Seed1, amount);
+        return Task.FromResult(new RngState(advanced.s0, advanced.s1));
+    }
+
+    public Task<RngDistanceResult> MeasureDistanceAsync(
+        RngDistanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (request.Before == request.After)
+        {
+            return Task.FromResult(
+                new RngDistanceResult(
+                    Found: true,
+                    Distance: 0,
+                    request.MaximumDistance,
+                    request.After));
+        }
+
+        if (request.MaximumDistance == 0)
+        {
+            return Task.FromResult(
+                new RngDistanceResult(
+                    Found: false,
+                    Distance: null,
+                    request.MaximumDistance,
+                    request.Before));
+        }
+
+        var measured = OwoowUtil.GetAdvancesPassed(
+            request.Before.Seed0,
+            request.Before.Seed1,
+            request.After.Seed0,
+            request.After.Seed1,
+            request.MaximumDistance);
+        cancellationToken.ThrowIfCancellationRequested();
+        var verifiedTuple = OwoowUtil.XoroshiroJump(
+            request.Before.Seed0,
+            request.Before.Seed1,
+            measured);
+        var verifiedEnd = new RngState(verifiedTuple.s0, verifiedTuple.s1);
+        var found = verifiedEnd == request.After;
+        return Task.FromResult(
+            new RngDistanceResult(
+                found,
+                found ? measured : null,
+                request.MaximumDistance,
+                found ? verifiedEnd : request.Before));
     }
 
     public Task<FixedSeedResult> GenerateFixedAsync(

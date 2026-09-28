@@ -1,0 +1,60 @@
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    100
+NEXT
+
+B
+1500
+B
+FOR
+    $6 = @YY
+    IF $6 > 95
+        500
+        BREAK
+    ENDIF
+NEXT
+Y
+1500
+DOWN
+200
+DOWN
+200
+DOWN
+200
+PLUS
+FOR
+    $6 = @联网
+    IF $6 > 95
+        PRINT 联网成功
+        500
+        BREAK
+    ENDIF
+NEXT
+FOR
+    $6 = @匹配中
+    A
+    100
+    IF $6 > 95
+        500
+        BREAK
+    ENDIF
+NEXT
+FOR
+    $6 = @匹配成功
+    IF $6 > 95
+        500
+        PRINT 匹配到人，开始拔线
+        BREAK
+    ENDIF
+NEXT
+HOME DOWN
+1000
+HOME UP
+500
+A
+500
+FOR 50
+    HOME
+    100
+NEXT

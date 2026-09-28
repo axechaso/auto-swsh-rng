@@ -1,0 +1,31 @@
+﻿# PySide6 兼容版：原稿保存在 originals/，改动见 README.md
+
+_迷人身躯 = 4   #迷人身躯精灵在背包里的位置
+
+#唤醒手柄
+FOR 5
+    LCLICK 120
+    WAIT 100
+NEXT
+
+$1 = _迷人身躯
+WAIT 1000
+IF $1 > 1
+    $1 -= 2
+    FOR $1
+        DOWN
+        WAIT 200
+    NEXT
+    WAIT 1000
+    Y 200
+    WAIT 1000
+    $1 += 1
+    FOR $1
+        UP
+        WAIT 200
+    NEXT
+    A
+    WAIT 800
+    DOWN
+    WAIT 400
+ENDIF

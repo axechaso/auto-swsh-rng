@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-swsh-rng.local/schemas/feedback-archive.schema.json",
+  "title": "Auto SWSH RNG feedback archive",
+  "type": "object",
+  "required": ["schema", "schemaVersion", "archiveRevision", "contextFingerprint", "boundaryModel", "timingModel", "retryWorkflow"],
+  "properties": {
+    "schema": { "const": "auto-swsh-feedback-archive" },
+    "schemaVersion": { "const": 1 },
+    "archiveRevision": { "type": "integer", "minimum": 0 },
+    "contextFingerprint": { "type": ["string", "null"] },
+    "boundaryModel": { "type": ["object", "null"] },
+    "timingModel": { "type": ["object", "null"] },
+    "retryWorkflow": { "type": ["object", "null"] }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,65 @@
+﻿# PySide6 兼容版：原稿保存在 originals/，改动见 README.md
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    WAIT 100
+NEXT
+
+B
+WAIT 1500
+B
+FOR
+    $6 = @YY
+    IF $6 > 95
+        WAIT 500
+        BREAK
+    ENDIF
+    WAIT 100  # 图像轮询间隔
+NEXT
+Y
+WAIT 1500
+DOWN
+WAIT 200
+DOWN
+WAIT 200
+DOWN
+WAIT 200
+PLUS
+FOR
+    $6 = @联网
+    IF $6 > 95
+        PRINT 联网成功
+        WAIT 500
+        BREAK
+    ENDIF
+    WAIT 100  # 图像轮询间隔
+NEXT
+FOR
+    $6 = @匹配中
+    A
+    WAIT 100
+    IF $6 > 95
+        WAIT 500
+        BREAK
+    ENDIF
+    WAIT 100  # 图像轮询间隔
+NEXT
+FOR
+    $6 = @匹配成功
+    IF $6 > 95
+        WAIT 500
+        PRINT 匹配到人，开始拔线
+        BREAK
+    ENDIF
+    WAIT 100  # 图像轮询间隔
+NEXT
+HOME DOWN
+WAIT 1000
+HOME UP
+WAIT 500
+A
+WAIT 500
+FOR 50
+    HOME
+    WAIT 100
+NEXT
