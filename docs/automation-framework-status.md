@@ -13,18 +13,17 @@
 | M1 回放 / 模拟 | 带哈希校验的图片 / 视频 manifest、虚拟时钟、同一 `SeedObserver`、无硬件 `SimulationDevicePort` 和可注入停帧 / 丢帧故障 | `test_replay_evidence.py` |
 | M1 场景守卫 | 连续新帧、置信度、时间和 `contextRevision` 检查；旧帧、旧上下文和未知页面不能通过 | `test_replay_evidence.py` |
 | M2 搜索 | `encounter.search` 使用扫描游标和候选游标；结果带稳定快照 ID、请求摘要和排序版本 | CLI JSON 协议测试 |
-| M2 runner | 所有候选页读完后才确认空结果或前往下一扫描区间；同一快照不完整、游标倒退或响应身份不符时不重启 | `test_automation_runner.py` 的 T39 案例 |
+| M2 runner | 所有候选页读完后才确认空结果或前往下一扫描区间；最终结果包含跨扫描窗口的组合快照 ID / 摘要及完整覆盖范围；支持由上层保留任务租约 | `test_automation_runner.py` 的 T39 与外部租约案例 |
 | M3 NPC 校准核心 | 候选交集、等价候选区分实验、独立状态复验、全场景 / 算法指纹缓存及实验推进账本 | `test_npc_calibration.py`；合成协议端只验证框架逻辑 |
-| M4 规划 / 执行核心 | `attempt.plan` 逐候选求解状态相关方程；执行协调器一次执行一个粗推进批次，随后用新动画序列 `seed.locate`，重算计划后再精推 / 触发；复用注入的 ECS 阶段脚本端口 | CLI 协议测试、`test_attempt_planner.py`、`test_attempt_execution.py`、`attempt-execution-report.schema.json`；合成 fake action port 覆盖批次、歧义、失败、过期快照；场景脚本配置和 M2 runner 集成待做 |
-| M5 捕获 / 反查判定核心 | 捕获状态转移、投球上限、提示消解、新实体定位、多帧字段三值观测、实际约束反查请求、目标候选验证和结构化尝试报告 | `test_capture_workflow.py`、`capture-workflow-report.schema.json`、CLI 反查协议测试；未接入回放战斗模拟器和设备动作协调器 |
+| M4 规划 / 执行核心 | `attempt.plan` 逐候选求解状态相关方程；M2 完整搜索结果绑定为不可变目标快照，超过 512 个候选时全部分批规划后才选择；M2→注入的离线校准提供器→M4 共用单一任务租约；M4 之后可在释放租约前注入 M5 捕获阶段 | CLI 协议测试、`test_attempt_planner.py`、`test_attempt_execution.py`、`test_attempt_workflow.py`；覆盖跨页规划、同租约运行至 M5 阶段、正式门禁、歧义停止、回放粗推 / 重定位 / 触发、动作失败和过期快照；具体场景脚本与真实 NPC 探测端仍待实现 |
+| M5 捕获 / 反查判定核心 | 回放战斗事件驱动捕获状态机；处理失败续投、逃脱 / 异常终止、捕获后提示、新实体队伍差异、按帧引用的 reviewed field reads、仅用实际字段构造反查、用户范围内全候选目标验证；成功后写入 T40 并以保存后身份回执结束 | `test_capture_attempt.py`、`test_capture_workflow.py`、`capture-attempt-report.schema.json`、CLI 反查协议测试；回放采用已标注的事件 / 字段 sidecar，不代表已实现画面分类或 OCR |
 | 证据清单 | 原子写入、路径与 SHA-256 检查、算法 / 脚本 / 设备配置指纹、报告、旧版本失效和真实证据检查 | `test_replay_evidence.py` |
 | 正式入口门禁 | runner 默认模拟模式；正式模式要求 `FrameworkReady + HardwareValidated`，证据报告还要求所需实机素材有效 | `test_automation_runner.py`、`test_replay_evidence.py` |
-| M6 保存提交基础 | 原子保存 `SuccessDetected/SaveRequested/SaveConfirmed/Completed`；保存请求崩溃恢复禁止普通重启或重复保存 | `test_automation_workflow.py` 的 T40 |
-| M6 边界偏移基础 | `b` 按命名边界和模型修订一次性应用；残差更新有界且符号由 T41 固定 | `test_automation_workflow.py` 的 T41 |
+| M6 反馈闭环核心 | 按顺序归因证据 / 反查 / 检查点 / NPC 场景 / 个体与生成边界；唯一可信真实样本才形成 `e=h-g`；原子归档上下文、拒绝原因、模型版本；残差中位数更新 `b`、超界停止、恶化 / 振荡回退；毫秒参数需同控变量多组稳定斜率后单独提出；明确未命中必须先持久证据和校准决定、再授权重启并以独立测种创建新 epoch；未决目标和 T40 任一未完成阶段均禁止普通重启 | `test_feedback.py`、`test_automation_workflow.py` 的 T40 / T41、`feedback-archive.schema.json`；只验证离线逻辑 |
 
 ## 当前仍未就绪
 
-- 全局 `FrameworkReady` 尚未成立：M3 尚未连接实际探测动作 / 采集流程；M4 执行协调器仍未接入 M2 总 runner 和回放动作模拟，具体场景阶段脚本也未验证；M5 的 Python 请求已与 CLI 做合成端到端联调，但仍未接入回放战斗模拟器和统一任务协调器；M6 完整偏差归因与成功状态机、M7 产品验收及第 23.1 节其余门槛仍需实现。T40、T41 的离线基础模型和测试已具备。
+- 全局 `FrameworkReady` 尚未成立：M3 尚未连接实际探测动作 / 采集流程；M4 / M5 可由可选阶段工厂在同一任务租约中串接，仍没有具体场景阶段脚本与真实硬件动作端；M5 回放输入是已标注事件 / 字段数据，不含画面分类或 OCR；M6 离线归因、限幅更新、回退、持久归档和安全重启门禁已有实现，但尚无真实提前 / 延后样本与重复运行验收；M7 产品验收及第 23.1 节其余门槛仍需实现。任何模型仍待实机复验。
 - 当前桌面尚未把新的 runner、模拟器、证据浏览和场景守卫接入单一完整 UI 工作流。
 - 没有真实设备适配器、真实动作链、实机动画识别校准、捕获身份确认或保存确认。每个场景保持 `PendingHardwareValidation`；任何模拟报告都不能改变这一状态。
 - C# 诊断调用里的 `sourceKind` 默认是 `unknown`。调用方必须给出素材来源；报告只记录证据引用，不代替证据清单对文件、设备配置和版本进行审核。

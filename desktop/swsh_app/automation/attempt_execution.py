@@ -401,14 +401,18 @@ class AttemptExecutionCoordinator:
                         raise AttemptExecutionNeedsAttention(
                             "PRECISE_RESERVE_INVALID", "remaining precise advances exceed the validated reserve",
                         )
+                    stage_id = None
+                    stage = None
                     if precise:
                         stage_id = f"precise-{cycle:04d}"
                         stage = self.actions.execute_precise_advances(stage_id, precise, self.cancel_event)
                         self._check_stage(stage, stage_id)
                     self._record(events, "precise_stage_completed", {
                         "stageId": stage_id, "advances": precise,
-                        "startFrameId": stage.start_frame_id, "endFrameId": stage.end_frame_id,
-                        "startedAtNs": stage.started_at_ns, "finishedAtNs": stage.finished_at_ns,
+                        "startFrameId": stage.start_frame_id if stage else None,
+                        "endFrameId": stage.end_frame_id if stage else None,
+                        "startedAtNs": stage.started_at_ns if stage else None,
+                        "finishedAtNs": stage.finished_at_ns if stage else None,
                     })
                     final_stage = self.actions.execute_final_trigger(immediate_plan, self.cancel_event)
                     self._check_stage(final_stage, "final-trigger")

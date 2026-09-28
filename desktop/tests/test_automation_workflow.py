@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import sys
 import tempfile
 import unittest
@@ -116,6 +117,7 @@ class SaveCommitTests(unittest.TestCase):
                 target_slot="party:5",
                 save_page_evidence_id="save-screen",
                 post_save_identity="species:123|pid:ABCDEF12",
+                post_save_identity_evidence_ids=("target-after-save",),
                 algorithm_commit=ALGORITHM_COMMIT,
                 script_revision="script-v3",
                 confirmed_at_utc="2026-09-28T01:01:00+00:00",
@@ -138,6 +140,7 @@ class SaveCommitTests(unittest.TestCase):
                 target_slot="party:5",
                 save_page_evidence_id="save-screen",
                 post_save_identity="species:999|pid:00000000",
+                post_save_identity_evidence_ids=("target-after-save",),
                 algorithm_commit=ALGORITHM_COMMIT,
                 script_revision="script-v3",
                 confirmed_at_utc="2026-09-28T01:01:00+00:00",
@@ -145,6 +148,44 @@ class SaveCommitTests(unittest.TestCase):
             with self.assertRaisesRegex(SaveCommitError, "post-save identity"):
                 store.complete(mismatched)
             self.assertEqual(store.load().stage, "SaveConfirmed")
+
+    def test_save_receipt_requires_post_save_identity_evidence_and_legacy_success_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            store = self.start_store(temporary)
+            store.request_save()
+            store.confirm_save(save_evidence_ids=["save-screen"])
+            missing_evidence = SaveReceipt(
+                attempt_id="attempt-1",
+                target_identity="species:123|pid:ABCDEF12",
+                target_slot="party:5",
+                save_page_evidence_id="save-screen",
+                post_save_identity="species:123|pid:ABCDEF12",
+                post_save_identity_evidence_ids=(),
+                algorithm_commit=ALGORITHM_COMMIT,
+                script_revision="script-v3",
+                confirmed_at_utc="2026-09-28T01:01:00+00:00",
+            )
+            with self.assertRaisesRegex(SaveCommitError, "postSaveIdentityEvidenceIds"):
+                store.complete(missing_evidence)
+
+            valid = SaveReceipt(
+                attempt_id="attempt-1",
+                target_identity="species:123|pid:ABCDEF12",
+                target_slot="party:5",
+                save_page_evidence_id="save-screen",
+                post_save_identity="species:123|pid:ABCDEF12",
+                post_save_identity_evidence_ids=("post-save-roster",),
+                algorithm_commit=ALGORITHM_COMMIT,
+                script_revision="script-v3",
+                confirmed_at_utc="2026-09-28T01:01:00+00:00",
+            )
+            store.complete(valid)
+            raw = json.loads(store.path.read_text(encoding="utf-8"))
+            raw["schemaVersion"] = 1
+            raw["receipt"].pop("postSaveIdentityEvidenceIds")
+            store.path.write_text(json.dumps(raw), encoding="utf-8")
+            with self.assertRaisesRegex(SaveCommitError, "legacy Completed receipt"):
+                store.load()
 
 
 if __name__ == "__main__":

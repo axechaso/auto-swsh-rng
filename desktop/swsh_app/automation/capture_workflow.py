@@ -199,7 +199,7 @@ class CaptureEvent:
     def __post_init__(self):
         if not isinstance(self.kind, str) or not self.kind:
             raise CaptureEvidenceError("capture event kind is required")
-        ids = _ids(self.evidence_ids, "event evidence_ids")
+        ids = _ids(self.evidence_ids, "event evidence_ids", allow_empty=self.kind == "stop")
         object.__setattr__(self, "evidence_ids", ids)
         object.__setattr__(self, "details", MappingProxyType(_json_object(self.details or {}, "event details")))
 
@@ -297,6 +297,10 @@ class CaptureWorkflow:
             (CapturePhase.BALL_SELECTION, "ball_thrown"): CapturePhase.BALL_ANIMATION,
             (CapturePhase.BALL_ANIMATION, "capture_failed"): CapturePhase.ACTION_MENU,
             (CapturePhase.BALL_ANIMATION, "capture_confirmed"): CapturePhase.POST_CAPTURE_PROMPTS,
+            (CapturePhase.BALL_ANIMATION, "opponent_escaped"): CapturePhase.NEEDS_ATTENTION,
+            (CapturePhase.BALL_ANIMATION, "player_fainted"): CapturePhase.NEEDS_ATTENTION,
+            (CapturePhase.BALL_ANIMATION, "ball_exhausted"): CapturePhase.NEEDS_ATTENTION,
+            (CapturePhase.BALL_ANIMATION, "unexpected_battle_end"): CapturePhase.NEEDS_ATTENTION,
             (CapturePhase.POST_CAPTURE_PROMPTS, "post_capture_complete"): CapturePhase.ENTITY_IDENTIFICATION,
             (CapturePhase.ENTITY_IDENTIFICATION, "new_entity_confirmed"): CapturePhase.SUMMARY_OBSERVATION,
             (CapturePhase.ENTITY_IDENTIFICATION, "entity_ambiguous"): CapturePhase.NEEDS_ATTENTION,

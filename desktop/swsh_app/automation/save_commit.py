@@ -11,7 +11,7 @@ from typing import Any
 
 
 SAVE_COMMIT_SCHEMA = "auto-swsh-save-commit"
-SAVE_COMMIT_VERSION = 1
+SAVE_COMMIT_VERSION = 2
 SAVE_STAGES = ("SuccessDetected", "SaveRequested", "SaveConfirmed", "Completed")
 
 
@@ -26,6 +26,7 @@ class SaveReceipt:
     target_slot: str
     save_page_evidence_id: str
     post_save_identity: str
+    post_save_identity_evidence_ids: tuple[str, ...]
     algorithm_commit: str
     script_revision: str
     confirmed_at_utc: str
@@ -184,12 +185,15 @@ def _encode_commit(commit: SaveCommit) -> dict[str, Any]:
 
 
 def _decode_commit(raw):
-    if not isinstance(raw, dict) or raw.get("schema") != SAVE_COMMIT_SCHEMA or raw.get("schemaVersion") != SAVE_COMMIT_VERSION:
+    if (not isinstance(raw, dict) or raw.get("schema") != SAVE_COMMIT_SCHEMA
+            or isinstance(raw.get("schemaVersion"), bool)
+            or raw.get("schemaVersion") not in (1, SAVE_COMMIT_VERSION)):
         raise SaveCommitError("unsupported save commit schema")
+    legacy = raw.get("schemaVersion") == 1
     stage = raw.get("stage")
     if stage not in SAVE_STAGES:
         raise SaveCommitError("save commit stage is invalid")
-    receipt = _decode_receipt(raw.get("receipt"))
+    receipt = _decode_receipt(raw.get("receipt"), legacy=legacy)
     commit = SaveCommit(
         run_id=_required(raw.get("runId"), "runId"),
         epoch_id=_required(raw.get("epochId"), "epochId"),
@@ -210,6 +214,8 @@ def _decode_commit(raw):
         raise SaveCommitError("SaveConfirmed and Completed require save evidence")
     if (stage == "Completed") != (receipt is not None):
         raise SaveCommitError("Completed requires a SaveReceipt and earlier stages cannot carry one")
+    if stage == "Completed" and not receipt.post_save_identity_evidence_ids:
+        raise SaveCommitError("legacy Completed receipt lacks post-save identity evidence")
     return commit
 
 
@@ -222,13 +228,14 @@ def _encode_receipt(receipt):
         "targetSlot": receipt.target_slot,
         "savePageEvidenceId": receipt.save_page_evidence_id,
         "postSaveIdentity": receipt.post_save_identity,
+        "postSaveIdentityEvidenceIds": list(receipt.post_save_identity_evidence_ids),
         "algorithmCommit": receipt.algorithm_commit,
         "scriptRevision": receipt.script_revision,
         "confirmedAtUtc": receipt.confirmed_at_utc,
     }
 
 
-def _decode_receipt(raw):
+def _decode_receipt(raw, *, legacy=False):
     if raw is None:
         return None
     if not isinstance(raw, dict):
@@ -239,6 +246,11 @@ def _decode_receipt(raw):
         target_slot=_required(raw.get("targetSlot"), "receipt.targetSlot"),
         save_page_evidence_id=_required(raw.get("savePageEvidenceId"), "receipt.savePageEvidenceId"),
         post_save_identity=_required(raw.get("postSaveIdentity"), "receipt.postSaveIdentity"),
+        post_save_identity_evidence_ids=(
+            _required_ids(raw.get("postSaveIdentityEvidenceIds"), "receipt.postSaveIdentityEvidenceIds")
+            if raw.get("postSaveIdentityEvidenceIds") is not None
+            else () if legacy else _required_ids(None, "receipt.postSaveIdentityEvidenceIds")
+        ),
         algorithm_commit=_validate_commit(raw.get("algorithmCommit")),
         script_revision=_required(raw.get("scriptRevision"), "receipt.scriptRevision"),
         confirmed_at_utc=_validate_utc(raw.get("confirmedAtUtc")),
@@ -256,6 +268,7 @@ def _validate_receipt(receipt, commit):
         raise SaveCommitError("receipt slot does not match the expected target slot")
     if receipt.save_page_evidence_id not in commit.save_evidence_ids:
         raise SaveCommitError("receipt must reference confirmed save evidence")
+    _required_ids(receipt.post_save_identity_evidence_ids, "receipt.postSaveIdentityEvidenceIds")
     if receipt.algorithm_commit != commit.algorithm_commit or receipt.script_revision != commit.script_revision:
         raise SaveCommitError("receipt version fingerprint changed during save")
     _validate_utc(receipt.confirmed_at_utc)

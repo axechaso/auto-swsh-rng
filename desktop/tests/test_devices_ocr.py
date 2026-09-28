@@ -209,10 +209,12 @@ class CaptureAndOcrTests(unittest.TestCase):
         )
 
         def trigger_one():
-            animation = QImage(4, 4, QImage.Format.Format_RGB32)
-            animation.fill(QColor(200, 0, 0))
-            frames.put(animation)
-            frames.put(animation)
+            first_animation = QImage(4, 4, QImage.Format.Format_RGB32)
+            first_animation.fill(QColor(200, 0, 0))
+            second_animation = first_animation.copy()
+            second_animation.setPixelColor(3, 3, QColor(20, 20, 20))
+            frames.put(first_animation)
+            frames.put(second_animation)
             frames.put(idle)
 
         sample = observer.observe_bit(trigger_one)

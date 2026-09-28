@@ -206,6 +206,12 @@ class AutomationRunnerTests(unittest.TestCase):
         self.assertEqual(result.status, AutomationRunStatus.TARGETS_FOUND, result.reason)
         self.assertEqual(result.epochs[-1].candidate_count, 1)
         self.assertEqual(result.candidate_rows[0]["advance"], 4)
+        self.assertTrue(result.target_snapshot_id.startswith("encounter-range-"))
+        self.assertEqual(len(result.target_request_digest), 64)
+        self.assertEqual(result.search_order_version, "advance-fields-v1")
+        self.assertEqual(result.epochs[-1].target_snapshot_id, result.target_snapshot_id)
+        self.assertEqual(result.epochs[-1].target_request_digest, result.target_request_digest)
+        self.assertEqual(result.epochs[-1].search_order_version, result.search_order_version)
         self.assertEqual(len(result.epochs), 2)
         self.assertEqual(sum(call[0] == "restart" for call in device.calls), 1)
         search_calls = [request for request in calculator.requests if request["operation"] == "encounter.search"]
@@ -284,6 +290,23 @@ class AutomationRunnerTests(unittest.TestCase):
         self.assertFalse(any(req["operation"] == "encounter.search" for req in calculator.requests))
         self.assertEqual(device.cleanup[0], "stop")
         self.assertEqual(device.cleanup[1], ("release", device.lease))
+
+    def test_external_workflow_lease_is_retained_after_search_for_later_stages(self):
+        device = FakeDevice()
+        config = make_config(max_advance=2, chunk_size=3)
+        runner = AutomationRunner(
+            config,
+            device=device,
+            observer=FakeObserver([sample(BITS_ZERO), sample(BITS_ZERO)]),
+            calculator=FakeCalculator(search=lambda req: search_result(req, 1, [{"advance": 2}])),
+            task_lease=device.lease,
+        )
+
+        result = runner.run()
+
+        self.assertEqual(result.status, AutomationRunStatus.TARGETS_FOUND, result.reason)
+        self.assertNotIn(("acquire",), device.calls)
+        self.assertEqual(device.cleanup, ["stop"])
 
     def test_pending_hardware_scenario_cannot_start_formal_run(self):
         device = FakeDevice()

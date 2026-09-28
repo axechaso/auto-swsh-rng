@@ -46,6 +46,17 @@ from .boundary import (
     solve_trigger_advance,
     update_boundary_adjustment,
 )
+from .feedback import (
+    CalibrationSample,
+    FeedbackArchiveStore,
+    FeedbackController,
+    FeedbackDecision,
+    FeedbackError,
+    TimingSensitivityEstimator,
+    TimingUpdate,
+    attribute_calibration_sample,
+)
+from .retry_workflow import RetryWorkflow, RetryWorkflowError, RetryWorkflowResult
 from .save_commit import (
     SaveCommit,
     SaveCommitError,
@@ -85,6 +96,25 @@ from .attempt_execution import (
     EcsAttemptActionPort,
     RelocationResult,
     SeedRelocator,
+)
+from .attempt_workflow import (
+    M2M4AttemptCoordinator,
+    M2M4ClosedLoopCoordinator,
+    M2M4ClosedLoopResult,
+    M2M4WorkflowError,
+    M2M4WorkflowNeedsAttention,
+    NpcCalibrationOutcome,
+)
+from .replay_attempts import ReplayAttemptActionPort
+from .capture_attempt import (
+    CaptureActionPort,
+    CaptureAttemptCoordinator,
+    CaptureAttemptCancelled,
+    CaptureAttemptError,
+    CaptureAttemptResult,
+    ReplayCaptureActionPort,
+    ReplayCaptureFixture,
+    ReplayCaptureStep,
 )
 from .capture_workflow import (
     CaptureEvent,
@@ -146,6 +176,17 @@ __all__ = [
     "load_replay_manifest",
     "solve_trigger_advance",
     "update_boundary_adjustment",
+    "CalibrationSample",
+    "FeedbackArchiveStore",
+    "FeedbackController",
+    "FeedbackDecision",
+    "FeedbackError",
+    "TimingSensitivityEstimator",
+    "TimingUpdate",
+    "attribute_calibration_sample",
+    "RetryWorkflow",
+    "RetryWorkflowError",
+    "RetryWorkflowResult",
     "validate_manifest",
 ]
 
@@ -177,6 +218,21 @@ __all__ += [
     "EcsAttemptActionPort",
     "RelocationResult",
     "SeedRelocator",
+    "M2M4AttemptCoordinator",
+    "M2M4ClosedLoopCoordinator",
+    "M2M4ClosedLoopResult",
+    "M2M4WorkflowError",
+    "M2M4WorkflowNeedsAttention",
+    "NpcCalibrationOutcome",
+    "ReplayAttemptActionPort",
+    "CaptureActionPort",
+    "CaptureAttemptCoordinator",
+    "CaptureAttemptCancelled",
+    "CaptureAttemptError",
+    "CaptureAttemptResult",
+    "ReplayCaptureActionPort",
+    "ReplayCaptureFixture",
+    "ReplayCaptureStep",
     "CaptureEvent",
     "CaptureEvidenceError",
     "CapturePhase",

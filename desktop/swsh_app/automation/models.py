@@ -123,8 +123,13 @@ class SeedEpochSummary:
     observation_bits: int
     verification_bits: int
     searched_positions: int = 0
+    searched_start: int | None = None
+    searched_end: int | None = None
     candidate_count: int = 0
     candidate_rows_truncated: bool = False
+    target_snapshot_id: str | None = None
+    target_request_digest: str | None = None
+    search_order_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,3 +144,6 @@ class AutomationRunResult:
     total_epochs: int = 0
     total_events: int = 0
     event_history_truncated: bool = False
+    target_snapshot_id: str | None = None
+    target_request_digest: str | None = None
+    search_order_version: str | None = None

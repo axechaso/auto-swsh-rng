@@ -168,6 +168,45 @@ class ReplayFrameSource:
             self._active_offset += 1
             return (snapshot,)
 
+    def consume_active_segment(self):
+        """Consume a non-observation action's recorded frames in order.
+
+        Action adapters use this for coarse / precise / trigger stages whose
+        frames provide timing and evidence boundaries but are not RNG bits.
+        Dropped frames fail the stage instead of being silently skipped.
+        """
+        consumed = []
+        with self._lock:
+            self._ensure_open()
+            if self._active_frames is None:
+                raise ReplayValidationError("no replay action segment is active")
+            while self._active_offset < len(self._active_frames):
+                frame_ref = self._active_frames[self._active_offset]
+                self._active_offset += 1
+                if frame_ref.frame_id in self._dropped_frame_ids:
+                    self._dropped_frame_ids.remove(frame_ref.frame_id)
+                    raise ReplayValidationError(f"replay stage frame {frame_ref.frame_id} was dropped")
+                image = frame_ref.loader()
+                if image is None or image.isNull():
+                    raise ReplayValidationError(f"cannot decode replay frame {frame_ref.frame_id}")
+                if self._last_source_timestamp_ns is not None:
+                    delta_ns = frame_ref.source_timestamp_ns - self._last_source_timestamp_ns
+                    if delta_ns < 0:
+                        raise ReplayValidationError("replay source timestamps moved backwards")
+                    self.clock.advance(delta_ns / 1_000_000_000)
+                self._last_source_timestamp_ns = frame_ref.source_timestamp_ns
+                snapshot = FrameSnapshot(
+                    frame_ref.frame_id,
+                    self.clock.monotonic_ns(),
+                    image.copy(),
+                    source_timestamp_ns=frame_ref.source_timestamp_ns,
+                    content_sha256=frame_digest(image),
+                    evidence_id=frame_ref.evidence_id,
+                )
+                self._latest = snapshot
+                consumed.append(snapshot)
+            return tuple(consumed)
+
     @property
     def remaining_actions(self):
         return len(self.segments) - self._segment_index

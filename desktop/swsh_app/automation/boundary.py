@@ -56,12 +56,13 @@ def solve_trigger_advance(target_generation_advance, deterministic_consumption,
     return trigger
 
 
-def update_boundary_adjustment(current: BoundaryAdjustment, residual_advances: int, *,
+def update_boundary_adjustment(current: BoundaryAdjustment, residual_advances: int | float, *,
                                alpha=0.5, minimum_offset=-100, maximum_offset=100,
                                maximum_step=4, model_version: str):
-    if isinstance(residual_advances, bool) or not isinstance(residual_advances, int):
-        raise ValueError("residual_advances must be an integer")
-    if not math.isfinite(alpha) or not 0 <= alpha <= 1:
+    if (isinstance(residual_advances, bool) or not isinstance(residual_advances, (int, float))
+            or not math.isfinite(residual_advances)):
+        raise ValueError("residual_advances must be a finite number")
+    if isinstance(alpha, bool) or not isinstance(alpha, (int, float)) or not math.isfinite(alpha) or not 0 <= alpha <= 1:
         raise ValueError("alpha must be between zero and one")
     if minimum_offset > maximum_offset:
         raise ValueError("minimum_offset cannot exceed maximum_offset")

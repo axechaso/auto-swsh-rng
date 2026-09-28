@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from collections import deque
+import hashlib
+import json
 from typing import Any, Protocol
 import threading
 import time
@@ -64,6 +66,28 @@ class AutomationNeedsAttention(RuntimeError):
     """A physical state or evidence gap makes safe automatic progress unclear."""
 
 
+def validate_formal_start(config: AutomationConfig, evidence_store=None) -> None:
+    if config.execution_mode != "formal":
+        return
+    if evidence_store is None:
+        raise AutomationNeedsAttention(
+            "FORMAL_START_BLOCKED: a verified scenario evidence store is required"
+        )
+    try:
+        report = evidence_store.report(verify_files=True)
+    except Exception as exc:
+        raise AutomationNeedsAttention(f"FORMAL_START_BLOCKED: evidence check failed: {exc}") from exc
+    if (
+        report.get("scenarioId") != config.scenario_id
+        or report.get("frameworkStatus") != "FrameworkReady"
+        or report.get("hardwareStatus") != "HardwareValidated"
+        or report.get("canStartFormalAutomation") is not True
+    ):
+        raise AutomationNeedsAttention(
+            "FORMAL_START_BLOCKED: scenario evidence does not authorize formal automation"
+        )
+
+
 class _Cancelled(Exception):
     pass
 
@@ -78,14 +102,17 @@ class AutomationRunner:
     """
 
     def __init__(self, config: AutomationConfig, *, device: AutomationDevicePort,
-                 observer, calculator: CalculatorPort, on_event=None, evidence_store=None):
+                 observer, calculator: CalculatorPort, on_event=None, evidence_store=None,
+                 task_lease=None, cancel_event: threading.Event | None = None):
         self.config = config
         self.device = device
         self.observer = observer
         self.calculator = calculator
         self.on_event = on_event
         self.evidence_store = evidence_store
-        self.cancel_event = threading.Event()
+        self.task_lease = task_lease
+        self._owns_task_lease = task_lease is None
+        self.cancel_event = cancel_event or threading.Event()
         self._run_lock = threading.Lock()
         self._has_run = False
         self._events = deque(maxlen=2_048)
@@ -106,6 +133,9 @@ class AutomationRunner:
         self._has_run = True
         epochs = deque(maxlen=100)
         rows: list[Mapping[str, Any]] = []
+        target_snapshot_id = None
+        target_request_digest = None
+        search_order_version = None
         lease = None
         phase = AutomationPhase.PREFLIGHT
         status = AutomationRunStatus.FAILED
@@ -113,29 +143,16 @@ class AutomationRunner:
         acquired = False
         try:
             self._check_cancel()
-            if self.config.execution_mode == "formal":
-                if self.evidence_store is None:
-                    raise AutomationNeedsAttention(
-                        "FORMAL_START_BLOCKED: a verified scenario evidence store is required"
-                    )
-                try:
-                    report = self.evidence_store.report(verify_files=True)
-                except Exception as exc:
-                    raise AutomationNeedsAttention(f"FORMAL_START_BLOCKED: evidence check failed: {exc}") from exc
-                if (
-                    report.get("scenarioId") != self.config.scenario_id
-                    or report.get("frameworkStatus") != "FrameworkReady"
-                    or report.get("hardwareStatus") != "HardwareValidated"
-                    or report.get("canStartFormalAutomation") is not True
-                ):
-                    raise AutomationNeedsAttention(
-                        "FORMAL_START_BLOCKED: scenario evidence does not authorize formal automation"
-                    )
-            try:
-                lease = self.device.acquire_task_lease()
+            validate_formal_start(self.config, self.evidence_store)
+            if self.task_lease is not None:
+                lease = self.task_lease
                 acquired = True
-            except Exception as exc:
-                raise AutomationNeedsAttention(f"DEVICE_LEASE_FAILED: {exc}") from exc
+            else:
+                try:
+                    lease = self.device.acquire_task_lease()
+                    acquired = True
+                except Exception as exc:
+                    raise AutomationNeedsAttention(f"DEVICE_LEASE_FAILED: {exc}") from exc
             if lease is None:
                 raise AutomationNeedsAttention("DEVICE_LEASE_FAILED: no lease was returned")
 
@@ -178,6 +195,9 @@ class AutomationRunner:
                     epoch_id,
                 )
                 search = self._search_range(lease, epoch_id, anchor)
+                target_snapshot_id = search["snapshot_id"]
+                target_request_digest = search["request_digest"]
+                search_order_version = search["order_version"]
                 summary = SeedEpochSummary(
                     epoch_id=epoch_id,
                     seed0=anchor["seed0"],
@@ -185,8 +205,13 @@ class AutomationRunner:
                     observation_bits=128,
                     verification_bits=128,
                     searched_positions=search["searched_positions"],
+                    searched_start=search["searched_start"],
+                    searched_end=search["searched_end"],
                     candidate_count=search["candidate_count"],
                     candidate_rows_truncated=search["candidate_rows_truncated"],
+                    target_snapshot_id=target_snapshot_id,
+                    target_request_digest=target_request_digest,
+                    search_order_version=search_order_version,
                 )
                 epochs.append(summary)
                 rows = search["rows"]
@@ -241,10 +266,11 @@ class AutomationRunner:
                     self.device.stop_scripts()
                 except Exception as exc:
                     cleanup_errors.append(f"stop_scripts: {exc}")
-                try:
-                    self.device.release_task_lease(lease)
-                except Exception as exc:
-                    cleanup_errors.append(f"release_task_lease: {exc}")
+                if self._owns_task_lease:
+                    try:
+                        self.device.release_task_lease(lease)
+                    except Exception as exc:
+                        cleanup_errors.append(f"release_task_lease: {exc}")
             if cleanup_errors:
                 status = AutomationRunStatus.NEEDS_ATTENTION
                 cleanup_reason = "CLEANUP_FAILED: " + "; ".join(cleanup_errors)
@@ -262,6 +288,9 @@ class AutomationRunner:
             total_epochs=epoch_index if "epoch_index" in locals() else 0,
             total_events=self._event_count,
             event_history_truncated=self._event_count > len(self._events),
+            target_snapshot_id=target_snapshot_id,
+            target_request_digest=target_request_digest,
+            search_order_version=search_order_version,
         )
 
     def _observe_and_verify_seed(self, lease, epoch_id: str) -> dict[str, str]:
@@ -336,6 +365,8 @@ class AutomationRunner:
         total_candidates = 0
         searched_positions = 0
         candidate_rows: list[Mapping[str, Any]] = []
+        snapshot_components: list[dict[str, str]] = []
+        stable_order_version = None
         while scan_cursor <= self.config.max_advance:
             self._check_cancel()
             last_error = None
@@ -367,6 +398,8 @@ class AutomationRunner:
                     snapshot_id = first_page["snapshotId"]
                     request_digest = first_page["requestDigest"]
                     order_version = first_page["orderVersion"]
+                    if stable_order_version is not None and order_version != stable_order_version:
+                        raise ValueError("search ordering changed between scan windows")
                     rows = list(first_page["rows"])
                     next_candidate = first_page["nextCandidateCursor"]
                     page = first_page
@@ -412,6 +445,9 @@ class AutomationRunner:
                         "searched_end": scanned_end,
                         "rows": rows,
                         "next_scan_cursor": expected_scan_cursor,
+                        "snapshot_id": snapshot_id,
+                        "request_digest": request_digest,
+                        "order_version": order_version,
                     }
                     last_error = None
                     break
@@ -434,6 +470,11 @@ class AutomationRunner:
             total_candidates += chunk_result["candidate_count"]
             searched_positions += chunk_result["searched_end"] - scan_cursor + 1
             candidate_rows.extend(MappingProxyType(dict(row)) for row in chunk_result["rows"])
+            stable_order_version = chunk_result["order_version"]
+            snapshot_components.append({
+                "snapshotId": chunk_result["snapshot_id"],
+                "requestDigest": chunk_result["request_digest"],
+            })
             self._emit(
                 AutomationPhase.SEARCH_TARGETS,
                 f"已完整搜索 [{scan_cursor}, {chunk_result['searched_end']}]，发现 {chunk_result['candidate_count']} 个候选。",
@@ -445,11 +486,31 @@ class AutomationRunner:
             if chunk_result["next_scan_cursor"] is None:
                 break
             scan_cursor = chunk_result["next_scan_cursor"]
+        aggregate_identity = {
+            "runId": self.config.run_id,
+            "contextRevision": self.config.context_revision,
+            "epochId": epoch_id,
+            "seed0": anchor["seed0"],
+            "seed1": anchor["seed1"],
+            "start": self.config.min_advance,
+            "end": self.config.max_advance,
+            "searchRequest": self.config.search_request_copy(),
+            "orderVersion": stable_order_version,
+            "scanWindows": snapshot_components,
+        }
+        aggregate_digest = hashlib.sha256(json.dumps(
+            aggregate_identity, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
         return {
             "candidate_count": total_candidates,
             "searched_positions": searched_positions,
+            "searched_start": self.config.min_advance,
+            "searched_end": self.config.max_advance,
             "candidate_rows_truncated": False,
             "rows": candidate_rows,
+            "snapshot_id": f"encounter-range-{aggregate_digest[:32]}",
+            "request_digest": aggregate_digest,
+            "order_version": stable_order_version,
         }
 
     @staticmethod
