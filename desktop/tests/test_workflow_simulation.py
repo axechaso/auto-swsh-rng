@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -58,6 +59,22 @@ class WorkflowSimulationTests(unittest.TestCase):
             self.assertEqual(result.epochs[0].searched_start, 0)
             self.assertEqual(result.epochs[0].searched_end, 500)
             self.assertEqual(result.status, "targets_found", result.reason)
+            report = window.workflow_panel.simulation_report_data()
+            self.assertEqual(report["schema"], "auto-swsh-automation-run-report")
+            self.assertEqual(report["outcomeType"], "simulation_search_only")
+            self.assertEqual(report["sourceKind"], "synthetic")
+            self.assertEqual(len(report["algorithmCommit"]), 40)
+            self.assertTrue(report["scriptRevision"].startswith("pyside6-"))
+            self.assertEqual(report["scriptRevision"], window.workflow_panel.simulation_script_revision)
+            self.assertEqual(report["hardwareStatus"], "PendingHardwareValidation")
+            self.assertIn("同一配套计算后端", "\n".join(report["limitations"]))
+            schema = json.loads((Path(__file__).resolve().parents[2] / "docs/schemas/automation-run-report.schema.json").read_text(encoding="utf-8"))
+            self.assertEqual(set(schema["required"]), set(report))
+            self.assertIn(report["phase"], schema["properties"]["phase"]["enum"])
+            self.assertIn(report["status"], schema["properties"]["status"]["enum"])
+            report_path = Path(temporary) / "simulation-report.json"
+            self.assertTrue(window.workflow_panel.save_simulation_report(report_path, report))
+            self.assertEqual(json.loads(report_path.read_text(encoding="utf-8"))["runId"], result.run_id)
             self.assertFalse(window.workflow_panel.formal_start_button.isEnabled())
             self.assertFalse(window.workflow_panel.simulation_stop_button.isEnabled())
             self.assertTrue(window.workflow_panel.simulation_start_button.isEnabled())

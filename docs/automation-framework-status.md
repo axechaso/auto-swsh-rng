@@ -20,7 +20,7 @@
 | 证据清单 | 原子写入、路径与 SHA-256 检查、算法 / 脚本 / 设备配置指纹、报告、旧版本失效和真实证据检查 | `test_replay_evidence.py` |
 | 正式入口门禁 | runner 默认模拟模式；正式模式要求 `FrameworkReady + HardwareValidated`，证据报告还要求所需实机素材有效 | `test_automation_runner.py`、`test_replay_evidence.py` |
 | M6 反馈闭环核心 | 按顺序归因证据 / 反查 / 检查点 / NPC 场景 / 个体与生成边界；唯一可信真实样本才形成 `e=h-g`；原子归档上下文、拒绝原因、模型版本；残差中位数更新 `b`、超界停止、恶化 / 振荡回退；毫秒参数需同控变量多组稳定斜率后单独提出；明确未命中必须先持久证据和校准决定、再授权重启并以独立测种创建新 epoch；未决目标和 T40 任一未完成阶段均禁止普通重启 | `test_feedback.py`、`test_automation_workflow.py` 的 T40 / T41、`feedback-archive.schema.json`；只验证离线逻辑 |
-| M7 桌面证据 / 模拟入口（部分） | 默认“自动流程”工作页；创建 / 读取场景清单；证据导入、SHA-256 核验和缺少当前版本 / 真实素材报告；安全校验回放包并逐帧浏览；单轮合成测种通过 `SeedObserver`、M2 runner 和协议 2 CLI 完成求种、预测验证位复观及完整范围搜索；可注入预检失败 / 测种首帧丢失并检查安全停止；取消时终止子进程并等待模拟租约清理；正式启动按钮固定禁用 | `test_workflow_panel.py`、`test_synthetic_replay.py`、`test_desktop_calculator.py`、`test_simulation_session.py`、`test_workflow_simulation.py`、`test_desktop.py`；验证位由同一后端预测，不属于算法独立验证；M3–M6 尚无 UI 阶段执行，场景分类与真实设备动作未接入 |
+| M7 桌面证据 / 模拟入口（部分） | 默认“自动流程”工作页；创建 / 读取场景清单；证据导入、SHA-256 核验和缺少当前版本 / 真实素材报告；安全校验回放包并逐帧浏览；单轮合成测种通过 `SeedObserver`、M2 runner 和协议 2 CLI 完成求种、预测验证位复观及完整范围搜索；可注入预检失败 / 测种首帧丢失并检查安全停止；可导出含算法 / 脚本指纹、来源、完整事件和明确限制的模拟报告；取消时终止子进程并等待模拟租约清理；正式启动按钮固定禁用 | `test_workflow_panel.py`、`test_synthetic_replay.py`、`test_desktop_calculator.py`、`test_simulation_session.py`、`test_workflow_simulation.py`、`test_desktop.py`、`automation-run-report.schema.json`；验证位由同一后端预测，不属于算法独立验证；M3–M6 尚无 UI 阶段执行，场景分类与真实设备动作未接入 |
 
 ## 当前仍未就绪
 

@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl, Signal
@@ -62,6 +66,8 @@ class WorkflowPanel(QWidget):
         self.simulation_runner = None
         self.simulation_task = None
         self.simulation_result = None
+        self.simulation_config = None
+        self.simulation_script_revision = None
         self._build()
         self.run_event.connect(self._show_run_event)
 
@@ -81,6 +87,9 @@ class WorkflowPanel(QWidget):
         self.simulation_stop_button.setEnabled(False)
         row.addWidget(self.simulation_start_button)
         row.addWidget(self.simulation_stop_button)
+        self.simulation_report_button = button("导出本轮模拟报告", self.choose_simulation_report_path)
+        self.simulation_report_button.setEnabled(False)
+        row.addWidget(self.simulation_report_button)
         row.addStretch()
         card.body.addLayout(row)
         self.simulation_fault = combo([
@@ -450,6 +459,8 @@ class WorkflowPanel(QWidget):
         if self.simulation_task is not None and self.simulation_task.isRunning():
             return False
         self.simulation_result = None
+        self.simulation_config = getattr(runner, "config", None)
+        self.simulation_script_revision = current_script_revision()
         self.simulation_runner = runner
         runner.on_event = self.run_event.emit
         task = Task(run_callable or runner.run, self)
@@ -459,6 +470,7 @@ class WorkflowPanel(QWidget):
         self.simulation_task = task
         self.simulation_start_button.setEnabled(False)
         self.simulation_stop_button.setEnabled(True)
+        self.simulation_report_button.setEnabled(False)
         self.simulation_status.setText("正在测种并完整搜索当前范围……")
         self.log("开始离线模拟：合成画面、模拟设备端口，不会连接或控制实机。")
         task.start()
@@ -479,6 +491,7 @@ class WorkflowPanel(QWidget):
 
     def _simulation_finished_with_result(self, result):
         self.simulation_result = result
+        self.simulation_report_button.setEnabled(True)
         if result.epochs:
             epoch = result.epochs[-1]
             detail = (
@@ -500,6 +513,103 @@ class WorkflowPanel(QWidget):
     def _simulation_failed(self, message):
         self.simulation_status.setText(f"模拟失败：{message}")
         self.log(f"离线模拟失败：{message}")
+
+    def simulation_report_data(self):
+        result = self.simulation_result
+        config = self.simulation_config
+        if result is None or config is None:
+            return None
+        candidate_limit = 1_000
+        return {
+            "schema": "auto-swsh-automation-run-report",
+            "schemaVersion": 1,
+            "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "runId": result.run_id,
+            "scenarioId": config.scenario_id,
+            "contextRevision": config.context_revision,
+            "executionMode": "simulation",
+            "outcomeType": "simulation_search_only",
+            "sourceKind": "synthetic",
+            "algorithmCommit": BASELINE["algorithm"]["commit"],
+            "scriptRevision": self.simulation_script_revision or current_script_revision(),
+            "frameworkStatus": config.framework_status,
+            "hardwareStatus": config.hardware_status,
+            "status": str(result.status),
+            "phase": str(result.phase),
+            "reason": result.reason,
+            "searchRange": {
+                "start": config.min_advance,
+                "end": config.max_advance,
+            },
+            "searchFilters": config.search_request_copy(),
+            "epochs": [{
+                "epochId": epoch.epoch_id,
+                "seed0": epoch.seed0,
+                "seed1": epoch.seed1,
+                "observationBits": epoch.observation_bits,
+                "verificationBits": epoch.verification_bits,
+                "searchedPositions": epoch.searched_positions,
+                "searchedStart": epoch.searched_start,
+                "searchedEnd": epoch.searched_end,
+                "candidateCount": epoch.candidate_count,
+                "candidateRowsTruncated": epoch.candidate_rows_truncated,
+                "targetSnapshotId": epoch.target_snapshot_id,
+                "targetRequestDigest": epoch.target_request_digest,
+                "searchOrderVersion": epoch.search_order_version,
+            } for epoch in result.epochs],
+            "candidateRows": [dict(row) for row in result.candidate_rows[:candidate_limit]],
+            "candidateRowsTruncated": len(result.candidate_rows) > candidate_limit,
+            "targetSnapshotId": result.target_snapshot_id,
+            "targetRequestDigest": result.target_request_digest,
+            "searchOrderVersion": result.search_order_version,
+            "totalEvents": result.total_events,
+            "eventHistoryTruncated": result.event_history_truncated,
+            "events": [{
+                "runId": event.run_id,
+                "epochId": event.epoch_id,
+                "phase": event.phase.value,
+                "message": event.message,
+                "timestampMonotonicNs": event.timestamp_ns,
+                "details": dict(event.details),
+            } for event in result.events],
+            "limitations": [
+                "合成观测帧由测试分类器读取，不代表游戏画面识别。",
+                "验证位由同一配套计算后端预测，不构成算法独立验证。",
+                "本报告仅覆盖测种和 M2 搜索，不代表 NPC、捕获、保存或实机验收。",
+            ],
+        }
+
+    def choose_simulation_report_path(self):
+        report = self.simulation_report_data()
+        if report is None:
+            return
+        default_name = f"{report['runId']}-simulation-report.json"
+        path, _ = QFileDialog.getSaveFileName(self, "保存模拟运行报告", default_name, "JSON (*.json)")
+        if path:
+            self.save_simulation_report(path, report)
+
+    def save_simulation_report(self, path, report=None):
+        report = report or self.simulation_report_data()
+        if report is None:
+            self._set_error("当前没有可导出的模拟运行报告。")
+            return False
+        destination = Path(path).expanduser().resolve()
+        temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            temporary.write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(temporary, destination)
+            self.log(f"保存模拟报告：{destination}")
+            return True
+        except OSError as exc:
+            self._set_error(f"模拟报告保存失败：{exc}")
+            return False
+        finally:
+            if temporary.exists():
+                temporary.unlink()
 
     def _simulation_thread_stopped(self, task):
         if self.simulation_task is task:
